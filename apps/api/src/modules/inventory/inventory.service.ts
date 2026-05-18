@@ -1,0 +1,766 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Prisma, MovementType, MovementReason } from '@prisma/client';
+import { PrismaService } from '../../database/prisma/prisma.service';
+import {
+  CreateMovementDto,
+  TransferStockDto,
+  InventoryQueryDto,
+  MovementQueryDto,
+  CreateWarehouseDto,
+  AlertQueryDto,
+} from './dto/inventory.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponse,
+} from '../../common/utils/pagination';
+import { StockLowEvent } from '../../events/event-types';
+
+@Injectable()
+export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  /**
+   * List warehouses for a tenant (paginated).
+   */
+  async getWarehouses(
+    tenantId: string,
+    query: InventoryQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    const { page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const where = { tenantId };
+
+    const [data, total] = await Promise.all([
+      this.prisma.warehouse.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          address: true,
+          isDefault: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.warehouse.count({ where }),
+    ]);
+
+    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+  }
+
+  /**
+   * Create a warehouse for a tenant.
+   */
+  async createWarehouse(tenantId: string, dto: CreateWarehouseDto) {
+    // Auto-generate code from name if not provided
+    const code = dto.code || dto.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '').slice(0, 50);
+
+    // Compose full address from parts if city/state/zipCode provided
+    let address = dto.address || '';
+    if (dto.city || dto.state || dto.zipCode) {
+      const parts = [address, dto.city, dto.state].filter(Boolean);
+      address = parts.join(', ');
+      if (dto.zipCode) address += ` - CEP: ${dto.zipCode}`;
+    }
+
+    const warehouse = await this.prisma.warehouse.create({
+      data: {
+        tenantId,
+        name: dto.name,
+        code,
+        address: address || null,
+        isDefault: dto.isDefault ?? false,
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        address: true,
+        isDefault: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    this.logger.log(
+      `Warehouse created: ${warehouse.id} (${warehouse.name}) for tenant ${tenantId}`,
+    );
+
+    return warehouse;
+  }
+
+  /**
+   * List inventory items (stock by product/warehouse).
+   */
+  async findAll(
+    tenantId: string,
+    query: InventoryQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    const { page = 1, limit = 20, productId, warehouseId, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.InventoryItemWhereInput = { tenantId };
+    if (productId) where.productId = productId;
+    if (warehouseId) where.warehouseId = warehouseId;
+    if (search) {
+      where.product = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryItem.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          product: { select: { id: true, name: true, sku: true, status: true } },
+          variant: { select: { id: true, name: true, sku: true } },
+          warehouse: { select: { id: true, name: true, code: true } },
+        },
+      }),
+      this.prisma.inventoryItem.count({ where }),
+    ]);
+
+    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+  }
+
+  /**
+   * Register a stock movement (entry, exit, adjustment, return, production).
+   */
+  async createMovement(
+    tenantId: string,
+    userId: string,
+    dto: CreateMovementDto,
+  ) {
+    // Validate product exists
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.productId, tenantId, deletedAt: null },
+      select: { id: true, sku: true, name: true },
+    });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    const totalCost = dto.unitCost
+      ? dto.unitCost * dto.quantity
+      : undefined;
+
+    const movement = await this.prisma.$transaction(async (tx) => {
+      // Create the movement record
+      const created = await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId: dto.productId,
+          variantId: dto.variantId,
+          type: dto.type as MovementType,
+          reason: dto.reason as MovementReason,
+          quantity: dto.quantity,
+          unitCost: dto.unitCost,
+          totalCost,
+          fromWarehouseId: dto.fromWarehouseId,
+          toWarehouseId: dto.toWarehouseId,
+          referenceType: dto.referenceType,
+          referenceId: dto.referenceId,
+          notes: dto.notes,
+          userId,
+        },
+      });
+
+      // Update inventory based on movement type
+      if (dto.type === 'ENTRY' || dto.type === 'RETURN' || dto.type === 'PRODUCTION') {
+        if (!dto.toWarehouseId) {
+          throw new BadRequestException('toWarehouseId is required for entry/return/production movements');
+        }
+        await this.upsertInventoryItem(
+          tx,
+          tenantId,
+          dto.productId,
+          dto.variantId ?? null,
+          dto.toWarehouseId,
+          dto.quantity,
+        );
+      } else if (dto.type === 'EXIT') {
+        if (!dto.fromWarehouseId) {
+          throw new BadRequestException('fromWarehouseId is required for exit movements');
+        }
+        await this.upsertInventoryItem(
+          tx,
+          tenantId,
+          dto.productId,
+          dto.variantId ?? null,
+          dto.fromWarehouseId,
+          -dto.quantity,
+        );
+      } else if (dto.type === 'ADJUSTMENT') {
+        // Adjustment can be positive or negative; use toWarehouseId or fromWarehouseId
+        const warehouseId = dto.toWarehouseId || dto.fromWarehouseId;
+        if (!warehouseId) {
+          throw new BadRequestException('A warehouse ID is required for adjustments');
+        }
+        // For adjustments, positive quantity = add, we decide based on which warehouse is given
+        const delta = dto.toWarehouseId ? dto.quantity : -dto.quantity;
+        await this.upsertInventoryItem(
+          tx,
+          tenantId,
+          dto.productId,
+          dto.variantId ?? null,
+          warehouseId,
+          delta,
+        );
+      }
+      // TRANSFER is handled via transferStock method
+
+      this.logger.log(
+        `Inventory movement: ${dto.type} ${dto.quantity}x ${product.sku} (tenant: ${tenantId})`,
+      );
+
+      return created;
+    });
+
+    // Check low stock alerts after movement completes
+    const affectedWarehouseId = dto.toWarehouseId || dto.fromWarehouseId;
+    if (affectedWarehouseId) {
+      await this.checkAndUpdateAlerts(
+        tenantId,
+        dto.productId,
+        dto.variantId ?? null,
+        affectedWarehouseId,
+      );
+    }
+
+    return movement;
+  }
+
+  /**
+   * List inventory movements with filters.
+   */
+  async findMovements(
+    tenantId: string,
+    query: MovementQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    const { page = 1, limit = 20, productId, warehouseId, type, dateFrom, dateTo, reason, sortBy, sortOrder = 'desc' } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.InventoryMovementWhereInput = { tenantId };
+    if (productId) where.productId = productId;
+    if (type) where.type = type as any;
+    if (reason) where.reason = reason as any;
+    if (warehouseId) {
+      where.OR = [
+        { fromWarehouseId: warehouseId },
+        { toWarehouseId: warehouseId },
+      ];
+    }
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) (where.createdAt as any).gte = new Date(dateFrom);
+      if (dateTo) (where.createdAt as any).lte = new Date(dateTo);
+    }
+
+    const orderBy = sortBy
+      ? { [sortBy]: sortOrder }
+      : { createdAt: sortOrder };
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryMovement.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          user: { select: { id: true, name: true } },
+          fromWarehouse: { select: { id: true, name: true, code: true } },
+          toWarehouse: { select: { id: true, name: true, code: true } },
+        },
+      }),
+      this.prisma.inventoryMovement.count({ where }),
+    ]);
+
+    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+  }
+
+  /**
+   * Get low stock alerts with pagination and status filter.
+   */
+  async getLowStockAlerts(
+    tenantId: string,
+    query: AlertQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    const { page = 1, limit = 20, status } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.StockAlertWhereInput = { tenantId };
+    if (status === 'ACTIVE') {
+      where.isResolved = false;
+    } else if (status === 'RESOLVED') {
+      where.isResolved = true;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.stockAlert.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.stockAlert.count({ where }),
+    ]);
+
+    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+  }
+
+  /**
+   * Transfer stock between warehouses.
+   */
+  async transferStock(tenantId: string, userId: string, dto: TransferStockDto) {
+    if (dto.fromWarehouseId === dto.toWarehouseId) {
+      throw new BadRequestException('Source and destination warehouses must be different');
+    }
+
+    // Validate product
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.productId, tenantId, deletedAt: null },
+      select: { id: true, sku: true },
+    });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // Validate source warehouse has enough stock
+    const sourceItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        productId: dto.productId,
+        variantId: dto.variantId ?? null,
+        warehouseId: dto.fromWarehouseId,
+        tenantId,
+      },
+    });
+
+    if (!sourceItem || sourceItem.available < dto.quantity) {
+      const available = sourceItem?.available ?? 0;
+      throw new BadRequestException(
+        `Insufficient stock in source warehouse. Available: ${available}, Requested: ${dto.quantity}`,
+      );
+    }
+
+    const movement = await this.prisma.$transaction(async (tx) => {
+      // Decrease source
+      await this.upsertInventoryItem(
+        tx,
+        tenantId,
+        dto.productId,
+        dto.variantId ?? null,
+        dto.fromWarehouseId,
+        -dto.quantity,
+      );
+
+      // Increase destination
+      await this.upsertInventoryItem(
+        tx,
+        tenantId,
+        dto.productId,
+        dto.variantId ?? null,
+        dto.toWarehouseId,
+        dto.quantity,
+      );
+
+      // Create movement record
+      const created = await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId: dto.productId,
+          variantId: dto.variantId,
+          type: 'TRANSFER',
+          reason: 'TRANSFER',
+          quantity: dto.quantity,
+          fromWarehouseId: dto.fromWarehouseId,
+          toWarehouseId: dto.toWarehouseId,
+          notes: dto.notes,
+          userId,
+        },
+      });
+
+      this.logger.log(
+        `Stock transfer: ${dto.quantity}x ${product.sku} from ${dto.fromWarehouseId} to ${dto.toWarehouseId}`,
+      );
+
+      return created;
+    });
+
+    // Check low stock alerts for both warehouses
+    await this.checkAndUpdateAlerts(tenantId, dto.productId, dto.variantId ?? null, dto.fromWarehouseId);
+    await this.checkAndUpdateAlerts(tenantId, dto.productId, dto.variantId ?? null, dto.toWarehouseId);
+
+    return movement;
+  }
+
+  /**
+   * Reserve stock for an order (called from event handler).
+   */
+  async reserveStock(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    quantity: number,
+  ): Promise<void> {
+    // Find default or first available warehouse with stock
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? null,
+        available: { gte: quantity },
+      },
+      include: { warehouse: true },
+      orderBy: { warehouse: { isDefault: 'desc' } },
+    });
+
+    if (!inventoryItem) {
+      this.logger.warn(
+        `Cannot reserve ${quantity} units of product ${productId}: insufficient stock`,
+      );
+      return; // Gracefully skip if no stock (order was already created)
+    }
+
+    await this.prisma.inventoryItem.update({
+      where: { id: inventoryItem.id },
+      data: {
+        reserved: { increment: quantity },
+        available: { decrement: quantity },
+      },
+    });
+
+    // Check if low stock alert needed
+    const updated = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItem.id },
+    });
+    if (updated && updated.minStock > 0 && updated.available <= updated.minStock) {
+      await this.createStockAlert(tenantId, productId, variantId, inventoryItem.warehouseId, updated.available, updated.minStock);
+    }
+
+    this.logger.log(`Reserved ${quantity} units of product ${productId}`);
+  }
+
+  /**
+   * Release reserved stock (called from event handler on cancellation).
+   */
+  async releaseStock(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    quantity: number,
+  ): Promise<void> {
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? null,
+        reserved: { gte: quantity },
+      },
+      orderBy: { warehouse: { isDefault: 'desc' } },
+    });
+
+    if (!inventoryItem) {
+      this.logger.warn(
+        `Cannot release ${quantity} units of product ${productId}: no matching reservation`,
+      );
+      return;
+    }
+
+    await this.prisma.inventoryItem.update({
+      where: { id: inventoryItem.id },
+      data: {
+        reserved: { decrement: quantity },
+        available: { increment: quantity },
+      },
+    });
+
+    // Check if stock normalized and resolve alert
+    const updated = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItem.id },
+    });
+    if (updated && updated.minStock > 0 && updated.available > updated.minStock) {
+      await this.resolveStockAlert(tenantId, productId, variantId, inventoryItem.warehouseId);
+    }
+
+    this.logger.log(`Released ${quantity} reserved units of product ${productId}`);
+  }
+
+  /**
+   * Deduct stock directly for counter sales (EXIT movement, no reservation).
+   */
+  async deductStockForSale(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    quantity: number,
+    orderId: string,
+  ): Promise<void> {
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? null,
+        available: { gte: quantity },
+      },
+      include: { warehouse: true },
+      orderBy: { warehouse: { isDefault: 'desc' } },
+    });
+
+    if (!inventoryItem) {
+      this.logger.warn(
+        `Cannot deduct ${quantity} units of product ${productId}: insufficient stock for counter sale`,
+      );
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Deduct from inventory (quantity and available both decrease)
+      await tx.inventoryItem.update({
+        where: { id: inventoryItem.id },
+        data: {
+          quantity: { decrement: quantity },
+          available: { decrement: quantity },
+        },
+      });
+
+      // Create EXIT movement for audit trail
+      await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId,
+          variantId,
+          type: 'EXIT',
+          reason: 'SALE',
+          quantity,
+          fromWarehouseId: inventoryItem.warehouseId,
+          referenceType: 'ORDER',
+          referenceId: orderId,
+          notes: 'Venda no balcão - saída direta',
+          userId: null,
+        },
+      });
+    });
+
+    // Check low stock alert
+    const updated = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItem.id },
+    });
+    if (updated && updated.minStock > 0 && updated.available <= updated.minStock) {
+      await this.createStockAlert(tenantId, productId, variantId, inventoryItem.warehouseId, updated.available, updated.minStock);
+    }
+
+    this.logger.log(`Deducted ${quantity} units of product ${productId} for counter sale (order ${orderId})`);
+  }
+
+  /**
+   * Check low stock levels and emit events.
+   */
+  async checkLowStock(tenantId: string): Promise<void> {
+    const lowStockItems = await this.prisma.$queryRaw<any[]>`
+      SELECT
+        ii."productId",
+        ii."variantId",
+        ii."warehouseId",
+        ii.available,
+        ii."minStock"
+      FROM inventory_items ii
+      WHERE ii."tenantId" = ${tenantId}
+        AND ii."minStock" > 0
+        AND ii.available <= ii."minStock"
+    `;
+
+    for (const item of lowStockItems) {
+      await this.createStockAlert(
+        tenantId,
+        item.productId,
+        item.variantId,
+        item.warehouseId,
+        item.available,
+        item.minStock,
+      );
+    }
+  }
+
+  // ─── Private Helpers ────────────────────────────────────────────────
+
+  /**
+   * Upsert inventory item: create if not exists, update quantity if exists.
+   */
+  private async upsertInventoryItem(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    warehouseId: string,
+    delta: number,
+  ): Promise<void> {
+    const existing = await tx.inventoryItem.findFirst({
+      where: {
+        productId,
+        variantId: variantId ?? null,
+        warehouseId,
+      },
+    });
+
+    if (existing) {
+      const newQuantity = existing.quantity + delta;
+      if (newQuantity < 0) {
+        throw new BadRequestException(
+          `Insufficient stock. Current: ${existing.quantity}, Change: ${delta}`,
+        );
+      }
+      const newAvailable = existing.available + delta;
+
+      await tx.inventoryItem.update({
+        where: { id: existing.id },
+        data: {
+          quantity: Math.max(newQuantity, 0),
+          available: Math.max(newAvailable, 0),
+        },
+      });
+    } else {
+      if (delta < 0) {
+        throw new BadRequestException('Cannot create inventory item with negative quantity');
+      }
+
+      await tx.inventoryItem.create({
+        data: {
+          tenantId,
+          productId,
+          variantId,
+          warehouseId,
+          quantity: delta,
+          available: delta,
+          reserved: 0,
+        },
+      });
+    }
+  }
+
+  /**
+   * Resolve a stock alert when stock normalizes above minStock.
+   */
+  private async resolveStockAlert(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    warehouseId: string,
+  ): Promise<void> {
+    const updated = await this.prisma.stockAlert.updateMany({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? undefined,
+        warehouseId,
+        isResolved: false,
+      },
+      data: {
+        isResolved: true,
+        resolvedAt: new Date(),
+      },
+    });
+
+    if (updated.count > 0) {
+      this.logger.log(
+        `Resolved ${updated.count} stock alert(s) for product ${productId} in warehouse ${warehouseId}`,
+      );
+    }
+  }
+
+  /**
+   * Check and update stock alerts after any movement.
+   */
+  private async checkAndUpdateAlerts(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    warehouseId: string,
+  ): Promise<void> {
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? null,
+        warehouseId,
+      },
+    });
+
+    if (!item || item.minStock <= 0) return;
+
+    if (item.available <= item.minStock) {
+      await this.createStockAlert(
+        tenantId,
+        productId,
+        variantId,
+        warehouseId,
+        item.available,
+        item.minStock,
+      );
+    } else {
+      await this.resolveStockAlert(tenantId, productId, variantId, warehouseId);
+    }
+  }
+
+  /**
+   * Create a stock alert record and emit event.
+   */
+  private async createStockAlert(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    warehouseId: string,
+    currentQty: number,
+    minStock: number,
+  ): Promise<void> {
+    // Check if there's already an unresolved alert for this combination
+    const existingAlert = await this.prisma.stockAlert.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? undefined,
+        warehouseId,
+        isResolved: false,
+      },
+    });
+
+    if (existingAlert) return; // Already has an active alert
+
+    await this.prisma.stockAlert.create({
+      data: {
+        tenantId,
+        productId,
+        variantId,
+        warehouseId,
+        currentQty,
+        minStock,
+      },
+    });
+
+    this.eventEmitter.emit(
+      'stock.low',
+      new StockLowEvent(tenantId, productId, variantId, warehouseId, currentQty, minStock),
+    );
+  }
+}

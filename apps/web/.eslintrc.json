@@ -1,0 +1,29 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "eqeqeq": ["error", "always"],
+    "curly": ["error", "all"],
+    "no-nested-ternary": "error",
+    "max-lines-per-function": ["warn", { "max": 100, "skipBlankLines": true, "skipComments": true }],
+    "max-depth": ["warn", 3],
+    "complexity": ["warn", 10],
+    "no-duplicate-imports": "error",
+    "react/jsx-no-leaked-render": "warn",
+    "react/self-closing-comp": "error",
+    "react/jsx-curly-brace-presence": ["error", { "props": "never", "children": "never" }],
+    "react-hooks/exhaustive-deps": "warn",
+    "import/order": ["error", {
+      "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+      "newlines-between": "always",
+      "alphabetize": { "order": "asc" }
+    }]
+  }
+}
