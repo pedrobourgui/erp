@@ -127,6 +127,15 @@ npm run db:migrate
 npm run db:seed
 ```
 
+Após o seed, o usuário admin padrão fica disponível para login:
+
+| Campo | Valor |
+|-------|-------|
+| E-mail | `admin@admin.com.br` |
+| Senha  | `123456` |
+
+> Troque a senha imediatamente em qualquer ambiente que não seja desenvolvimento local.
+
 Os scripts vivem em `apps/api` (`prisma generate`, `prisma migrate dev`, `ts-node src/database/prisma/seed.ts`) e são despachados pelo Turborepo com filtro `--filter=@erp/api`.
 
 Inspecionar o banco visualmente:
