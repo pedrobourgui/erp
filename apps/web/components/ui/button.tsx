@@ -24,6 +24,8 @@ const buttonVariants = cva(
           "bg-success text-success-foreground shadow-sm shadow-success/20 hover:bg-success/90 hover:shadow-md hover:shadow-success/25",
         warning:
           "bg-warning text-warning-foreground shadow-sm shadow-warning/20 hover:bg-warning/90 hover:shadow-md hover:shadow-warning/25",
+        cancel:
+          "border border-input bg-background shadow-sm  hover:text-destructive hover:border-destructive"
       },
 
       action: {
@@ -53,7 +55,7 @@ const buttonVariants = cva(
       {
         variant: "ghost",
         action: "delete",
-        class: "hover:bg-destructive hover:text-white"
+        class: "hover:bg-destructive hover:text-white text-destructive"
 
       }
     ]
