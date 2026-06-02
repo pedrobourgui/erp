@@ -25,6 +25,12 @@ const buttonVariants = cva(
         warning:
           "bg-warning text-warning-foreground shadow-sm shadow-warning/20 hover:bg-warning/90 hover:shadow-md hover:shadow-warning/25",
       },
+
+      action: {
+        default: "",
+        delete: "",
+      },
+
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-lg px-3 text-[13px]",
@@ -34,8 +40,23 @@ const buttonVariants = cva(
     },
     defaultVariants: {
       variant: "default",
+      action: "default",
       size: "default",
     },
+    
+    compoundVariants: [
+      {
+        variant: "ghost",
+        action: "default",
+        class: "hover:bg-primary hover:text-primary-foreground"
+      },
+      {
+        variant: "ghost",
+        action: "delete",
+        class: "hover:bg-destructive hover:text-white"
+
+      }
+    ]
   }
 );
 
@@ -46,11 +67,11 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, action, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, action, size, className }))}
         ref={ref}
         {...props}
       />
