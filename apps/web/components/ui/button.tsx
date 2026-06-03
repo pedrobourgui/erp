@@ -15,7 +15,7 @@ const buttonVariants = cva(
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground hover:border-accent/30",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:border hover:border-input",
         ghost:
           "hover:bg-accent/10 hover:text-accent-foreground",
         link:
@@ -31,6 +31,7 @@ const buttonVariants = cva(
       action: {
         default: "",
         delete: "",
+        success: "",
       },
 
       size: {
@@ -57,6 +58,11 @@ const buttonVariants = cva(
         action: "delete",
         class: "hover:bg-destructive hover:text-white text-destructive"
 
+      },
+      {
+        variant: "ghost",
+        action: "success",
+        class: "hover:bg-accent hover:text-white text-destructive"
       }
     ]
   }
