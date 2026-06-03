@@ -146,7 +146,7 @@ export default function NewCustomerPage() {
         </Card>
 
         <div className="flex items-center justify-end gap-3 border-t pt-6">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <Button type="button" variant="cancel" onClick={() => router.back()}>Cancelar</Button>
           <Button type="submit" disabled={isSubmitting || createCustomer.isPending}>
             {createCustomer.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

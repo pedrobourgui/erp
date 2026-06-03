@@ -192,7 +192,7 @@ function ConditionsTable({
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(c)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(c)}>
+                      <Button variant="ghost" action="delete" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(c)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -393,7 +393,7 @@ function ConditionFormDialog({
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="cancel" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>

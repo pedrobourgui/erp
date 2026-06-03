@@ -305,7 +305,7 @@ function UsersTab() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="cancel" onClick={() => setInviteOpen(false)}>Cancelar</Button>
               <Button type="submit">Enviar Convite</Button>
             </DialogFooter>
           </form>

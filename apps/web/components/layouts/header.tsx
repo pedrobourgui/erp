@@ -44,7 +44,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground transition-colors duration-200"
+            className="h-9 w-9 rounded-lg text-muted-foreground  transition-colors duration-200"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
@@ -57,7 +57,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground transition-colors duration-200"
+            className="relative h-9 w-9 rounded-lg text-muted-foreground transition-colors duration-200"
           >
             <Bell className="h-[18px] w-[18px]" />
             <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
@@ -74,7 +74,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="ml-1.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/60 transition-colors duration-200"
+              className="ml-1.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/60 hover:text-primary transition-colors duration-200"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-primary/20">
                 {user?.name
@@ -99,7 +99,7 @@ export function Header() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="my-1 h-px bg-border" />
             <DropdownMenuItem
-              className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none transition-colors duration-150 hover:bg-accent/10 hover:text-accent-foreground"
+              className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none transition-colors duration-150 hover:bg-accent/10 "
               onClick={() => router.push("/configuracoes/perfil")}
             >
               <User className="h-4 w-4 text-muted-foreground" />
