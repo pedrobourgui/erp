@@ -122,7 +122,7 @@ export function CreateCashRegisterDialog({
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="button" variant="cancel" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Criar
@@ -182,7 +182,7 @@ export function OpenSessionDialog({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <MoneyInput name="openingBalance" control={control} label="Saldo de Abertura" />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Abrir
@@ -258,7 +258,7 @@ export function CloseSessionDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
             <Button type="submit" variant="destructive" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Fechar Caixa
@@ -335,7 +335,7 @@ export function MovementDialog({
             {errors.reason && <p className="text-xs text-destructive">{errors.reason.message}</p>}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmar

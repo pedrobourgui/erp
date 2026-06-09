@@ -619,8 +619,9 @@ export default function NewOrderPage() {
                                   <Button
                                     type="button"
                                     variant="ghost"
+                                    action="delete"
                                     size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    className="h-7 w-7 text-muted-foreground"
                                     onClick={() => remove(index)}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -779,7 +780,7 @@ export default function NewOrderPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="cancel"
                     className="w-full"
                     onClick={() => router.back()}
                   >

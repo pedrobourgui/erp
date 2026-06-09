@@ -193,7 +193,7 @@ export default function WarehousesPage() {
               <label htmlFor="isDefault" className="text-sm font-medium">Depósito padrão</label>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="cancel" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={createWarehouse.isPending}>
                 {createWarehouse.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Criar Depósito

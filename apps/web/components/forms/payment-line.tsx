@@ -161,8 +161,9 @@ export function PaymentLine({
         <Button
           type="button"
           variant="ghost"
+          action="delete"
           size="icon"
-          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+          className="h-9 w-9 shrink-0 text-muted-foreground"
           onClick={onRemove}
         >
           <Trash2 className="h-4 w-4" />
