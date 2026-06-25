@@ -1,63 +1,37 @@
 import { z } from 'zod';
 
-// ─── Auth schemas ──────────────────────────────────────────────────────
+// ─── Schema de login ──────────────────────────────────────────────────
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z
+    .string()
+    .trim()
+    .nonempty("Este campo é obrigatório")
+    .email('Endereço de e-mail inválido'),
+
+  password: z
+    .string()
+    .nonempty("Este campo é obrigatório")
+    .min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+})
+
+export type LoginFormData = z.infer<typeof loginSchema>;
+
+/// ─── Schema de convite ─────────────────────────────────────────────────
+
+export const inviteSchema = z.object({
+  email: z
+    .string()
+    .nonempty("Este campo é obrigatório")
+    .max(254, "O e-mail deve conter no máximo 254 caracteres")
+    .email("E-mail inválido"),
+
+  role: z.enum(["admin", "manager", "operator", "viewer"], {
+    required_error: "Este campo é obrigatório"
+  }),
 });
 
-export type LoginInput = z.infer<typeof loginSchema>;
-
-// ─── Product schemas ───────────────────────────────────────────────────
-
-export const createProductSchema = z.object({
-  sku: z.string().min(1, 'SKU is required').max(50),
-  name: z.string().min(1, 'Name is required').max(255),
-  description: z.string().max(2000).optional(),
-  costPrice: z.number().nonnegative('Cost price must be non-negative'),
-  salePrice: z.number().positive('Sale price must be positive'),
-  status: z.enum(['ACTIVE', 'INACTIVE', 'DRAFT']).default('DRAFT'),
-  categoryId: z.string().uuid().optional(),
-  weight: z.number().nonnegative().optional(),
-  ean: z.string().max(50).optional(),
-});
-
-export type CreateProductInput = z.infer<typeof createProductSchema>;
-
-// ─── Order schemas ─────────────────────────────────────────────────────
-
-export const orderItemSchema = z.object({
-  productId: z.string().uuid(),
-  quantity: z.number().int().positive('Quantity must be at least 1'),
-  unitPrice: z.number().positive('Unit price must be positive'),
-  discount: z.number().nonnegative().default(0),
-});
-
-export const createOrderSchema = z.object({
-  customerId: z.string().uuid('Invalid customer ID').optional(),
-  items: z.array(orderItemSchema).min(1, 'Order must have at least one item'),
-  notes: z.string().max(1000).optional(),
-  origin: z.enum(['MANUAL', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API']).default('MANUAL'),
-  shippingAddressId: z.string().uuid().optional(),
-});
-
-export type CreateOrderInput = z.infer<typeof createOrderSchema>;
-
-// ─── Customer schemas ──────────────────────────────────────────────────
-
-export const createCustomerSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  email: z.string().email('Invalid email address'),
-  document: z.string().min(11, 'Document is required').max(18),
-  phone: z.string().min(10).max(15).optional(),
-  address: z.string().max(500).optional(),
-  city: z.string().max(100).optional(),
-  state: z.string().length(2).optional(),
-  zipCode: z.string().max(10).optional(),
-});
-
-export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+export type InviteFormValues = z.infer<typeof inviteSchema>;
 
 // ─── Inventory schemas ─────────────────────────────────────────────────
 
@@ -83,3 +57,20 @@ export const paginationSchema = z.object({
 });
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
+
+
+// ─── Schema exports ─────────────────────────────────────────────────────
+
+export * from "./stock/brand";
+export * from "./stock/product";
+export * from "./stock/category";
+export * from "./stock/warehouse";
+export * from "./sale/sale";
+export * from "./sale/customer";
+export * from "./financial/account";
+export * from "./financial/cashier";
+export * from "./financial/payments";
+export * from "./configuration/company";
+
+
+

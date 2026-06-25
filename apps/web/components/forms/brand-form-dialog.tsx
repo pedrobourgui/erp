@@ -1,8 +1,8 @@
 "use client";
 
+import { brandSchema, type BrandFormValues } from "@repo/validators";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -16,23 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import type { BrandRow } from "@/hooks/use-products";
-
-// ─── Schema ─────────────────────────────────────────────────────────
-
-const brandSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Nome é obrigatório")
-    .max(255, "Nome deve ter no máximo 255 caracteres"),
-  logoUrl: z
-    .string()
-    .url("URL inválida")
-    .max(500, "URL deve ter no máximo 500 caracteres")
-    .optional()
-    .or(z.literal("")),
-});
-
-type BrandFormValues = z.infer<typeof brandSchema>;
 
 // ─── Props ──────────────────────────────────────────────────────────
 

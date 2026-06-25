@@ -1,9 +1,10 @@
 "use client";
 
+import { methodSchema, type MethodFormValues } from "@repo/validators"
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,29 +68,6 @@ const TYPE_BADGE: Record<PaymentMethodType, "success" | "default" | "warning" | 
   CHECK: "warning",
   OTHER: "secondary",
 };
-
-// ─── Schema ───────────────────────────────────────────────────────────
-
-const methodSchema = z.object({
-  name: z.string().min(1, "Nome obrigatorio").max(100),
-  type: z.enum([
-    "CASH",
-    "CREDIT_CARD",
-    "DEBIT_CARD",
-    "PIX",
-    "BOLETO",
-    "BANK_TRANSFER",
-    "CHECK",
-    "OTHER",
-  ]),
-  feePercentage: z.number().min(0).max(100).default(0),
-  settlementDays: z.number().min(0).default(0),
-  requiresAuthorization: z.boolean().default(false),
-  fiscalCode: z.string().max(5).optional(),
-  isActive: z.boolean().default(true),
-});
-
-type MethodFormValues = z.infer<typeof methodSchema>;
 
 // ─── Page ─────────────────────────────────────────────────────────────
 
@@ -260,7 +238,7 @@ function MethodFormDialog({
     resolver: zodResolver(methodSchema),
     defaultValues: {
       name: "",
-      type: "CASH",
+      type: undefined,
       feePercentage: 0,
       settlementDays: 0,
       requiresAuthorization: false,
@@ -284,7 +262,7 @@ function MethodFormDialog({
             }
           : {
               name: "",
-              type: "CASH",
+              type: undefined,
               feePercentage: 0,
               settlementDays: 0,
               requiresAuthorization: false,
@@ -328,7 +306,7 @@ function MethodFormDialog({
               : "Preencha os dados para criar um novo metodo de pagamento."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Nome *</label>
@@ -346,19 +324,24 @@ function MethodFormDialog({
               <Controller
                 name="type"
                 control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                render={({ field, fieldState }) => (
+                  <div>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.error && (
+                      <p className="text-xs text-destructive pt-1">{fieldState.error.message}</p>
+                    )}
+                  </div>
                 )}
               />
             </div>
@@ -372,16 +355,38 @@ function MethodFormDialog({
                 min={0}
                 max={100}
                 step={0.01}
+                onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    // Bloqueia valores muito grandes de digitação/cola
+                    if (value.length > 3) {
+                      e.currentTarget.value = value.slice(0, 3);
+                    }
+                  }}
                 {...register("feePercentage", { valueAsNumber: true })}
               />
+               {errors.feePercentage && (
+                <p className="text-xs text-destructive">{errors.feePercentage.message}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Liquidacao (dias)</label>
               <Input
                 type="number"
                 min={0}
+                onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    // Bloqueia valores muito grandes de digitação/cola
+                    if (value.length > 3) {
+                      e.currentTarget.value = value.slice(0, 3);  
+                    }
+                  }}
                 {...register("settlementDays", { valueAsNumber: true })}
               />
+              {errors.settlementDays && (
+                <p className="text-xs text-destructive">{errors.settlementDays.message}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Cod. Fiscal</label>
@@ -390,6 +395,9 @@ function MethodFormDialog({
                 placeholder="Ex: 01"
                 maxLength={5}
               />
+              {errors.fiscalCode && (
+                <p className="text-xs text-destructive">{errors.fiscalCode.message}</p>
+              )}
             </div>
           </div>
 

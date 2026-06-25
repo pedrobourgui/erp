@@ -1,9 +1,9 @@
 "use client";
 
+import { warehouseSchema, type WarehouseFormValues } from "@repo/validators";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,22 +20,6 @@ import { useWarehouses, useCreateWarehouse, type Warehouse } from "@/hooks/use-i
 import { useToast } from "@/components/ui/toast";
 import { Plus, Warehouse as WarehouseIcon, MapPin, Package, Loader2 } from "lucide-react";
 import { maskCEP } from "@/lib/masks";
-
-// ─── Schema ─────────────────────────────────────────────────────────────
-
-const warehouseSchema = z.object({
-  name: z.string().min(2, "Nome do depósito é obrigatório").max(255, "Nome muito longo"),
-  address: z.string().min(5, "Endereço é obrigatório (mínimo 5 caracteres)").max(500, "Endereço muito longo"),
-  city: z.string().min(2, "Cidade é obrigatória").max(100, "Cidade muito longa"),
-  state: z.string().length(2, "Informe a UF com 2 letras"),
-  zipCode: z.string().min(1, "CEP é obrigatório").max(10, "CEP muito longo").refine(
-    (val) => val.replace(/\D/g, '').length === 8,
-    { message: "CEP inválido" }
-  ),
-  isDefault: z.boolean().optional(),
-});
-
-type WarehouseFormValues = z.infer<typeof warehouseSchema>;
 
 // ─── Warehouse card ─────────────────────────────────────────────────────
 
@@ -155,18 +139,18 @@ export default function WarehousesPage() {
           <form onSubmit={handleSubmit(handleCreate)} className="space-y-4">
             <div className="space-y-1">
               <label className="text-sm font-medium">Nome *</label>
-              <Input {...register("name")} placeholder="Nome do depósito" maxLength={255} />
+              <Input {...register("name")} placeholder="Nome do depósito"/>
               {fieldError("name") && <p className="text-xs text-destructive">{fieldError("name")}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Endereço *</label>
-              <Input {...register("address")} placeholder="Rua, número" maxLength={500} />
+              <Input {...register("address")} placeholder="Rua, número"/>
               {fieldError("address") && <p className="text-xs text-destructive">{fieldError("address")}</p>}
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Cidade *</label>
-                <Input {...register("city")} placeholder="Cidade" maxLength={100} />
+                <Input {...register("city")} placeholder="Cidade"/>
                 {fieldError("city") && <p className="text-xs text-destructive">{fieldError("city")}</p>}
               </div>
               <div className="space-y-1">

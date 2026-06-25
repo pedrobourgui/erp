@@ -1,9 +1,12 @@
 "use client";
 
+import { 
+  companySchema, type CompanyFormValues,
+  inviteSchema, type InviteFormValues
+} from "@repo/validators";
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -76,18 +79,6 @@ export default function SettingsPage() {
 
 // ─── Company tab ────────────────────────────────────────────────────────
 
-const companySchema = z.object({
-  name: z.string().min(3, "Nome da empresa é obrigatório"),
-  cnpj: z.string().min(14, "CNPJ inválido"),
-  address: z.string().min(5, "Endereço é obrigatório"),
-  city: z.string().min(2, "Cidade é obrigatória"),
-  state: z.string().length(2, "UF inválida"),
-  zipCode: z.string().min(8, "CEP inválido"),
-  taxRegime: z.enum(["simples_nacional", "lucro_presumido", "lucro_real"]),
-});
-
-type CompanyFormValues = z.infer<typeof companySchema>;
-
 const TAX_REGIME_OPTIONS = [
   { value: "simples_nacional", label: "Simples Nacional" },
   { value: "lucro_presumido", label: "Lucro Presumido" },
@@ -109,7 +100,7 @@ function CompanyTab() {
       city: "",
       state: "",
       zipCode: "",
-      taxRegime: "simples_nacional",
+      taxRegime: "",
     },
   });
 
@@ -158,7 +149,7 @@ function CompanyTab() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">CEP *</label>
-              <Input {...register("zipCode")} placeholder="00000-000" />
+              <Input {...register("zipCode")} placeholder="00000-000" maxLength={9}/>
               {fieldError("zipCode") && <p className="text-xs text-destructive">{fieldError("zipCode")}</p>}
             </div>
           </div>
@@ -167,17 +158,22 @@ function CompanyTab() {
             <Controller
               name="taxRegime"
               control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="sm:max-w-xs">
-                    <SelectValue placeholder="Selecione o regime" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TAX_REGIME_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              render={({ field, fieldState}) => (
+                <div>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="sm:max-w-xs">
+                      <SelectValue placeholder="Selecione o regime" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TAX_REGIME_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-xs text-destructive pt-1">{fieldState.error.message}</p>
+                  )}      
+                </div>
               )}
             />
           </div>
@@ -215,13 +211,6 @@ const ROLE_VARIANTS: Record<string, "default" | "secondary" | "success" | "warni
   viewer: "warning",
 };
 
-const inviteSchema = z.object({
-  email: z.string().email("E-mail inválido"),
-  role: z.enum(["admin", "manager", "operator", "viewer"]),
-});
-
-type InviteFormValues = z.infer<typeof inviteSchema>;
-
 function UsersTab() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -233,7 +222,7 @@ function UsersTab() {
     formState: { errors },
   } = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
-    defaultValues: { email: "", role: "operator" },
+    defaultValues: { email: "", role: undefined },
   });
 
   const handleInvite = async (_data: InviteFormValues) => {
@@ -278,7 +267,7 @@ function UsersTab() {
             <DialogTitle>Convidar Usuário</DialogTitle>
             <DialogDescription>Envie um convite para um novo membro da equipe.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(handleInvite)} className="space-y-4">
+          <form onSubmit={handleSubmit(handleInvite)} className="space-y-4" noValidate>
             <div className="space-y-1">
               <label className="text-sm font-medium">E-mail *</label>
               <Input {...register("email")} type="email" placeholder="email@exemplo.com" />
@@ -289,18 +278,23 @@ function UsersTab() {
               <Controller
                 name="role"
                 control={inviteControl}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o perfil" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="manager">Gerente</SelectItem>
-                      <SelectItem value="operator">Operador</SelectItem>
-                      <SelectItem value="viewer">Visualizador</SelectItem>
-                    </SelectContent>
-                  </Select>
+                render={({ field, fieldState}) => ( 
+                  <div>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o perfil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="manager">Gerente</SelectItem>
+                        <SelectItem value="operator">Operador</SelectItem>
+                        <SelectItem value="viewer">Visualizador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.error && (
+                      <p className="text-xs text-destructive pt-1">{fieldState.error.message}</p>
+                    )}
+                  </div>
                 )}
               />
             </div>

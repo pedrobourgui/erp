@@ -1,10 +1,10 @@
 "use client";
 
+import { counterSaleSchema, type CounterSaleFormValues } from "@repo/validators";
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,72 +51,6 @@ interface ProductResult {
     totalAvailable: number;
   };
 }
-
-// ─── Validation schema ─────────────────────────────────────────────────
-
-const coerceNumber = (val: unknown) => {
-  if (val === "" || val === null || val === undefined) return 0;
-  const n = Number(val);
-  return Number.isNaN(n) ? 0 : n;
-};
-
-const counterSaleItemSchema = z.object({
-  productId: z.string().min(1, "Selecione um produto"),
-  productName: z.string(),
-  sku: z.string(),
-  availableStock: z.number(),
-  quantity: z.preprocess(
-    coerceNumber,
-    z.number().min(1, "Quantidade minima e 1")
-  ),
-  unitPrice: z.preprocess(
-    coerceNumber,
-    z.number().min(0.01, "Preco unitario e obrigatorio")
-  ),
-  discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-});
-
-const orderPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
-  paymentConditionId: z.string().optional(),
-  financialAccountId: z.string().optional(),
-  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
-  installments: z.number().optional(),
-  authorizationCode: z.string().optional(),
-});
-
-const counterSaleSchema = z
-  .object({
-    customerId: z.string().min(1, "Selecione um cliente"),
-    items: z.array(counterSaleItemSchema).min(1, "Adicione pelo menos um item"),
-    payments: z
-      .array(orderPaymentSchema)
-      .min(1, "Adicione pelo menos uma forma de pagamento"),
-    discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-    notes: z.string().max(1000).optional(),
-  })
-  .refine(
-    (data) => {
-      const paymentTotal = data.payments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0
-      );
-      const orderTotal =
-        data.items.reduce((sum, item) => {
-          const qty = Number(item.quantity) || 0;
-          const price = Number(item.unitPrice) || 0;
-          const disc = Number(item.discount) || 0;
-          return sum + (qty * price - disc);
-        }, 0) - (Number(data.discount) || 0);
-      return Math.abs(paymentTotal - orderTotal) < 0.01;
-    },
-    {
-      message: "A soma dos pagamentos deve ser igual ao total do pedido",
-      path: ["payments"],
-    }
-  );
-
-type CounterSaleFormValues = z.infer<typeof counterSaleSchema>;
 
 // ─── Stock badge ───────────────────────────────────────────────────────
 
@@ -172,7 +106,7 @@ export default function CounterSalePage() {
       customerId: "",
       items: [],
       payments: [],
-      discount: 0,
+      generalDiscount: 0,
       notes: "",
     },
   });
@@ -183,7 +117,7 @@ export default function CounterSalePage() {
   });
 
   const items = watch("items");
-  const orderDiscount = watch("discount");
+  const orderDiscount = watch("generalDiscount");
 
   // ─── Computed totals ───────────────────────────────────────────────
 
@@ -359,6 +293,7 @@ export default function CounterSalePage() {
                   <Input
                     type="text"
                     value={productSearch}
+                    maxLength={255}
                     onChange={(e) => handleProductSearch(e.target.value)}
                     placeholder="Buscar produto por nome, SKU ou codigo de barras..."
                     className="pl-10"
@@ -565,6 +500,11 @@ export default function CounterSalePage() {
                                     min={1}
                                     {...register(`items.${index}.quantity`, {
                                       valueAsNumber: true,
+                                      onChange: (e) => {
+                                        if (Number(e.target.value) > 1000000){
+                                          e.target.value = "1000000"
+                                        }
+                                      }
                                     })}
                                     className={cn(
                                       "h-7 w-14 text-center text-sm",
@@ -679,7 +619,7 @@ export default function CounterSalePage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <MoneyInput
-                    name="discount"
+                    name="generalDiscount"
                     control={control}
                     label="Desconto Geral"
                   />

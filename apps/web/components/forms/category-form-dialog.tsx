@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { categorySchema, type CategoryFormValues} from "@repo/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -23,19 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryRow } from "@/hooks/use-products";
-
-// ─── Schema ─────────────────────────────────────────────────────────
-
-const categorySchema = z.object({
-  name: z
-    .string()
-    .min(1, "Nome é obrigatório")
-    .max(255, "Nome deve ter no máximo 255 caracteres"),
-  slug: z.string().max(255).optional(),
-  parentId: z.string().nullable().optional(),
-});
-
-type CategoryFormValues = z.infer<typeof categorySchema>;
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -134,7 +121,6 @@ export function CategoryFormDialog({
             <Input
               {...register("name")}
               placeholder="Ex: Eletrônicos"
-              maxLength={255}
               autoFocus
             />
             {errors.name && (
@@ -147,8 +133,10 @@ export function CategoryFormDialog({
             <Input
               {...register("slug")}
               placeholder="ex: eletronicos"
-              maxLength={255}
             />
+            {errors.slug && (
+              <p className="text-xs text-destructive">{errors.slug.message}</p>
+            )}
             <p className="text-xs text-muted-foreground">
               Gerado automaticamente a partir do nome.
             </p>

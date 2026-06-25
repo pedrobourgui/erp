@@ -1,9 +1,9 @@
 "use client";
 
+import { conditionSchema, type ConditionFormValues} from "@repo/validators"
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,19 +55,6 @@ const TYPE_LABELS: Record<PaymentConditionType, string> = {
   INSTALLMENT: "Parcelado",
   ENTRY_PLUS_INSTALLMENT: "Entrada + Parcelas",
 };
-
-// ─── Schema ────────────────────────────────────────────────────────────
-
-const conditionSchema = z.object({
-  name: z.string().min(1, "Nome obrigatorio").max(100),
-  code: z.string().min(1, "Codigo obrigatorio").max(20),
-  type: z.enum(["CASH", "INSTALLMENT", "ENTRY_PLUS_INSTALLMENT"]),
-  installments: z.number().min(1).default(1),
-  daysBetweenInstallments: z.number().min(0).default(30),
-  entryPercentage: z.number().min(0).max(100).default(0),
-});
-
-type ConditionFormValues = z.infer<typeof conditionSchema>;
 
 // ─── Page ──────────────────────────────────────────────────────────────
 
@@ -243,7 +230,7 @@ function ConditionFormDialog({
       : {
           name: "",
           code: "",
-          type: "CASH",
+          type: undefined,
           installments: 1,
           daysBetweenInstallments: 30,
           entryPercentage: 0,
@@ -266,7 +253,7 @@ function ConditionFormDialog({
           : {
               name: "",
               code: "",
-              type: "CASH",
+              type: undefined,
               installments: 1,
               daysBetweenInstallments: 30,
               entryPercentage: 0,
@@ -314,7 +301,7 @@ function ConditionFormDialog({
               : "Preencha os dados para criar uma nova condicao de pagamento."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Nome *</label>
@@ -333,17 +320,22 @@ function ConditionFormDialog({
             <Controller
               name="type"
               control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              render={({ field, fieldState}) => (
+                <div>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-xs text-destructive pt-1">{fieldState.error.message}</p>
+                  )}
+                </div>
               )}
             />
           </div>
@@ -356,19 +348,38 @@ function ConditionFormDialog({
                   type="number"
                   min={1}
                   max={48}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    // Bloqueia valores muito grandes de digitação/cola
+                    if (value.length > 3) {
+                      e.currentTarget.value = value.slice(0, 3);
+                    }
+                  }}
                   {...register("installments", { valueAsNumber: true })}
                 />
+                {errors.installments && <p className="text-xs text-destructive">{errors.installments.message}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Dias entre parcelas</label>
                 <Input
                   type="number"
                   min={1}
-                  max={365}
+                  max={730}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    // Bloqueia valores muito grandes de digitação/cola
+                    if (value.length > 3) {
+                      e.currentTarget.value = value.slice(0, 3);
+                    }
+                  }}
+                
                   {...register("daysBetweenInstallments", { valueAsNumber: true })}
                 />
+                {errors.daysBetweenInstallments && <p className="text-xs text-destructive">{errors.daysBetweenInstallments.message}</p>}
               </div>
-            </div>
+            </div>  
           )}
 
           {showEntry && (
@@ -379,8 +390,18 @@ function ConditionFormDialog({
                 min={0}
                 max={100}
                 step={0.01}
+                onInput={(e) => {
+                  const value = e.currentTarget.value;
+
+                  // Bloqueia valores muito grandes de digitação/cola
+                  if (value.length > 3) {
+                    e.currentTarget.value = value.slice(0, 3);
+                  }
+                }}
+
                 {...register("entryPercentage", { valueAsNumber: true })}
               />
+              {errors.entryPercentage && <p className="text-xs text-destructive">{errors.entryPercentage.message}</p>}
             </div>
           )}
 
@@ -389,7 +410,7 @@ function ConditionFormDialog({
             type={selectedType}
             installments={installments}
             daysBetween={daysBetween}
-            entryPercentage={entryPct}
+            entryPercentage={entryPct}  
           />
 
           <DialogFooter>
