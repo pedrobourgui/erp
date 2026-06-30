@@ -67,12 +67,12 @@ function ProductActions({ product }: { product: ProductRow }) {
   return (
     <div className="flex items-center justify-end gap-1">
       <Tooltip content="Ver detalhes">
-        <Button variant="ghost" action="default" size="icon" className="h-8 w-8" onClick={() => router.push(`/estoque/produtos/${product.id}`)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/estoque/produtos/${product.id}`)}>
           <Eye className="h-4 w-4" />
         </Button>
       </Tooltip>
       <Tooltip content="Editar">
-        <Button variant="ghost" action="default" size="icon" className="h-8 w-8" onClick={() => router.push(`/estoque/produtos/${product.id}/edit`)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/estoque/produtos/${product.id}/edit`)}>
           <Edit className="h-4 w-4" />
         </Button>
       </Tooltip>

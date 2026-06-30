@@ -17,7 +17,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:border hover:border-input",
         ghost:
-          "hover:bg-accent/10 hover:text-accent-foreground",
+          "hover:bg-primary hover:text-primary-foreground",
         link:
           "text-primary underline-offset-4 hover:underline",
         success:
@@ -29,9 +29,8 @@ const buttonVariants = cva(
       },
 
       action: {
-        default: "",
-        delete: "",
-        success: "",
+        delete: "hover:bg-destructive hover:text-white text-destructive",
+        success: "hover:bg-accent hover:text-white text-primary",
       },
 
       size: {
@@ -41,30 +40,12 @@ const buttonVariants = cva(
         icon: "h-10 w-10",
       },
     },
+
     defaultVariants: {
       variant: "default",
-      action: "default",
+
       size: "default",
     },
-    
-    compoundVariants: [
-      {
-        variant: "ghost",
-        action: "default",
-        class: "hover:bg-primary hover:text-primary-foreground"
-      },
-      {
-        variant: "ghost",
-        action: "delete",
-        class: "hover:bg-destructive hover:text-white text-destructive"
-
-      },
-      {
-        variant: "ghost",
-        action: "success",
-        class: "hover:bg-accent hover:text-white text-destructive"
-      }
-    ]
   }
 );
 

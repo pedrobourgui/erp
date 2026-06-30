@@ -202,6 +202,7 @@ function QuickActions({ order }: { order: OrderListItem }) {
         <Tooltip key={action.status} content={action.label}>
           <Button
             variant="ghost"
+            action={action.destructive ? "delete" : "success"}
             size="icon"
             className="h-8 w-8"
             onClick={() =>
