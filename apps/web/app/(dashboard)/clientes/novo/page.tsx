@@ -1,10 +1,10 @@
 "use client";
 
+import { customerSchema, type CustomerFormValues } from "@repo/validators";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,31 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
-import { maskDocument, maskPhone } from "@/lib/masks";
-
-// ─── Schema ─────────────────────────────────────────────────────────────
-
-const customerSchema = z.object({
-  documentType: z.enum(["CPF", "CNPJ"]),
-  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(255, "Nome muito longo"),
-  document: z.string().max(18, "Documento muito longo").refine(
-    (val) => {
-      const digits = val.replace(/\D/g, '');
-      return digits.length === 11 || digits.length === 14;
-    },
-    { message: "CPF deve ter 11 dígitos ou CNPJ 14 dígitos" }
-  ),
-  email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido").max(255, "E-mail muito longo"),
-  phone: z.string().min(1, "Telefone é obrigatório").max(20, "Telefone muito longo").refine(
-    (val) => {
-      const digits = val.replace(/\D/g, '');
-      return digits.length >= 10 && digits.length <= 11;
-    },
-    { message: "Telefone inválido" }
-  ),
-});
-
-type CustomerFormValues = z.infer<typeof customerSchema>;
+import { maskDocument, maskPhone, unmaskCNPJ, unmaskCPF, unmaskPhone } from "@/lib/masks";
 
 // ─── Page ───────────────────────────────────────────────────────────────
 
@@ -67,8 +43,18 @@ export default function NewCustomerPage() {
   const documentType = watch("documentType");
 
   const onSubmit = async (data: CustomerFormValues) => {
+    
     try {
-      await createCustomer.mutateAsync(data);
+      const payload = {
+        ...data,
+        document:
+        documentType === "CPF"
+          ? unmaskCPF(data.document)
+          : unmaskCNPJ(data.document),
+        phone: unmaskPhone(data.phone),
+      };
+
+      await createCustomer.mutateAsync(payload);
       addToast("Cliente criado com sucesso!", "success");
       router.push("/clientes");
     } catch {
@@ -93,7 +79,7 @@ export default function NewCustomerPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Dados do Cliente</CardTitle>

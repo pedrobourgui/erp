@@ -165,6 +165,7 @@ export function SearchableSelect<TFieldValues extends FieldValues>({
                 ref={inputRef}
                 type="text"
                 value={search}
+                maxLength={120}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar..."
                 className="flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground/60"

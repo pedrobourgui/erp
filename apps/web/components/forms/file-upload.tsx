@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 
 export interface UploadedFile {
   id: string;
-  file: File;
+  file?: File;
+  base64?: string;
   name: string;
   size: number;
   type: string;
@@ -50,6 +51,20 @@ function isImageFile(type: string): boolean {
   return type.startsWith("image/");
 }
 
+function fileToBase64(file: File): Promise<string>{
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+
+      reader.onload = () => {
+        resolve(reader.result as string)
+      }
+
+      reader.onerror = reject
+
+      reader.readAsDataURL(file)
+    })
+  }
+
 // ─── Component ──────────────────────────────────────────────────────────
 
 export function FileUpload({
@@ -58,7 +73,7 @@ export function FileUpload({
   onUpload,
   accept,
   maxFiles = 10,
-  maxSize = 10 * 1024 * 1024, // 10MB
+  maxSize = 100 * 1024 * 1024, // 100MB
   multiple = true,
   label,
   description,
@@ -69,17 +84,19 @@ export function FileUpload({
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = useCallback(
+  const addFiles = useCallback  (
     async (fileList: FileList | File[]) => {
       const files = Array.from(fileList);
       const remaining = maxFiles - value.length;
       const toAdd = files.slice(0, remaining);
 
-      const newFiles: UploadedFile[] = toAdd
+      const newFiles: UploadedFile[] = await Promise.all( 
+      toAdd
         .filter((f) => f.size <= maxSize)
-        .map((file) => ({
+        .map(async (file) => ({
           id: generateId(),
           file,
+          base64: await fileToBase64(file),
           name: file.name,
           size: file.size,
           type: file.type,
@@ -88,46 +105,10 @@ export function FileUpload({
             : undefined,
           progress: 0,
           status: "idle" as const,
-        }));
+        })));
 
       const updated = [...value, ...newFiles];
       onChange?.(updated);
-
-      // If upload handler provided, upload each file
-      if (onUpload) {
-        for (const uf of newFiles) {
-          try {
-            const idx = updated.findIndex((f) => f.id === uf.id);
-            if (idx === -1) continue;
-            updated[idx] = { ...updated[idx], status: "uploading", progress: 50 };
-            onChange?.([...updated]);
-
-            await onUpload(uf.file);
-
-            updated[idx] = { ...updated[idx], status: "done", progress: 100 };
-            onChange?.([...updated]);
-          } catch {
-            const idx = updated.findIndex((f) => f.id === uf.id);
-            if (idx !== -1) {
-              updated[idx] = {
-                ...updated[idx],
-                status: "error",
-                progress: 0,
-                error: "Falha no upload",
-              };
-              onChange?.([...updated]);
-            }
-          }
-        }
-      } else {
-        // Mark all as done if no upload handler
-        const done = updated.map((f) =>
-          newFiles.find((n) => n.id === f.id)
-            ? { ...f, status: "done" as const, progress: 100 }
-            : f
-        );
-        onChange?.(done);
-      }
     },
     [value, onChange, onUpload, maxFiles, maxSize]
   );

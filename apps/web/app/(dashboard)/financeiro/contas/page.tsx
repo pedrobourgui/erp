@@ -1,9 +1,9 @@
 "use client";
 
+import { accountSchema, type AccountFormValues } from "@repo/validators";
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,21 +62,6 @@ const TYPE_ICON: Record<BankAccountType, React.ElementType> = {
   SAVINGS: Building2,
   DIGITAL: Smartphone,
 };
-
-// ─── Schema ───────────────────────────────────────────────────────────
-
-const accountSchema = z.object({
-  name: z.string().min(1, "Nome obrigatorio").max(255),
-  type: z.enum(["CHECKING", "SAVINGS", "CASH", "DIGITAL"]),
-  code: z.string().max(20).optional().or(z.literal("")),
-  bankName: z.string().max(255).optional().or(z.literal("")),
-  bankBranch: z.string().max(255).optional().or(z.literal("")),
-  bankAccount: z.string().max(255).optional().or(z.literal("")),
-  acceptsDirectSales: z.boolean().default(false),
-  isActive: z.boolean().default(true),
-});
-
-type AccountFormValues = z.infer<typeof accountSchema>;
 
 // ─── Page ─────────────────────────────────────────────────────────────
 
@@ -269,7 +254,7 @@ function AccountFormDialog({
     resolver: zodResolver(accountSchema),
     defaultValues: {
       name: "",
-      type: "CHECKING",
+      type: undefined,
       code: "",
       bankName: "",
       bankBranch: "",
@@ -298,7 +283,7 @@ function AccountFormDialog({
             }
           : {
               name: "",
-              type: "CHECKING",
+              type: undefined,
               code: "",
               bankName: "",
               bankBranch: "",
@@ -369,19 +354,24 @@ function AccountFormDialog({
               <Controller
                 name="type"
                 control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                render={({ field, fieldState }) => (
+                  <div>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.error && (
+                      <p className="text-xs text-destructive pt-1">{fieldState.error.message}</p>
+                    )}
+                  </div>
                 )}
               />
             </div>
@@ -394,6 +384,9 @@ function AccountFormDialog({
               placeholder="Ex: 001"
               maxLength={20}
             />
+            {errors.code && (
+                  <p className="text-xs text-destructive">{errors.code.message}</p>
+                )}
           </div>
 
           {showBankFields && (
@@ -405,6 +398,9 @@ function AccountFormDialog({
                   placeholder="Ex: Santander"
                   maxLength={255}
                 />
+                {errors.bankName && (
+                  <p className="text-xs text-destructive">{errors.bankName.message}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Agencia</label>
@@ -413,6 +409,9 @@ function AccountFormDialog({
                   placeholder="Ex: 1234"
                   maxLength={255}
                 />
+                {errors.bankBranch && (
+                  <p className="text-xs text-destructive">{errors.bankBranch.message}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Conta</label>
@@ -421,6 +420,9 @@ function AccountFormDialog({
                   placeholder="Ex: 12345-6"
                   maxLength={255}
                 />
+                {errors.bankAccount && (
+                  <p className="text-xs text-destructive">{errors.bankAccount.message}</p>
+                )}
               </div>
             </div>
           )}
@@ -434,6 +436,9 @@ function AccountFormDialog({
               />
               Aceita venda direta
             </label>
+            {errors.acceptsDirectSales && (
+                  <p className="text-xs text-destructive">{errors.acceptsDirectSales.message}</p>
+                )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -442,6 +447,9 @@ function AccountFormDialog({
               />
               Ativa
             </label>
+            {errors.isActive && (
+                  <p className="text-xs text-destructive">{errors.isActive.message}</p>
+                )}
           </div>
 
           <DialogFooter>

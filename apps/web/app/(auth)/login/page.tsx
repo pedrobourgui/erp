@@ -1,10 +1,10 @@
 "use client";
 
+import { loginSchema, type LoginFormData} from "@repo/validators"
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,19 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth.store";
-
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "E-mail é obrigatório")
-    .email("E-mail inválido"),
-  password: z
-    .string()
-    .min(1, "Senha é obrigatória")
-    .min(6, "Senha deve ter pelo menos 6 caracteres"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -84,7 +71,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               {error && (
                 <div className="animate-slide-down rounded-lg bg-danger/15 border border-danger/20 p-3.5 text-sm text-red-300">
                   {error}

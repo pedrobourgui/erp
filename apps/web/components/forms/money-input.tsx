@@ -100,6 +100,7 @@ export function MoneyInput<TFieldValues extends FieldValues>({
         <input
           type="text"
           inputMode="numeric"
+          maxLength={13}
           value={displayValue}
           onChange={handleChange}
           onBlur={field.onBlur}

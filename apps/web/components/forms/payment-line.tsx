@@ -67,31 +67,37 @@ export function PaymentLine({
         <Controller
           name={`payments.${index}.paymentMethodId`}
           control={control}
-          render={({ field }) => (
-            <Select
-              value={String(field.value ?? "")}
-              onValueChange={(val) => {
-                field.onChange(val);
-                const method = methods.find((m) => m.id === val);
-                if (method?.defaultAccountId) {
-                  setValue(
-                    `payments.${index}.financialAccountId`,
-                    method.defaultAccountId
-                  );
-                }
-              }}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                {methods.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          render={({ field, fieldState }) => (
+            <div>
+              <Select
+                value={String(field.value ?? "")}
+                onValueChange={(val) => {
+                  field.onChange(val);
+                  const method = methods.find((m) => m.id === val);
+                  if (method?.defaultAccountId) {
+                    setValue(
+                      `payments.${index}.financialAccountId`,
+                      method.defaultAccountId
+                    );
+                  }
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {methods.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {fieldState.error && (
+                <p className="text-xs text-destructive pt-2">
+                {fieldState.error.message}</p>
+              )}
+            </div>
           )}
         />
       </div>
@@ -105,22 +111,27 @@ export function PaymentLine({
           <Controller
             name={`payments.${index}.paymentConditionId`}
             control={control}
-            render={({ field }) => (
-              <Select
-                value={String(field.value ?? "")}
-                onValueChange={field.onChange}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {conditions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            render={({ field, fieldState }) => (
+              <div>
+                <Select
+                  value={String(field.value ?? "")}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {conditions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.error && (
+                  <p className="text-xs text-destructive p-2">{fieldState.error.message}</p>
+                )}
+              </div>
             )}
           />
         </div>
@@ -143,14 +154,19 @@ export function PaymentLine({
           <Controller
             name={`payments.${index}.authorizationCode`}
             control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                value={String(field.value ?? "")}
-                placeholder="000000"
-                maxLength={50}
-                className="h-9"
-              />
+            render={({ field, fieldState}) => (
+              <div>
+                <Input
+                  {...field}
+                  value={String(field.value ?? "")}
+                  placeholder="000000"
+                  maxLength={50}
+                  className="h-9"
+                />
+                {fieldState.error && (
+                  <p className="text-xs text-destructive p-2">{fieldState.error.message}</p>
+                )}
+              </div>
             )}
           />
         </div>

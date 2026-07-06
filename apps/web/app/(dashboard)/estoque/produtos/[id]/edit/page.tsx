@@ -1,5 +1,6 @@
 "use client";
 
+import { productSchema, type ProductFormValues} from "@repo/validators"
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -12,44 +13,9 @@ import { MoneyInput } from "@/components/forms/money-input";
 import { SearchableSelect } from "@/components/forms/searchable-select";
 import { useProduct, useUpdateProduct, useCategories, useBrands } from "@/hooks/use-products";
 import { useToast } from "@/components/ui/toast";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Weight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
-
-// ─── Schema ─────────────────────────────────────────────────────────────
-
-// Convert NaN to undefined for optional numbers, NaN to 0 for required numbers
-const optionalNumber = z.preprocess(
-  (val) => (val === "" || val === null || val === undefined || Number.isNaN(val) ? undefined : Number(val)),
-  z.number({ invalid_type_error: "Deve ser um número" }).min(0).optional()
-);
-
-const productSchema = z.object({
-  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(255, "Nome muito longo"),
-  sku: z.string().min(1, "SKU é obrigatório").max(50, "SKU muito longo"),
-  description: z.string().max(2000, "Descrição muito longa").optional(),
-  category: z.string().optional(),
-  brand: z.string().optional(),
-  costPrice: z.preprocess(
-    (val) => (val === "" || Number.isNaN(val) ? undefined : Number(val)),
-    z.number({ required_error: "Preço de custo é obrigatório", invalid_type_error: "Preço de custo deve ser um número" }).min(0, "Preço de custo não pode ser negativo"),
-  ),
-  markup: optionalNumber,
-  salePrice: z.preprocess(
-    (val) => (val === "" || Number.isNaN(val) ? undefined : Number(val)),
-    z.number({ required_error: "Preço de venda é obrigatório", invalid_type_error: "Preço de venda deve ser um número" }).min(0.01, "Preço de venda é obrigatório"),
-  ),
-  promoPrice: optionalNumber,
-  ncm: z.string().max(10, "NCM deve ter no máximo 10 caracteres").optional(),
-  cest: z.string().max(9, "CEST deve ter no máximo 9 caracteres").optional(),
-  ean: z.string().max(14, "EAN deve ter no máximo 14 caracteres").optional(),
-  weight: optionalNumber,
-  height: optionalNumber,
-  width: optionalNumber,
-  length: optionalNumber,
-});
-
-type ProductFormValues = z.infer<typeof productSchema>;
 
 // ─── Tabs ───────────────────────────────────────────────────────────────
 
@@ -102,7 +68,7 @@ export default function EditProductPage() {
       name: "", sku: "", description: "", category: "", brand: "",
       costPrice: 0, markup: 0, salePrice: 0, promoPrice: 0,
       ncm: "", cest: "", ean: "",
-      weight: 0, height: 0, width: 0, length: 0,
+      weight: undefined, height: undefined, width: undefined, length: undefined,
     },
   });
 
@@ -116,15 +82,15 @@ export default function EditProductPage() {
         salePrice: product.salePrice,
         promoPrice: product.promoPrice ?? 0,
         markup: product.markup ?? 0,
-        category: product.categoryId ?? "",
-        brand: product.brandId ?? product.brand ?? "",
+        category: product.categoryId,
+        brand: product.brandId ?? product.brand,
         ncm: product.ncm ?? "",
         cest: product.cest ?? "",
         ean: product.ean ?? "",
-        weight: product.weight ?? 0,
-        height: product.height ?? 0,
-        width: product.width ?? 0,
-        length: product.length ?? 0,
+        weight: product.weight ?? undefined,
+        height: product.height ?? undefined,
+        width: product.width ?? undefined,
+        length: product.length ?? undefined,
       });
     }
   }, [product, reset]);
@@ -241,14 +207,16 @@ export default function EditProductPage() {
                 <textarea
                   {...register("description")}
                   rows={4}
-                  maxLength={2000}
                   placeholder="Descrição detalhada do produto..."
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
+                {fieldError("description") && <p className="text-xs text-destructive">{fieldError("description")}</p>}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <SearchableSelect name="category" control={control} options={categoryOptions} label="Categoria" placeholder="Selecionar categoria..." />
-                <SearchableSelect name="brand" control={control} options={brandOptions} label="Marca" placeholder="Selecionar marca..." />
+                <SearchableSelect name="category" control={control} options={categoryOptions} label="Categoria *" placeholder="Selecionar categoria..." />
+                
+                <SearchableSelect name="brand" control={control} options={brandOptions} label="Marca *" placeholder="Selecionar marca..." />
+                
               </div>
             </CardContent>
           </Card>
@@ -284,45 +252,252 @@ export default function EditProductPage() {
                 <div className="space-y-1">
                   <label className="text-sm font-medium">NCM</label>
                   <Input {...register("ncm")} placeholder="Ex: 8471.30.19" maxLength={10} />
+                  {fieldError("ncm") && <p className="text-xs text-destructive">{fieldError("ncm")}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">CEST</label>
                   <Input {...register("cest")} placeholder="Ex: 21.063.00" maxLength={9} />
+                  {fieldError("cest") && <p className="text-xs text-destructive">{fieldError("cest")}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">EAN / GTIN</label>
                   <Input {...register("ean")} placeholder="Código de barras" maxLength={14} />
+                  {fieldError("ean") && <p className="text-xs text-destructive">{fieldError("ean")}</p>}
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {activeTab === "dimensoes" && (
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Dimensões e Peso</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Peso (kg)</label>
-                  <Input type="number" step="0.001" {...register("weight", { valueAsNumber: true })} placeholder="0,000" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Altura (cm)</label>
-                  <Input type="number" step="0.1" {...register("height", { valueAsNumber: true })} placeholder="0,0" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Largura (cm)</label>
-                  <Input type="number" step="0.1" {...register("width", { valueAsNumber: true })} placeholder="0,0" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Comprimento (cm)</label>
-                  <Input type="number" step="0.1" {...register("length", { valueAsNumber: true })} placeholder="0,0" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+       
+              {activeTab === "dimensoes" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Dimensões e Peso</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Peso (kg)</label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          {...register("weight")}
+                          placeholder="0,000"
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              "Backspace",
+                              "Delete",
+                              "Tab",
+                              "ArrowLeft",
+                              "ArrowRight"
+                            ]
+                            // Permite teclas de controle
+                            if(allowedKeys.includes(e.key)) return
+      
+                            // Bloqueia tudo que não for número ou virgula
+                            if(!/^[0-9,]$/.test(e.key)) {
+                              e.preventDefault()
+                            }
+      
+                            // Bloqueia segunda virgula
+                            if (e.key === ","){
+                              const value = (e.target as HTMLInputElement).value
+                              if(value.includes(",")) {
+                                e.preventDefault()
+                              }
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const paste = e.clipboardData.getData("text")
+      
+                            // Só permite números e vírgula
+                            if(!/^[0-9,]$/.test(paste)) {
+                              e.preventDefault()
+                              return
+                            }
+      
+                            // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                            const currentValue = (e.target as HTMLInputElement).value
+      
+                              if (currentValue.includes(",") && paste.includes(",")) {
+                                e.preventDefault()
+                              }
+                          }}
+                        />
+                        {fieldError("weight") && (
+                          <p className="text-xs text-destructive">{fieldError("weight")}</p>
+                        )}
+                        
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Altura (cm)</label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          {...register("height")}
+                          placeholder="0,0"
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              "Backspace",
+                              "Delete",
+                              "Tab",
+                              "ArrowLeft",
+                              "ArrowRight"
+                            ]
+      
+                            // Permite teclas de controle
+                            if(allowedKeys.includes(e.key)) return
+      
+                            // Bloqueia tudo que não for número ou virgula
+                            if(!/^[0-9,]$/.test(e.key)){
+                              e.preventDefault()
+                            }
+      
+                            // Bloqueia segunda virgula
+                            if(e.key === ","){
+                              const value = (e.target as HTMLInputElement).value
+      
+                              if(value.includes(",")){
+                                e.preventDefault()
+                              }
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const paste = e.clipboardData.getData("text")
+      
+                            // Só permite números e vírgula
+                            if(!/^[0-9,]$/.test(paste)) {
+                              e.preventDefault()
+                              return
+                            }
+      
+                            // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                            const currentValue = (e.target as HTMLInputElement).value
+      
+                              if (currentValue.includes(",") && paste.includes(",")) {
+                                e.preventDefault()
+                              }
+                          }}
+                        />
+                        {fieldError("height") && (
+                          <p className="text-xs text-destructive">{fieldError("height")}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Largura (cm)</label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          {...register("width")}
+                          placeholder="0,0"
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              "Backspace",
+                              "Delete",
+                              "Tab",,
+                              "ArrowLeft",
+                              "ArrowRight"
+                            ]
+      
+                            // Permite teclas de controle
+                            if(allowedKeys.includes(e.key)) return
+      
+                            // Bloqueia tudo que não for número ou virgula
+                            if(!/^[0-9,]$/.test(e.key)){
+                              e.preventDefault()
+                            }
+      
+                            // Bloqueia segunda virgula
+                            const value = (e.target as HTMLInputElement).value
+      
+                            if(e.key === ","){
+                              if(value.includes(",")){
+                                e.preventDefault()
+                              }
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const paste = e.clipboardData.getData("text")
+      
+                            // Só permite números e vírgula
+                            if(!/^[0-9,]$/.test(paste)) {
+                              e.preventDefault()
+                              return
+                            }
+      
+                            // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                            const currentValue = (e.target as HTMLInputElement).value
+      
+                              if (currentValue.includes(",") && paste.includes(",")) {
+                                e.preventDefault()
+                              }
+                          }}
+                        />
+                        {fieldError("width") && (
+                          <p className="text-xs text-destructive">{fieldError("width")}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">
+                          Comprimento (cm)
+                        </label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          {...register("length")}
+                          placeholder="0,0"
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              "Backspace",
+                              "Delete",
+                              "Tab",
+                              "ArrowLeft",
+                              "ArrowRight",
+                            ]
+      
+                            // Permite teclas de controle
+                            if(allowedKeys.includes(e.key)) return
+      
+                            // Bloqueia tudo que não for número ou virgula
+                            if(!/^[0-9,]$/.test(e.key)){
+                              e.preventDefault()
+                            }
+      
+                            // Bloqueia segunda virgula
+                            const value = (e.target as HTMLInputElement).value
+      
+                            if(e.key === ","){
+                              if(value.includes(",")){
+                              e.preventDefault()
+                              }
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const paste = e.clipboardData.getData("text")
+      
+                            // Só permite números e vírgula
+                            if(!/^[0-9,]$/.test(paste)) {
+                              e.preventDefault()
+                              return
+                            }
+      
+                            // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                            const currentValue = (e.target as HTMLInputElement).value
+      
+                              if (currentValue.includes(",") && paste.includes(",")) {
+                                e.preventDefault()
+                              }
+                          }}
+                        />
+                        {fieldError("length") && (
+                          <p className="text-xs text-destructive">{fieldError("length")}</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
         <div className="mt-6 flex items-center justify-end gap-3 border-t pt-6">
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>

@@ -23,7 +23,7 @@ CREATE TYPE "MovementReason" AS ENUM ('PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMEN
 CREATE TYPE "OrderStatus" AS ENUM ('DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED');
 
 -- CreateEnum
-CREATE TYPE "OrderOrigin" AS ENUM ('MANUAL', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API');
+CREATE TYPE "OrderOrigin" AS ENUM ('MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API');
 
 -- CreateEnum
 CREATE TYPE "QuotationStatus" AS ENUM ('DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED');
@@ -81,6 +81,18 @@ CREATE TYPE "ReconciliationStatus" AS ENUM ('PENDING', 'MATCHED', 'UNMATCHED', '
 
 -- CreateEnum
 CREATE TYPE "AuditAction" AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'EXPORT', 'IMPORT');
+
+-- CreateEnum
+CREATE TYPE "PaymentMethodType" AS ENUM ('CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "PaymentConditionType" AS ENUM ('CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT');
+
+-- CreateEnum
+CREATE TYPE "CashMovementType" AS ENUM ('SUPPLY', 'WITHDRAW');
+
+-- CreateEnum
+CREATE TYPE "CashSessionStatus" AS ENUM ('OPEN', 'CLOSED');
 
 -- CreateTable
 CREATE TABLE "tenants" (
@@ -542,11 +554,13 @@ CREATE TABLE "financial_accounts" (
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "type" "BankAccountType" NOT NULL,
+    "code" VARCHAR(20),
     "bankName" TEXT,
     "bankBranch" TEXT,
     "bankAccount" TEXT,
     "balance" DECIMAL(15,2) NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "acceptsDirectSales" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -559,6 +573,7 @@ CREATE TABLE "accounts_receivable" (
     "tenantId" TEXT NOT NULL,
     "orderId" TEXT,
     "customerId" TEXT,
+    "orderPaymentId" TEXT,
     "description" TEXT NOT NULL,
     "installment" INTEGER NOT NULL DEFAULT 1,
     "totalInstallments" INTEGER NOT NULL DEFAULT 1,
@@ -636,11 +651,97 @@ CREATE TABLE "payment_methods" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "type" "PaymentMethodType" NOT NULL DEFAULT 'OTHER',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "defaultAccountId" TEXT,
+    "feePercentage" DECIMAL(5,2),
+    "settlementDays" INTEGER,
+    "requiresAuthorization" BOOLEAN NOT NULL DEFAULT false,
+    "fiscalCode" VARCHAR(5),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "payment_methods_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "payment_conditions" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "code" VARCHAR(20) NOT NULL,
+    "type" "PaymentConditionType" NOT NULL,
+    "installments" INTEGER NOT NULL DEFAULT 1,
+    "daysBetweenInstallments" INTEGER NOT NULL DEFAULT 0,
+    "entryPercentage" DECIMAL(5,2) NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "payment_conditions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "order_payments" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "paymentMethodId" TEXT NOT NULL,
+    "paymentConditionId" TEXT,
+    "financialAccountId" TEXT,
+    "amount" DECIMAL(15,2) NOT NULL,
+    "installments" INTEGER NOT NULL DEFAULT 1,
+    "authorizationCode" VARCHAR(50),
+    "notes" VARCHAR(500),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "order_payments_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cash_registers" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "financialAccountId" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "cash_registers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cash_register_sessions" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "cashRegisterId" TEXT NOT NULL,
+    "operatorId" TEXT NOT NULL,
+    "closedById" TEXT,
+    "status" "CashSessionStatus" NOT NULL DEFAULT 'OPEN',
+    "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "closedAt" TIMESTAMP(3),
+    "openingBalance" DECIMAL(15,2) NOT NULL,
+    "closingBalance" DECIMAL(15,2),
+    "expectedBalance" DECIMAL(15,2),
+    "difference" DECIMAL(15,2),
+    "notes" VARCHAR(500),
+
+    CONSTRAINT "cash_register_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cash_register_movements" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "type" "CashMovementType" NOT NULL,
+    "amount" DECIMAL(15,2) NOT NULL,
+    "reason" VARCHAR(255) NOT NULL,
+    "performedById" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "cash_register_movements_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1149,6 +1250,30 @@ CREATE INDEX "financial_transactions_referenceType_referenceId_idx" ON "financia
 CREATE INDEX "payment_methods_tenantId_idx" ON "payment_methods"("tenantId");
 
 -- CreateIndex
+CREATE INDEX "payment_conditions_tenantId_idx" ON "payment_conditions"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "payment_conditions_tenantId_code_key" ON "payment_conditions"("tenantId", "code");
+
+-- CreateIndex
+CREATE INDEX "order_payments_orderId_idx" ON "order_payments"("orderId");
+
+-- CreateIndex
+CREATE INDEX "order_payments_tenantId_idx" ON "order_payments"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cash_registers_tenantId_name_key" ON "cash_registers"("tenantId", "name");
+
+-- CreateIndex
+CREATE INDEX "cash_register_sessions_tenantId_idx" ON "cash_register_sessions"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "cash_register_sessions_cashRegisterId_idx" ON "cash_register_sessions"("cashRegisterId");
+
+-- CreateIndex
+CREATE INDEX "cash_register_movements_sessionId_idx" ON "cash_register_movements"("sessionId");
+
+-- CreateIndex
 CREATE INDEX "bank_reconciliations_tenantId_accountId_idx" ON "bank_reconciliations"("tenantId", "accountId");
 
 -- CreateIndex
@@ -1374,6 +1499,9 @@ ALTER TABLE "accounts_receivable" ADD CONSTRAINT "accounts_receivable_orderId_fk
 ALTER TABLE "accounts_receivable" ADD CONSTRAINT "accounts_receivable_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "accounts_receivable" ADD CONSTRAINT "accounts_receivable_orderPaymentId_fkey" FOREIGN KEY ("orderPaymentId") REFERENCES "order_payments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "accounts_receivable" ADD CONSTRAINT "accounts_receivable_paymentMethodId_fkey" FOREIGN KEY ("paymentMethodId") REFERENCES "payment_methods"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1414,6 +1542,54 @@ ALTER TABLE "financial_transactions" ADD CONSTRAINT "financial_transactions_char
 
 -- AddForeignKey
 ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_defaultAccountId_fkey" FOREIGN KEY ("defaultAccountId") REFERENCES "financial_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payment_conditions" ADD CONSTRAINT "payment_conditions_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_paymentMethodId_fkey" FOREIGN KEY ("paymentMethodId") REFERENCES "payment_methods"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_paymentConditionId_fkey" FOREIGN KEY ("paymentConditionId") REFERENCES "payment_conditions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_financialAccountId_fkey" FOREIGN KEY ("financialAccountId") REFERENCES "financial_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_registers" ADD CONSTRAINT "cash_registers_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_registers" ADD CONSTRAINT "cash_registers_financialAccountId_fkey" FOREIGN KEY ("financialAccountId") REFERENCES "financial_accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_sessions" ADD CONSTRAINT "cash_register_sessions_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_sessions" ADD CONSTRAINT "cash_register_sessions_cashRegisterId_fkey" FOREIGN KEY ("cashRegisterId") REFERENCES "cash_registers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_sessions" ADD CONSTRAINT "cash_register_sessions_operatorId_fkey" FOREIGN KEY ("operatorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_sessions" ADD CONSTRAINT "cash_register_sessions_closedById_fkey" FOREIGN KEY ("closedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_movements" ADD CONSTRAINT "cash_register_movements_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_movements" ADD CONSTRAINT "cash_register_movements_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "cash_register_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cash_register_movements" ADD CONSTRAINT "cash_register_movements_performedById_fkey" FOREIGN KEY ("performedById") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "bank_reconciliations" ADD CONSTRAINT "bank_reconciliations_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "financial_accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

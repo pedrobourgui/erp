@@ -1,10 +1,10 @@
 "use client";
 
+import { orderSaleSchema, type OrderSaleFormValues } from "@repo/validators"
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,73 +51,6 @@ interface ProductResult {
     totalAvailable: number;
   };
 }
-
-// ─── Validation schema ─────────────────────────────────────────────────
-
-const coerceNumber = (val: unknown) => {
-  if (val === "" || val === null || val === undefined) return 0;
-  const n = Number(val);
-  return Number.isNaN(n) ? 0 : n;
-};
-
-const orderItemSchema = z.object({
-  productId: z.string().min(1, "Selecione um produto"),
-  productName: z.string(),
-  sku: z.string(),
-  availableStock: z.number(),
-  quantity: z.preprocess(
-    coerceNumber,
-    z.number().min(1, "Quantidade minima e 1")
-  ),
-  unitPrice: z.preprocess(
-    coerceNumber,
-    z.number().min(0.01, "Preco unitario e obrigatorio")
-  ),
-  discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-});
-
-const orderPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
-  paymentConditionId: z.string().optional(),
-  financialAccountId: z.string().optional(),
-  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
-  installments: z.number().optional(),
-  authorizationCode: z.string().optional(),
-});
-
-const newOrderSchema = z
-  .object({
-    customerId: z.string().min(1, "Selecione um cliente"),
-    items: z.array(orderItemSchema).min(1, "Adicione pelo menos um item"),
-    payments: z
-      .array(orderPaymentSchema)
-      .min(1, "Adicione pelo menos uma forma de pagamento"),
-    shippingMethod: z.string().max(100).optional(),
-    shippingCost: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-    notes: z.string().max(2000).optional(),
-  })
-  .refine(
-    (data) => {
-      const paymentTotal = data.payments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0
-      );
-      const orderTotal =
-        data.items.reduce((sum, item) => {
-          const qty = Number(item.quantity) || 0;
-          const price = Number(item.unitPrice) || 0;
-          const disc = Number(item.discount) || 0;
-          return sum + (qty * price - disc);
-        }, 0) + (Number(data.shippingCost) || 0);
-      return Math.abs(paymentTotal - orderTotal) < 0.01;
-    },
-    {
-      message: "A soma dos pagamentos deve ser igual ao total do pedido",
-      path: ["payments"],
-    }
-  );
-
-type NewOrderFormValues = z.infer<typeof newOrderSchema>;
 
 // ─── Stock badge ───────────────────────────────────────────────────────
 
@@ -167,12 +100,13 @@ export default function NewOrderPage() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<NewOrderFormValues>({
-    resolver: zodResolver(newOrderSchema),
+  } = useForm<OrderSaleFormValues>({
+    resolver: zodResolver(orderSaleSchema),
     defaultValues: {
       customerId: "",
       items: [],
       payments: [],
+      generalDiscount: 0, 
       shippingMethod: "",
       shippingCost: 0,
       notes: "",
@@ -189,7 +123,7 @@ export default function NewOrderPage() {
 
   // ─── Computed totals ───────────────────────────────────────────────
 
-  const calcItemTotal = (item: NewOrderFormValues["items"][number]) => {
+  const calcItemTotal = (item: OrderSaleFormValues["items"][number]) => {
     const qty = Number(item.quantity) || 0;
     const price = Number(item.unitPrice) || 0;
     const disc = Number(item.discount) || 0;
@@ -277,7 +211,7 @@ export default function NewOrderPage() {
 
   // ─── Submit ───────────────────────────────────────────────────────
 
-  const onSubmit = async (data: NewOrderFormValues) => {
+  const onSubmit = async (data: OrderSaleFormValues) => {
     try {
       const result = await createOrder.mutateAsync({
         customerId: data.customerId,
@@ -324,7 +258,7 @@ export default function NewOrderPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit((data) => onSubmit(data))}>
+        <form onSubmit={handleSubmit((data) => onSubmit(data))}>
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-2">
@@ -356,6 +290,7 @@ export default function NewOrderPage() {
                   <Input
                     type="text"
                     value={productSearch}
+                    maxLength={255}
                     onChange={(e) => handleProductSearch(e.target.value)}
                     placeholder="Buscar produto por nome, SKU ou codigo de barras..."
                     className="pl-10"
@@ -689,6 +624,9 @@ export default function NewOrderPage() {
                       placeholder="Ex: Sedex, PAC, Transportadora..."
                       maxLength={100}
                     />
+                    {errors.shippingMethod && (
+                    <p className="mt-2 text-xs text-destructive">{errors.shippingMethod.message}</p>
+                  )}
                   </div>
                   <MoneyInput
                     name="shippingCost"
@@ -701,10 +639,13 @@ export default function NewOrderPage() {
                   <textarea
                     {...register("notes")}
                     rows={3}
-                    maxLength={2000}
+                    maxLength={2001}
                     placeholder="Observacoes internas sobre o pedido..."
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
+                  {errors.notes && (
+                    <p className="mt-2 text-xs text-destructive">{errors.notes.message}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

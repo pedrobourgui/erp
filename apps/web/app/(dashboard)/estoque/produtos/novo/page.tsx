@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import { productSchema, type ProductFormValues } from  "@repo/validators"
+import React, { HTMLInputTypeAttribute, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -23,48 +24,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
-// ─── Validation schema ──────────────────────────────────────────────────
-
-// Convert NaN to undefined for optional numbers
-const optionalNumber = z.preprocess(
-  (val) => (val === "" || val === null || val === undefined || Number.isNaN(val) ? undefined : Number(val)),
-  z.number({ invalid_type_error: "Deve ser um número" }).min(0).optional()
-);
-
-const productSchema = z.object({
-  // Dados gerais
-  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(255, "Nome muito longo"),
-  sku: z.string().min(1, "SKU é obrigatório").max(50, "SKU muito longo"),
-  description: z.string().max(2000, "Descrição muito longa").optional(),
-  category: z.string().optional(),
-  brand: z.string().optional(),
-
-  // Preços
-  costPrice: z.preprocess(
-    (val) => (val === "" || Number.isNaN(val) ? undefined : Number(val)),
-    z.number({ required_error: "Preço de custo é obrigatório", invalid_type_error: "Preço de custo deve ser um número" }).min(0, "Preço de custo não pode ser negativo"),
-  ),
-  markup: optionalNumber,
-  salePrice: z.preprocess(
-    (val) => (val === "" || Number.isNaN(val) ? undefined : Number(val)),
-    z.number({ required_error: "Preço de venda é obrigatório", invalid_type_error: "Preço de venda deve ser um número" }).min(0.01, "Preço de venda é obrigatório"),
-  ),
-  promoPrice: optionalNumber,
-
-  // Fiscal
-  ncm: z.string().max(10, "NCM deve ter no máximo 10 caracteres").optional(),
-  cest: z.string().max(9, "CEST deve ter no máximo 9 caracteres").optional(),
-  ean: z.string().max(14, "EAN deve ter no máximo 14 caracteres").optional(),
-
-  // Dimensões
-  weight: optionalNumber,
-  height: optionalNumber,
-  width: optionalNumber,
-  length: optionalNumber,
-});
-
-type ProductFormValues = z.infer<typeof productSchema>;
-
 // ─── Tabs ───────────────────────────────────────────────────────────────
 
 const tabs = [
@@ -82,7 +41,6 @@ type TabId = (typeof tabs)[number]["id"];
 export default function NewProductPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("geral");
-  const [images, setImages] = useState<UploadedFile[]>([]);
 
   const createProduct = useCreateProduct();
   const { addToast } = useToast();
@@ -122,10 +80,11 @@ export default function NewProductPage() {
       ncm: "",
       cest: "",
       ean: "",
-      weight: 0,
-      height: 0,
-      width: 0,
-      length: 0,
+      weight: undefined,
+      height: undefined,
+      width: undefined,
+      length: undefined,
+      images: [],
     },
   });
 
@@ -151,7 +110,7 @@ export default function NewProductPage() {
   };
 
   // Submit
-  const onSubmit = async (data: ProductFormValues, status: "DRAFT" | "ACTIVE") => {
+  const onSubmit = async (data: ProductFormValues, status: "DRAFT" | "ACTIVE",) => {
     try {
       await createProduct.mutateAsync({
         name: data.name,
@@ -172,6 +131,7 @@ export default function NewProductPage() {
         length: data.length,
         status: status as ProductFormData["status"],
       });
+      
       addToast("Produto criado com sucesso!", "success");
       router.push("/estoque/produtos");
     } catch {
@@ -182,6 +142,13 @@ export default function NewProductPage() {
   // Field error helper
   const fieldError = (field: keyof ProductFormValues) =>
     errors[field]?.message as string | undefined;
+
+
+// Erro da validação de imagem
+const imageError =
+  errors.images?.root?.message ||
+  errors.images?.[0]?.base64?.message ||
+  errors.images?.[0]?.size?.message;
 
   return (
     <div className="space-y-6">
@@ -237,7 +204,6 @@ export default function NewProductPage() {
                   <Input
                     {...register("name")}
                     placeholder="Nome do produto"
-                    maxLength={255}
                   />
                   {fieldError("name") && (
                     <p className="text-xs text-destructive">{fieldError("name")}</p>
@@ -250,7 +216,6 @@ export default function NewProductPage() {
                       {...register("sku")}
                       placeholder="SKU do produto"
                       className="flex-1"
-                      maxLength={50}
                     />
                     <Tooltip content="Gerar SKU">
                       <Button
@@ -274,10 +239,12 @@ export default function NewProductPage() {
                 <textarea
                   {...register("description")}
                   rows={4}
-                  maxLength={2000}
                   placeholder="Descrição detalhada do produto..."
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
+                {fieldError("description") && (
+                  <p className="text-xs text-destructive">{fieldError("description")}</p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -285,14 +252,14 @@ export default function NewProductPage() {
                   name="category"
                   control={control}
                   options={categoryOptions}
-                  label="Categoria"
+                  label="Categoria *"
                   placeholder="Selecionar categoria..."
                 />
                 <SearchableSelect
                   name="brand"
                   control={control}
                   options={brandOptions}
-                  label="Marca"
+                  label="Marca *"
                   placeholder="Selecionar marca..."
                 />
               </div>
@@ -389,24 +356,30 @@ export default function NewProductPage() {
                   <Input
                     {...register("ncm")}
                     placeholder="Ex: 8471.30.19"
-                    maxLength={10}
                   />
+                  {fieldError("ncm") && (
+                    <p className="text-xs text-destructive">{fieldError("ncm")}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">CEST</label>
                   <Input
                     {...register("cest")}
                     placeholder="Ex: 21.063.00"
-                    maxLength={9}
                   />
+                  {fieldError("cest") && (
+                    <p className="text-xs text-destructive">{fieldError("cest")}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">EAN / GTIN</label>
                   <Input
                     {...register("ean")}
                     placeholder="Código de barras"
-                    maxLength={14}
                   />
+                  {fieldError("ean") && (
+                    <p className="text-xs text-destructive">{fieldError("ean")}</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -424,40 +397,219 @@ export default function NewProductPage() {
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Peso (kg)</label>
                   <Input
-                    type="number"
-                    step="0.001"
-                    {...register("weight", { valueAsNumber: true })}
+                    type="text"
+                    inputMode="decimal"
+                    {...register("weight")}
                     placeholder="0,000"
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        "Backspace",
+                        "Delete",
+                        "Tab",
+                        "ArrowLeft",
+                        "ArrowRight"
+                      ]
+                      // Permite teclas de controle
+                      if(allowedKeys.includes(e.key)) return
+
+                      // Bloqueia tudo que não for número ou virgula
+                      if(!/^[0-9,]$/.test(e.key)) {
+                        e.preventDefault()
+                      }
+
+                      // Bloqueia segunda virgula
+                      if (e.key === ","){
+                        const value = (e.target as HTMLInputElement).value
+                        if(value.includes(",")) {
+                          e.preventDefault()
+                        }
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData("text")
+
+                      // Só permite números e vírgula
+                      if(!/^[0-9,]$/.test(paste)) {
+                        e.preventDefault()
+                        return
+                      }
+
+                      // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                      const currentValue = (e.target as HTMLInputElement).value
+
+                        if (currentValue.includes(",") && paste.includes(",")) {
+                          e.preventDefault()
+                        }
+                    }}
                   />
+                  {fieldError("weight") && (
+                    <p className="text-xs text-destructive">{fieldError("weight")}</p>
+                  )}
+                  
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Altura (cm)</label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    {...register("height", { valueAsNumber: true })}
+                    type="text"
+                    inputMode="decimal"
+                    {...register("height")}
                     placeholder="0,0"
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        "Backspace",
+                        "Delete",
+                        "Tab",
+                        "ArrowLeft",
+                        "ArrowRight"
+                      ]
+
+                      // Permite teclas de controle
+                      if(allowedKeys.includes(e.key)) return
+
+                      // Bloqueia tudo que não for número ou virgula
+                      if(!/^[0-9,]$/.test(e.key)){
+                        e.preventDefault()
+                      }
+
+                      // Bloqueia segunda virgula
+                      if(e.key === ","){
+                        const value = (e.target as HTMLInputElement).value
+
+                        if(value.includes(",")){
+                          e.preventDefault()
+                        }
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData("text")
+
+                      // Só permite números e vírgula
+                      if(!/^[0-9,]$/.test(paste)) {
+                        e.preventDefault()
+                        return
+                      }
+
+                      // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                      const currentValue = (e.target as HTMLInputElement).value
+
+                        if (currentValue.includes(",") && paste.includes(",")) {
+                          e.preventDefault()
+                        }
+                    }}
                   />
+                  {fieldError("height") && (
+                    <p className="text-xs text-destructive">{fieldError("height")}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Largura (cm)</label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    {...register("width", { valueAsNumber: true })}
+                    type="text"
+                    inputMode="decimal"
+                    {...register("width")}
                     placeholder="0,0"
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        "Backspace",
+                        "Delete",
+                        "Tab",,
+                        "ArrowLeft",
+                        "ArrowRight"
+                      ]
+
+                      // Permite teclas de controle
+                      if(allowedKeys.includes(e.key)) return
+
+                      // Bloqueia tudo que não for número ou virgula
+                      if(!/^[0-9,]$/.test(e.key)){
+                        e.preventDefault()
+                      }
+
+                      // Bloqueia segunda virgula
+                      const value = (e.target as HTMLInputElement).value
+
+                      if(e.key === ","){
+                        if(value.includes(",")){
+                          e.preventDefault()
+                        }
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData("text")
+
+                      // Só permite números e vírgula
+                      if(!/^[0-9,]$/.test(paste)) {
+                        e.preventDefault()
+                        return
+                      }
+
+                      // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                      const currentValue = (e.target as HTMLInputElement).value
+
+                        if (currentValue.includes(",") && paste.includes(",")) {
+                          e.preventDefault()
+                        }
+                    }}
                   />
+                  {fieldError("width") && (
+                    <p className="text-xs text-destructive">{fieldError("width")}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">
                     Comprimento (cm)
                   </label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    {...register("length", { valueAsNumber: true })}
+                    type="text"
+                    inputMode="decimal"
+                    {...register("length")}
                     placeholder="0,0"
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        "Backspace",
+                        "Delete",
+                        "Tab",
+                        "ArrowLeft",
+                        "ArrowRight",
+                      ]
+
+                      // Permite teclas de controle
+                      if(allowedKeys.includes(e.key)) return
+
+                      // Bloqueia tudo que não for número ou virgula
+                      if(!/^[0-9,]$/.test(e.key)){
+                        e.preventDefault()
+                      }
+
+                      // Bloqueia segunda virgula
+                      const value = (e.target as HTMLInputElement).value
+
+                      if(e.key === ","){
+                        if(value.includes(",")){
+                        e.preventDefault()
+                        }
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData("text")
+
+                      // Só permite números e vírgula
+                      if(!/^[0-9,]$/.test(paste)) {
+                        e.preventDefault()
+                        return
+                      }
+
+                      // Bloqueia se já tiver uma vírgula e o texto colado tiver outra
+                      const currentValue = (e.target as HTMLInputElement).value
+
+                        if (currentValue.includes(",") && paste.includes(",")) {
+                          e.preventDefault()
+                        }
+                    }}
                   />
+                  {fieldError("length") && (
+                    <p className="text-xs text-destructive">{fieldError("length")}</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -471,13 +623,20 @@ export default function NewProductPage() {
               <CardTitle className="text-lg">Imagens do Produto</CardTitle>
             </CardHeader>
             <CardContent>
-              <FileUpload
-                value={images}
-                onChange={setImages}
-                accept="image/*"
-                maxFiles={8}
-                maxSize={5 * 1024 * 1024}
-                description="Arraste imagens aqui. JPG, PNG ou WebP, até 5MB cada. Máximo 8 imagens."
+              <Controller
+                control={control}
+                name="images"
+                render={({field}) => {
+                  return(<FileUpload
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept="image/*"
+                    maxFiles={8}
+                    description="Arraste imagens aqui. JPG, PNG ou WebP, até 5MB cada. Máximo 8 imagens."
+                    error={imageError}
+                  />)
+                }
+                }                
               />
             </CardContent>
           </Card>
@@ -497,6 +656,7 @@ export default function NewProductPage() {
             variant="secondary"
             disabled={isSubmitting || createProduct.isPending}
             onClick={handleSubmit((data) => onSubmit(data, "DRAFT"))}
+            
           >
             <FileText className="mr-2 h-4 w-4" />
             Salvar como Rascunho
@@ -504,6 +664,7 @@ export default function NewProductPage() {
           <Button
             type="submit"
             disabled={isSubmitting || createProduct.isPending}
+            formNoValidate
           >
             {createProduct.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
