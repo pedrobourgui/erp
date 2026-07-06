@@ -8,7 +8,51 @@ const optionalNumber = z.preprocess(
   z.number({ invalid_type_error: "Deve ser um número" }).min(0).optional()
 )
 
-export const createProductSchema = z.object({
+const MaxImageSize = 5 * 1024 * 1024;
+
+//Schema da imagem do produto
+const uploadedFileSchema = z.object({
+  id: z.string(),
+
+  base64: z
+    .string()
+    .regex(/^data:image\/(png|jpeg|jpg|webp);base64,/,
+       "Formato de imagem inválido. Envie uma imagem PNG, JPEG ou WebP"
+      )
+    .refine((val) => {
+      const base64 = val.split(",")[1];
+      return !!base64 && base64.length > 100;
+      },{  message: "Imagem inválida ou corrompida",}
+    ),
+    
+  name: z.string(),
+
+  size: z
+    .number()
+    .max(MaxImageSize, "A imagem deve ter no máximo 5 MB"),
+
+  type: z.enum(
+    ["image/png", "image/jpeg", "image/jpg", "image/webp"],
+    {
+      errorMap: () => ({
+        message: "Formato de imagem inválido. Utilize PNG, JPEG ou WebP"
+      })
+    }
+  ),
+
+  preview: z.string().optional(),
+
+  progress: z.number(),
+
+  status: z.enum(["idle", "uploading", "done", "error"]),
+
+  error: z.string().optional(),
+})
+
+export type UploadedFileSchema = z.infer<typeof uploadedFileSchema >
+
+//Schema dos dados do produto
+export const productSchema = z.object({
   // Dados gerais
   name: z
     .string()
@@ -33,27 +77,27 @@ export const createProductSchema = z.object({
     .transform(value => value.toUpperCase()),
     
   description: z.preprocess(
-  (value) => {
-    if(typeof value === "string" && value.trim() === ""){
-      return undefined
-    }
-    return value
-  },
+    (value) => {
+      if(typeof value === "string" && value.trim() === ""){
+        return undefined
+      }
+      return value
+    },
     z
-    .string()
-    .trim()
-    .min(10, 'A descrição deve ter pelo menos 10 caracteres.')
-    .max(2000, 'A descrição deve conter no máximo 2000 caracteres')
-    .transform(value => value.replace(/\s+/g, ' '))
-    .optional()
+      .string()
+      .trim()
+      .min(10, 'A descrição deve ter pelo menos 10 caracteres.')
+      .max(2000, 'A descrição deve conter no máximo 2000 caracteres')
+      .transform(value => value.replace(/\s+/g, ' '))
+      .optional()
   ),
 
   category: z
-    .string()
+    .string({invalid_type_error: "Este campo é obrigatório"})
     .nonempty({ message: 'Este campo é obrigatório'}),
 
   brand: z
-    .string()
+    .string({invalid_type_error: "Este campo é obrigatório"})
     .nonempty({ message: 'Este campo é obrigatório'}),
 
   // Preços
@@ -69,7 +113,7 @@ export const createProductSchema = z.object({
   salePrice: z.preprocess(
     (value) => (value === "" || Number.isNaN(value) ? undefined : Number(value)),
     z.number({
-       required_error: "Preço de venda é obrigatório",
+        required_error: "Preço de venda é obrigatório",
         invalid_type_error: "Preço de venda deve ser um número" 
       })
       .min(0.01, "Preço de venda é obrigatório"),
@@ -88,15 +132,15 @@ export const createProductSchema = z.object({
       return value
     },
     z
-    .string()
-    .trim()
-    .refine(value => /^\d+$/.test(value), {
-      message: 'O NCM deve conter apenas números',
-    })
-    .refine(value => !value || value.length === 8, {
-      message: 'O NCM deve conter exatamente 8 dígitos',
-    })
-    .optional(),
+      .string()
+      .trim()
+      .refine(value => /^\d+$/.test(value), {
+        message: 'O NCM deve conter apenas números',
+      })
+      .refine(value => !value || value.length === 8, {
+        message: 'O NCM deve conter exatamente 8 dígitos',
+      })
+      .optional(),
   ),
     
   cest: z.preprocess(
@@ -107,15 +151,15 @@ export const createProductSchema = z.object({
       return value
     },
     z
-    .string()
-    .trim()
-    .refine(value => /^\d+$/.test(value), {
-      message: 'O CEST deve conter apenas números',
-    })
-    .refine(value => !value || value.length === 7, {
-      message: 'O CEST deve conter exatamente 7 dígitos',
-    })
-    .optional(),
+      .string()
+      .trim()
+      .refine(value => /^\d+$/.test(value), {
+        message: 'O CEST deve conter apenas números',
+      })
+      .refine(value => !value || value.length === 7, {
+        message: 'O CEST deve conter exatamente 7 dígitos',
+      })
+      .optional(),
   ),
 
   ean: z.preprocess(
@@ -139,155 +183,158 @@ export const createProductSchema = z.object({
 
   // Dimensões
 
- weight: z.preprocess(
-  (value) => {
-    if (value === "" || value === null || value === undefined) {
-      return undefined
-    }
-     // transforma vírgula em ponto
-    const normalized =
-      typeof value === "string"
-        ? value.replace(",", ".")
-        : value
-
-    const num = Number(normalized)
-
-    return Number.isNaN(num) ? undefined : num
-  },
-
-  z
-    .number({
-      invalid_type_error: "Peso deve ser um número",
-    })
-    .positive("O peso deve ser maior do que zero")
-    .nonnegative('O peso não pode ser negativo')
-    .max(99999, 'Peso acima do limite permitido')
-    .min(0.001, "O peso deve ter no mínimo 1 grama")
-    .refine(
-      (value) => {
-        const decimal = value.toString().split(".")[1]
-        return !decimal || decimal.length <= 3
-      },
-      {
-        message: "A altura pode ter no máximo 3 casas decimais",
+  weight: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined
       }
-    )
-    .optional()
-),
+      // transforma vírgula em ponto
+      const normalized =
+        typeof value === "string"
+          ? value.replace(",", ".")
+          : value
+
+      const num = Number(normalized)
+
+      return Number.isNaN(num) ? undefined : num
+    },
+    z
+      .number({
+        invalid_type_error: "Peso deve ser um número",
+      })
+      .positive("O peso deve ser maior do que zero")
+      .nonnegative('O peso não pode ser negativo')
+      .max(99999, 'Peso acima do limite permitido')
+      .min(0.001, "O peso deve ter no mínimo 1 grama")
+      .refine(
+        (value) => {
+          const decimal = value.toString().split(".")[1]
+          return !decimal || decimal.length <= 3
+        },
+        {
+          message: "A altura pode ter no máximo 3 casas decimais",
+        }
+      )
+      .optional()
+  ),
     
   height: z.preprocess(
-  (value) => {
-    if (value === "" || value === null || value === undefined) {
-      return undefined
-    }
-     // transforma vírgula em ponto
-    const normalized =
-      typeof value === "string"
-        ? value.replace(",", ".")
-        : value
-
-    const num = Number(normalized)
-
-    return Number.isNaN(num) ? undefined : num
-  },
-
-  z
-    .number({
-      invalid_type_error: "Altura deve ser um número",
-    })
-    .positive("A altura deve ser maior do que zero")
-    .nonnegative('A altura não pode ser negativa')
-    .max(1000, 'A altura deve ter no máximo 1000 centímetros')
-    .min(0.1, "A altura deve ter no mínimo 1 milímetro")
-    .refine(
-      (value) => {
-        const decimal = value.toString().split(".")[1]
-        return !decimal || decimal.length <= 3
-      },
-      {
-        message: "A altura pode ter no máximo 3 casas decimais",
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined
       }
-    )
-    .optional()
-),
+      // transforma vírgula em ponto
+      const normalized =
+        typeof value === "string"
+          ? value.replace(",", ".")
+          : value
+
+      const num = Number(normalized)
+
+      return Number.isNaN(num) ? undefined : num
+    },
+
+    z
+      .number({
+        invalid_type_error: "Altura deve ser um número",
+      })
+      .positive("A altura deve ser maior do que zero")
+      .nonnegative('A altura não pode ser negativa')
+      .max(1000, 'A altura deve ter no máximo 1000 centímetros')
+      .min(0.1, "A altura deve ter no mínimo 1 milímetro")
+      .refine(
+        (value) => {
+          const decimal = value.toString().split(".")[1]
+          return !decimal || decimal.length <= 3
+        },
+        {
+          message: "A altura pode ter no máximo 3 casas decimais",
+        }
+      )
+      .optional()
+  ),
 
   width: z.preprocess(
-  (value) => {
-    if (value === "" || value === null || value === undefined) {
-      return undefined
-    }
-     // transforma vírgula em ponto
-    const normalized =
-      typeof value === "string"
-        ? value.replace(",", ".")
-        : value
-
-    const num = Number(normalized)
-
-    return Number.isNaN(num) ? undefined : num
-  },
-
-  z
-    .number({
-      invalid_type_error: "Largura deve ser um número",
-    })
-    .positive("A largura deve ser maior do que zero")
-    .nonnegative('A largura não pode ser negativa')
-    .max(1000, 'A largura deve ter no máximo 1000 centímetros')
-    .min(0.1, "A largura deve ter no mínimo 1 milímetro")
-    .refine(
-      (value) => {
-        const decimal = value.toString().split(".")[1]
-        return !decimal || decimal.length <= 3
-      },
-      {
-        message: "A largura pode ter no máximo 3 casas decimais",
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined
       }
-    )
-    .optional()
-),
+      // transforma vírgula em ponto
+      const normalized =
+        typeof value === "string"
+          ? value.replace(",", ".")
+          : value
+
+      const num = Number(normalized)
+
+      return Number.isNaN(num) ? undefined : num
+    },
+
+    z
+      .number({
+        invalid_type_error: "Largura deve ser um número",
+      })
+      .positive("A largura deve ser maior do que zero")
+      .nonnegative('A largura não pode ser negativa')
+      .max(1000, 'A largura deve ter no máximo 1000 centímetros')
+      .min(0.1, "A largura deve ter no mínimo 1 milímetro")
+      .refine(
+        (value) => {
+          const decimal = value.toString().split(".")[1]
+          return !decimal || decimal.length <= 3
+        },
+        {
+          message: "A largura pode ter no máximo 3 casas decimais",
+        }
+      )
+    . optional()
+  ),
 
   length: z.preprocess(
-  (value) => {
-    if (value === "" || value === null || value === undefined) {
-      return undefined
-    }
-     // transforma vírgula em ponto
-    const normalized =
-      typeof value === "string"
-        ? value.replace(",", ".")
-        : value
-
-    const num = Number(normalized)
-
-    return Number.isNaN(num) ? undefined : num
-  },
-
-  z
-    .number({
-      invalid_type_error: "Comprimento deve ser um número",
-    })
-    .positive("O comprimento deve ser maior do que zero")
-    .nonnegative('O comprimento não pode ser negativo')
-    .max(1000, 'Comprimento deve ter no máximo 1000 centímetros')
-    .min(0.1, "O comprimento deve ter no mínimo 1 milímetro")
-    .refine(
-      (value) => {
-        const decimal = value.toString().split(".")[1]
-        return !decimal || decimal.length <= 3
-      },
-      {
-        message: "O comprimento pode ter no máximo 3 casas decimais",
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined
       }
-    )
-    .optional()
-),
+      // transforma vírgula em ponto
+      const normalized =
+        typeof value === "string"
+          ? value.replace(",", ".")
+          : value
+
+      const num = Number(normalized)
+
+      return Number.isNaN(num) ? undefined : num
+    },
+
+    z
+      .number({
+        invalid_type_error: "Comprimento deve ser um número",
+      })
+      .positive("O comprimento deve ser maior do que zero")
+      .nonnegative('O comprimento não pode ser negativo')
+      .max(1000, 'Comprimento deve ter no máximo 1000 centímetros')
+      .min(0.1, "O comprimento deve ter no mínimo 1 milímetro")
+      .refine(
+        (value) => {
+          const decimal = value.toString().split(".")[1]
+          return !decimal || decimal.length <= 3
+        },
+        {
+          message: "O comprimento pode ter no máximo 3 casas decimais",
+        }
+      )
+      .optional()
+  ),
+
+  // Imagens
+  images: z.array(uploadedFileSchema).max(8, "É permitido enviar no máximo 8 imagens").optional(),
 
   //Status
   status: z
     .enum(['ACTIVE', 'INACTIVE', 'DRAFT'])
     .default('DRAFT'),
 })
+
   .refine(
     data => data.salePrice > data.costPrice,
     {
@@ -296,4 +343,4 @@ export const createProductSchema = z.object({
     }
   );
 
-export type CreateProductInput = z.infer<typeof createProductSchema>
+export type ProductFormValues = z.infer<typeof productSchema>

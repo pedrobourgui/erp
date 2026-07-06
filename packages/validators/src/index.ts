@@ -58,7 +58,6 @@ export const paginationSchema = z.object({
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
 
-
 // ─── Schema exports ─────────────────────────────────────────────────────
 
 export * from "./stock/brand";

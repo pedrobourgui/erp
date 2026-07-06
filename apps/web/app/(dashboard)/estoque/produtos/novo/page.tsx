@@ -1,9 +1,9 @@
 "use client";
 
-import { createProductSchema, type CreateProductInput } from  "../../../../../../../packages/validators/src/stock/product"
+import { productSchema, type ProductFormValues } from  "@repo/validators"
 import React, { HTMLInputTypeAttribute, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,6 @@ type TabId = (typeof tabs)[number]["id"];
 export default function NewProductPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("geral");
-  const [images, setImages] = useState<UploadedFile[]>([]);
 
   const createProduct = useCreateProduct();
   const { addToast } = useToast();
@@ -66,8 +65,8 @@ export default function NewProductPage() {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<CreateProductInput>({
-    resolver: zodResolver(createProductSchema),
+  } = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       sku: "",
@@ -85,6 +84,7 @@ export default function NewProductPage() {
       height: undefined,
       width: undefined,
       length: undefined,
+      images: [],
     },
   });
 
@@ -110,12 +110,8 @@ export default function NewProductPage() {
   };
 
   // Submit
-  const onSubmit = async (data: CreateProductInput, status: "DRAFT" | "ACTIVE") => {
+  const onSubmit = async (data: ProductFormValues, status: "DRAFT" | "ACTIVE",) => {
     try {
-      if (images.length === 0) {
-        addToast("Adicione pelo menos uma imagem", "error");
-        return;
-      }
       await createProduct.mutateAsync({
         name: data.name,
         sku: data.sku,
@@ -141,13 +137,18 @@ export default function NewProductPage() {
     } catch {
       addToast("Erro ao criar produto. Tente novamente.", "error");
     }
-     console.log("VALOR FINAL:", data.weight)
-     
   };
 
   // Field error helper
-  const fieldError = (field: keyof CreateProductInput) =>
+  const fieldError = (field: keyof ProductFormValues) =>
     errors[field]?.message as string | undefined;
+
+
+// Erro da validação de imagem
+const imageError =
+  errors.images?.root?.message ||
+  errors.images?.[0]?.base64?.message ||
+  errors.images?.[0]?.size?.message;
 
   return (
     <div className="space-y-6">
@@ -622,13 +623,20 @@ export default function NewProductPage() {
               <CardTitle className="text-lg">Imagens do Produto</CardTitle>
             </CardHeader>
             <CardContent>
-              <FileUpload
-                value={images}
-                onChange={setImages}
-                accept="image/*"
-                maxFiles={8}
-                maxSize={5 * 1024 * 1024}
-                description="Arraste imagens aqui. JPG, PNG ou WebP, até 5MB cada. Máximo 8 imagens."
+              <Controller
+                control={control}
+                name="images"
+                render={({field}) => {
+                  return(<FileUpload
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept="image/*"
+                    maxFiles={8}
+                    description="Arraste imagens aqui. JPG, PNG ou WebP, até 5MB cada. Máximo 8 imagens."
+                    error={imageError}
+                  />)
+                }
+                }                
               />
             </CardContent>
           </Card>
