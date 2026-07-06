@@ -20,6 +20,7 @@ import {
   useStockAlerts,
   useCreateMovement,
   useCreateWarehouse,
+  useSetMinStock,
   inventoryKeys,
 } from './use-inventory';
 
@@ -254,6 +255,50 @@ describe('useCreateMovement', () => {
       reason: 'PURCHASE',
       quantity: 100,
       notes: 'Initial stock',
+    });
+  });
+
+  it('should POST an EXIT movement with fromWarehouseId', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { data: { id: 'm2' } } });
+
+    const { result } = renderHook(() => useCreateMovement(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      productId: 'p1',
+      fromWarehouseId: 'w1',
+      type: 'EXIT',
+      reason: 'DAMAGE',
+      quantity: 5,
+    });
+
+    expect(mockedApi.post).toHaveBeenCalledWith('/inventory/movement', {
+      productId: 'p1',
+      fromWarehouseId: 'w1',
+      type: 'EXIT',
+      reason: 'DAMAGE',
+      quantity: 5,
+    });
+  });
+});
+
+describe('useSetMinStock', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should PATCH the item min-stock endpoint', async () => {
+    mockedApi.patch.mockResolvedValueOnce({ data: { data: { id: 'ii-1', minStock: 10 } } });
+
+    const { result } = renderHook(() => useSetMinStock(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({ itemId: 'ii-1', minStock: 10 });
+
+    expect(mockedApi.patch).toHaveBeenCalledWith('/inventory/items/ii-1/min-stock', {
+      minStock: 10,
     });
   });
 });

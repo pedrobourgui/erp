@@ -16,7 +16,8 @@ import {
   type MovementReason,
 } from "@/hooks/use-inventory";
 import { formatDateTime } from "@/lib/utils";
-import { SlidersHorizontal, X, ArrowDownLeft, ArrowUpRight, RefreshCw, Repeat2 } from "lucide-react";
+import { SlidersHorizontal, X, ArrowDownLeft, ArrowUpRight, RefreshCw, Repeat2, Plus } from "lucide-react";
+import { MovementFormDialog } from "./_components/movement-form-dialog";
 import {
   Select,
   SelectTrigger,
@@ -37,11 +38,15 @@ const typeConfig: Record<MovementType, { label: string; variant: "success" | "de
 const reasonLabels: Record<MovementReason, string> = {
   PURCHASE: "Compra",
   SALE: "Venda",
-  RETURN: "Devolução",
-  ADJUSTMENT: "Ajuste manual",
   TRANSFER: "Transferência",
+  ADJUSTMENT: "Ajuste manual",
+  RETURN_CUSTOMER: "Devolução de cliente",
+  RETURN_SUPPLIER: "Devolução a fornecedor",
   DAMAGE: "Avaria",
-  EXPIRED: "Vencido",
+  THEFT: "Furto/Perda",
+  PRODUCTION: "Produção",
+  INITIAL: "Saldo inicial",
+  COUNT: "Inventário/Contagem",
 };
 
 // ─── Columns ────────────────────────────────────────────────────────────
@@ -127,11 +132,14 @@ const reasonOptions: { value: MovementReason | ""; label: string }[] = [
   { value: "", label: "Todos os motivos" },
   { value: "PURCHASE", label: "Compra" },
   { value: "SALE", label: "Venda" },
-  { value: "RETURN", label: "Devolução" },
   { value: "ADJUSTMENT", label: "Ajuste manual" },
-  { value: "TRANSFER", label: "Transferência" },
+  { value: "RETURN_CUSTOMER", label: "Devolução de cliente" },
+  { value: "RETURN_SUPPLIER", label: "Devolução a fornecedor" },
   { value: "DAMAGE", label: "Avaria" },
-  { value: "EXPIRED", label: "Vencido" },
+  { value: "THEFT", label: "Furto/Perda" },
+  { value: "PRODUCTION", label: "Produção" },
+  { value: "INITIAL", label: "Saldo inicial" },
+  { value: "COUNT", label: "Inventário/Contagem" },
 ];
 
 // ─── Page ───────────────────────────────────────────────────────────────
@@ -145,6 +153,7 @@ export default function StockMovementsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [movementFormOpen, setMovementFormOpen] = useState(false);
 
   const { data, isLoading } = useStockMovements({
     page,
@@ -171,9 +180,15 @@ export default function StockMovementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Movimentações</h1>
-        <p className="text-muted-foreground">Histórico de movimentações de estoque</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Movimentações</h1>
+          <p className="text-muted-foreground">Histórico de movimentações de estoque</p>
+        </div>
+        <Button onClick={() => setMovementFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova movimentação
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -256,6 +271,8 @@ export default function StockMovementsPage() {
         emptyMessage="Nenhuma movimentação encontrada"
         emptyDescription="As movimentações de estoque aparecerão aqui."
       />
+
+      <MovementFormDialog open={movementFormOpen} onOpenChange={setMovementFormOpen} />
     </div>
   );
 }

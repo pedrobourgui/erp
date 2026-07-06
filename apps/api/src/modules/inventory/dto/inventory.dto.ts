@@ -70,6 +70,13 @@ export class CreateMovementDto {
   notes?: string;
 }
 
+export class UpdateMinStockDto {
+  @ApiProperty({ description: 'Minimum stock threshold for this inventory item' })
+  @IsInt()
+  @Min(0)
+  minStock: number;
+}
+
 export class TransferStockDto {
   @ApiProperty()
   @IsString()

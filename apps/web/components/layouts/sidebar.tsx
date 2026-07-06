@@ -54,6 +54,7 @@ const navItems: NavItem[] = [
       { title: "Categorias", href: "/estoque/categorias" },
       { title: "Marcas", href: "/estoque/marcas" },
       { title: "Movimentações", href: "/estoque/movimentacoes" },
+      { title: "Níveis de estoque", href: "/estoque/niveis" },
       { title: "Depósitos", href: "/estoque/depositos" },
       { title: "Alertas", href: "/estoque/alertas" },
     ],

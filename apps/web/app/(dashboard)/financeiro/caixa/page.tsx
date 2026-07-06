@@ -25,6 +25,7 @@ import {
   CloseSessionDialog,
   MovementDialog,
 } from "./_components/cash-register-dialogs";
+import { SessionHistory } from "./_components/session-history";
 
 // ─── Page ─────────────────────────────────────────────────────────────
 
@@ -88,6 +89,9 @@ export default function CashRegistersPage() {
           ))}
         </div>
       )}
+
+      {/* Session history */}
+      <SessionHistory />
 
       {/* Dialogs */}
       <CreateCashRegisterDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -156,8 +160,8 @@ function SessionDetailDialog({
   register: CashRegister | null;
   onClose: () => void;
 }) {
-  const sessionId = reg?.currentSession?.id ?? "";
-  const { data, isLoading } = useCashRegisterSession(sessionId);
+  // getCurrentSession is keyed by the cash-register id, not the session id
+  const { data, isLoading } = useCashRegisterSession(reg?.id ?? "");
   const session = data?.data;
 
   return (
@@ -204,6 +208,28 @@ function SessionDetailDialog({
               </div>
             </div>
 
+            {/* Summary (entradas / saídas / saldo atual) */}
+            <div className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Entradas</p>
+                <p className="font-medium text-green-600">
+                  + {formatCurrency(session.totals?.supplies ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Saidas</p>
+                <p className="font-medium text-red-600">
+                  - {formatCurrency(session.totals?.withdrawals ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Saldo atual</p>
+                <p className="font-bold">
+                  {formatCurrency(session.totals?.currentBalance ?? session.openingBalance)}
+                </p>
+              </div>
+            </div>
+
             {/* Movements */}
             {session.movements && session.movements.length > 0 ? (
               <div>
@@ -216,24 +242,12 @@ function SessionDetailDialog({
                     >
                       <div>
                         <Badge
-                          variant={
-                            mov.type === "SUPPLY"
-                              ? "success"
-                              : mov.type === "WITHDRAW"
-                                ? "destructive"
-                                : "default"
-                          }
+                          variant={mov.type === "SUPPLY" ? "success" : "destructive"}
                           className="mr-2"
                         >
-                          {mov.type === "SUPPLY"
-                            ? "Suprimento"
-                            : mov.type === "WITHDRAW"
-                              ? "Sangria"
-                              : "Venda"}
+                          {mov.type === "SUPPLY" ? "Suprimento" : "Sangria"}
                         </Badge>
-                        <span className="text-muted-foreground">
-                          {mov.reason || mov.description}
-                        </span>
+                        <span className="text-muted-foreground">{mov.reason}</span>
                       </div>
                       <span className="font-medium">
                         {mov.type === "WITHDRAW" ? "- " : "+ "}

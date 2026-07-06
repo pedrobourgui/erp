@@ -5,6 +5,7 @@ import { InventoryService } from '../../modules/inventory/inventory.service';
 import {
   OrderCreatedEvent,
   OrderConfirmedEvent,
+  OrderShippedEvent,
   OrderCancelledEvent,
   OrderCounterSaleEvent,
   EVENT_NAMES,
@@ -104,6 +105,37 @@ export class OrderEventsHandler {
   }
 
   /**
+   * OrderShipped: convert the reservation made on confirmation into an actual
+   * stock-out (EXIT/SALE movement) now that the goods physically leave the
+   * warehouse. This is where regular sales deduct stock (counter sales deduct
+   * directly on order.counter_sale).
+   */
+  @OnEvent(EVENT_NAMES.ORDER_SHIPPED, { async: true })
+  async handleOrderShipped(event: OrderShippedEvent): Promise<void> {
+    this.logger.log(`Handling order.shipped for order ${event.orderId}`);
+
+    try {
+      for (const item of event.items) {
+        await this.inventoryService.fulfillReservedStock(
+          event.tenantId,
+          item.productId,
+          item.variantId ?? null,
+          item.quantity,
+          event.orderId,
+        );
+      }
+
+      this.logger.log(`Stock deducted on shipment for order ${event.orderId}`);
+    } catch (err) {
+      const error = err as Error;
+      this.logger.error(
+        `Failed to handle order.shipped for ${event.orderId}: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  /**
    * OrderCancelled: release reserved stock (only if was confirmed+), cancel receivables.
    */
   @OnEvent(EVENT_NAMES.ORDER_CANCELLED, { async: true })
@@ -192,6 +224,9 @@ export class OrderEventsHandler {
       // Generate receivables per installment (counter sales mark cash/PIX/debit as PAID immediately)
       await this.generateReceivablesForOrder(order.id, event.tenantId, order.customerId, order.orderNumber, true);
 
+      // Credit the linked bank account for immediately-paid payments (cash/PIX/debit)
+      await this.creditImmediatePaymentsToAccounts(event.tenantId, order.id, order.orderNumber);
+
       // Create notification
       await this.createNotification(
         event.tenantId,
@@ -218,6 +253,62 @@ export class OrderEventsHandler {
    * Generate AccountsReceivable records per installment from OrderPayments.
    * For counter sales, immediate payment types (CASH, PIX, DEBIT_CARD) are marked PAID.
    */
+  /**
+   * Credit the linked FinancialAccount for each immediately-paid payment of a
+   * counter sale (cash/PIX/debit), recording a CREDIT FinancialTransaction with
+   * the running balance. Payments without a resolvable account are skipped.
+   */
+  private async creditImmediatePaymentsToAccounts(
+    tenantId: string,
+    orderId: string,
+    orderNumber: string,
+  ): Promise<void> {
+    const IMMEDIATE_TYPES = ['CASH', 'PIX', 'DEBIT_CARD'];
+
+    const orderPayments = await this.prisma.orderPayment.findMany({
+      where: { orderId, tenantId },
+      include: {
+        paymentMethod: { select: { name: true, type: true, defaultAccountId: true } },
+      },
+    });
+
+    for (const op of orderPayments) {
+      if (!IMMEDIATE_TYPES.includes(op.paymentMethod.type)) continue;
+
+      const accountId = op.financialAccountId ?? op.paymentMethod.defaultAccountId;
+      if (!accountId) {
+        this.logger.warn(
+          `No bank account linked for payment ${op.id} (order ${orderNumber}); balance not updated`,
+        );
+        continue;
+      }
+
+      const amount = Number(op.amount);
+
+      await this.prisma.$transaction(async (tx) => {
+        // Increment balance and read the resulting running balance
+        const account = await tx.financialAccount.update({
+          where: { id: accountId },
+          data: { balance: { increment: amount } },
+          select: { balance: true },
+        });
+
+        await tx.financialTransaction.create({
+          data: {
+            tenantId,
+            accountId,
+            type: 'CREDIT',
+            amount,
+            balanceAfter: account.balance,
+            description: `Venda balcão ${orderNumber} - ${op.paymentMethod.name}`,
+            referenceType: 'order',
+            referenceId: orderId,
+          },
+        });
+      });
+    }
+  }
+
   private async generateReceivablesForOrder(
     orderId: string,
     tenantId: string,

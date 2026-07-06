@@ -30,6 +30,7 @@ import {
   type PaymentMethod,
   type PaymentMethodType,
 } from "@/hooks/use-payment-methods";
+import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
 import { useToast } from "@/components/ui/toast";
 import { Plus, Pencil, Loader2 } from "lucide-react";
 
@@ -86,6 +87,7 @@ const methodSchema = z.object({
   settlementDays: z.number().min(0).default(0),
   requiresAuthorization: z.boolean().default(false),
   fiscalCode: z.string().max(5).optional(),
+  defaultAccountId: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -247,6 +249,8 @@ function MethodFormDialog({
 }) {
   const createMutation = useCreatePaymentMethod();
   const updateMutation = useUpdatePaymentMethod();
+  const { data: accountsResp } = useFinancialAccounts({ isActive: true, limit: 100 });
+  const accounts = accountsResp?.data ?? [];
   const { addToast } = useToast();
 
   const {
@@ -265,6 +269,7 @@ function MethodFormDialog({
       settlementDays: 0,
       requiresAuthorization: false,
       fiscalCode: "",
+      defaultAccountId: "",
       isActive: true,
     },
   });
@@ -280,6 +285,7 @@ function MethodFormDialog({
               settlementDays: editing.settlementDays,
               requiresAuthorization: editing.requiresAuthorization,
               fiscalCode: editing.fiscalCode ?? "",
+              defaultAccountId: editing.defaultAccountId ?? "",
               isActive: editing.isActive,
             }
           : {
@@ -289,6 +295,7 @@ function MethodFormDialog({
               settlementDays: 0,
               requiresAuthorization: false,
               fiscalCode: "",
+              defaultAccountId: "",
               isActive: true,
             }
       );
@@ -298,12 +305,14 @@ function MethodFormDialog({
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = async (data: MethodFormValues) => {
+    // Empty selection means "no linked account"
+    const payload = { ...data, defaultAccountId: data.defaultAccountId || undefined };
     try {
       if (editing) {
-        await updateMutation.mutateAsync({ id: editing.id, ...data });
+        await updateMutation.mutateAsync({ id: editing.id, ...payload });
         addToast("Metodo atualizado com sucesso!", "success");
       } else {
-        await createMutation.mutateAsync(data);
+        await createMutation.mutateAsync(payload);
         addToast("Metodo criado com sucesso!", "success");
       }
       onOpenChange(false);
@@ -391,6 +400,35 @@ function MethodFormDialog({
                 maxLength={5}
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Conta bancaria</label>
+            <Controller
+              name="defaultAccountId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value || "__none"}
+                  onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhuma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Nenhuma</SelectItem>
+                    {accounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <p className="text-xs text-muted-foreground">
+              Vendas com este metodo serao direcionadas a esta conta.
+            </p>
           </div>
 
           <div className="flex items-center gap-6">

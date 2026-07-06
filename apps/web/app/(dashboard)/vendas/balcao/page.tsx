@@ -12,6 +12,7 @@ import { MoneyInput } from "@/components/forms/money-input";
 import { SearchableSelect } from "@/components/forms/searchable-select";
 import { PaymentSelector } from "@/components/forms/payment-selector";
 import { useCreateOrder } from "@/hooks/use-orders";
+import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -152,6 +153,10 @@ export default function CounterSalePage() {
   const createOrder = useCreateOrder();
   const { addToast } = useToast();
 
+  // A counter sale can only be finalized while a cash register is open
+  const { data: openSessions } = useCashRegisterSessions({ status: "OPEN", limit: 1 });
+  const hasOpenCashRegister = (openSessions?.data?.length ?? 0) > 0;
+
   // Product search state
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState<ProductResult[]>([]);
@@ -275,6 +280,10 @@ export default function CounterSalePage() {
   // ─── Submit ───────────────────────────────────────────────────────
 
   const onSubmit = async (data: CounterSaleFormValues) => {
+    if (!hasOpenCashRegister) {
+      addToast("Abra o caixa para registrar vendas no balcão.", "error");
+      return;
+    }
     try {
       const result = await createOrder.mutateAsync({
         customerId: data.customerId || undefined,
@@ -730,6 +739,19 @@ export default function CounterSalePage() {
                   </div>
                 </div>
 
+                {/* Cash register closed warning */}
+                {!hasOpenCashRegister && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Nenhum caixa aberto. Abra o caixa em Financeiro &gt; Caixa
+                        para registrar vendas no balcão.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Stock warnings */}
                 {hasStockIssues && (
                   <div className="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
@@ -747,7 +769,7 @@ export default function CounterSalePage() {
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={createOrder.isPending || hasStockIssues || items.length === 0}
+                    disabled={createOrder.isPending || hasStockIssues || items.length === 0 || !hasOpenCashRegister}
                   >
                     {createOrder.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -268,6 +268,32 @@ describe('InventoryService', () => {
       expect(updateArgs.data.available).toBe(80); // 90 - 10
     });
 
+    it('EXIT: should raise an out-of-stock alert when available reaches zero (minStock 0)', async () => {
+      const existingItem = makeInventoryItem({ quantity: 10, available: 10, minStock: 0 });
+      tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
+      tx().inventoryItem.update.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement({ type: 'EXIT' }));
+      // checkAndUpdateAlerts reads the (non-tx) item after the movement: now zeroed
+      prisma.inventoryItem.findFirst.mockResolvedValue(
+        makeInventoryItem({ quantity: 0, available: 0, minStock: 0 }),
+      );
+      prisma.stockAlert.findFirst.mockResolvedValue(null);
+      prisma.stockAlert.create.mockResolvedValue({});
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'EXIT',
+        reason: 'SALE',
+        quantity: 10,
+        fromWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      expect(prisma.stockAlert.create).toHaveBeenCalledTimes(1);
+      const alertArgs = prisma.stockAlert.create.mock.calls[0][0];
+      expect(alertArgs.data.currentQty).toBe(0);
+    });
+
     it('EXIT: should throw BadRequestException when insufficient stock', async () => {
       const existingItem = makeInventoryItem({ quantity: 5, available: 5 });
       tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
@@ -580,6 +606,74 @@ describe('InventoryService', () => {
     });
   });
 
+  // ─── fulfillReservedStock ─────────────────────────────────────────────────
+
+  describe('fulfillReservedStock', () => {
+    beforeEach(() => {
+      // fulfillReservedStock runs checkAndUpdateAlerts after the movement
+      prisma.stockAlert.updateMany.mockResolvedValue({ count: 0 });
+      prisma.stockAlert.findFirst.mockResolvedValue(null);
+      prisma.stockAlert.create.mockResolvedValue({});
+    });
+
+    it('should decrement reserved and quantity and create an EXIT/SALE movement', async () => {
+      const item = makeInventoryItem({ quantity: 100, reserved: 20, available: 80 });
+      prisma.inventoryItem.findFirst.mockResolvedValue(item);
+      prisma._tx.inventoryItem.update.mockResolvedValue({});
+      prisma._tx.inventoryMovement.create.mockResolvedValue(makeMovement({ type: 'EXIT', reason: 'SALE' }));
+
+      await service.fulfillReservedStock(TENANT_A, PRODUCT_ID, null, 5, 'order-uuid-001');
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma._tx.inventoryItem.update).toHaveBeenCalledWith({
+        where: { id: 'ii-001' },
+        data: {
+          reserved: { decrement: 5 },
+          quantity: { decrement: 5 },
+        },
+      });
+
+      const movementArgs = prisma._tx.inventoryMovement.create.mock.calls[0][0];
+      expect(movementArgs.data).toEqual(
+        expect.objectContaining({
+          tenantId: TENANT_A,
+          productId: PRODUCT_ID,
+          type: 'EXIT',
+          reason: 'SALE',
+          quantity: 5,
+          fromWarehouseId: WAREHOUSE_A,
+          referenceType: 'ORDER',
+          referenceId: 'order-uuid-001',
+        }),
+      );
+    });
+
+    it('should query the reservation scoped by tenant, preferring the default warehouse', async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(makeInventoryItem({ reserved: 10 }));
+      prisma._tx.inventoryItem.update.mockResolvedValue({});
+      prisma._tx.inventoryMovement.create.mockResolvedValue(makeMovement({ type: 'EXIT' }));
+
+      await service.fulfillReservedStock(TENANT_A, PRODUCT_ID, VARIANT_ID, 3, 'order-uuid-001');
+
+      const findArgs = prisma.inventoryItem.findFirst.mock.calls[0][0];
+      expect(findArgs.where.tenantId).toBe(TENANT_A);
+      expect(findArgs.where.variantId).toBe(VARIANT_ID);
+      expect(findArgs.where.reserved).toEqual({ gte: 3 });
+      expect(findArgs.orderBy).toEqual({ warehouse: { isDefault: 'desc' } });
+    });
+
+    it('should gracefully skip (no movement) when there is no matching reservation', async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.fulfillReservedStock(TENANT_A, PRODUCT_ID, null, 5, 'order-uuid-001'),
+      ).resolves.toBeUndefined();
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma._tx.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+  });
+
   // ─── releaseStock ───────────────────────────────────────────────────────
 
   describe('releaseStock', () => {
@@ -786,6 +880,49 @@ describe('InventoryService', () => {
       expect(result.data).toEqual(lowStockItems);
       expect(result.data).toHaveLength(1);
       expect(result.data[0].available).toBeLessThanOrEqual(result.data[0].minStock);
+    });
+  });
+
+  // ─── setMinStock ─────────────────────────────────────────────────────
+
+  describe('setMinStock', () => {
+    it('should throw NotFoundException when the item does not exist', async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(null);
+
+      await expect(service.setMinStock(TENANT_A, 'ii-missing', 10)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should update minStock and raise an alert when now below threshold', async () => {
+      prisma.inventoryItem.findFirst
+        .mockResolvedValueOnce(makeInventoryItem({ available: 5, minStock: 0 })) // lookup
+        .mockResolvedValueOnce(makeInventoryItem({ available: 5, minStock: 10 })); // checkAndUpdateAlerts
+      prisma.inventoryItem.update.mockResolvedValue(
+        makeInventoryItem({ available: 5, minStock: 10 }),
+      );
+      prisma.stockAlert.findFirst.mockResolvedValue(null);
+      prisma.stockAlert.create.mockResolvedValue({});
+      prisma.stockAlert.updateMany.mockResolvedValue({ count: 0 });
+
+      await service.setMinStock(TENANT_A, 'ii-001', 10);
+
+      expect(prisma.inventoryItem.update).toHaveBeenCalledWith({
+        where: { id: 'ii-001' },
+        data: { minStock: 10 },
+      });
+      expect(prisma.stockAlert.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should scope the lookup by tenantId', async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(null);
+
+      await expect(service.setMinStock(TENANT_A, 'ii-1', 5)).rejects.toThrow();
+
+      const whereArg = prisma.inventoryItem.findFirst.mock.calls[0][0].where;
+      expect(whereArg.tenantId).toBe(TENANT_A);
+      expect(whereArg.id).toBe('ii-1');
     });
   });
 

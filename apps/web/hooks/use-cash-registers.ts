@@ -13,25 +13,32 @@ export interface CashRegisterSession {
   status: "OPEN" | "CLOSED";
   openedAt: string;
   closedAt?: string;
+  cashRegisterId?: string;
   operatorId: string;
   openingBalance: number;
   closingBalance?: number;
+  expectedBalance?: number;
+  difference?: number;
   notes?: string;
   operator?: { id: string; name: string };
+  closedBy?: { id: string; name: string };
+  cashRegister?: { id: string; name: string };
   movements?: CashMovement[];
-  salesSummary?: {
-    byMethod: { methodName: string; total: number }[];
-    grandTotal: number;
+  /** Running totals for the session, computed by the API (getCurrentSession). */
+  totals?: {
+    supplies: number;
+    withdrawals: number;
+    currentBalance?: number;
   };
 }
 
 export interface CashMovement {
   id: string;
-  type: "SALE" | "SUPPLY" | "WITHDRAW";
+  type: "SUPPLY" | "WITHDRAW";
   amount: number;
-  reason?: string;
-  description?: string;
+  reason: string;
   createdAt: string;
+  performedBy?: { id: string; name: string };
 }
 
 export interface CashRegister {

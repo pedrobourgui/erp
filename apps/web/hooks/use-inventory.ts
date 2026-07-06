@@ -13,11 +13,15 @@ export type MovementType = "ENTRY" | "EXIT" | "ADJUSTMENT" | "TRANSFER";
 export type MovementReason =
   | "PURCHASE"
   | "SALE"
-  | "RETURN"
-  | "ADJUSTMENT"
   | "TRANSFER"
+  | "ADJUSTMENT"
+  | "RETURN_CUSTOMER"
+  | "RETURN_SUPPLIER"
   | "DAMAGE"
-  | "EXPIRED";
+  | "THEFT"
+  | "PRODUCTION"
+  | "INITIAL"
+  | "COUNT";
 
 export type AlertStatus = "ACTIVE" | "RESOLVED";
 
@@ -86,10 +90,14 @@ export interface AlertListParams {
 
 export interface CreateMovementPayload {
   productId: string;
-  toWarehouseId: string;
+  /** Required for ENTRY movements (destination). */
+  toWarehouseId?: string;
+  /** Required for EXIT movements (source). */
+  fromWarehouseId?: string;
   type: MovementType;
   reason: MovementReason;
   quantity: number;
+  unitCost?: number;
   notes?: string;
 }
 
@@ -175,6 +183,23 @@ export function useCreateMovement() {
       const { data } = await api.post<ApiResponse<StockMovement>>(
         "/inventory/movement",
         payload
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
+export function useSetMinStock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ itemId, minStock }: { itemId: string; minStock: number }) => {
+      const { data } = await api.patch<ApiResponse<InventoryItem>>(
+        `/inventory/items/${itemId}/min-stock`,
+        { minStock }
       );
       return data;
     },

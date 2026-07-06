@@ -228,7 +228,7 @@ export default function OrderDetailPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Itens</p>
-            <p className="text-xl font-bold">{order.itemCount}</p>
+            <p className="text-xl font-bold">{order.items?.length ?? 0}</p>
           </CardContent>
         </Card>
         <Card>

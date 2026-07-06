@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -211,6 +212,19 @@ export class OrdersService {
     const totalAmount = subtotal - orderDiscount + shippingCost;
 
     const isCounterSale = dto.origin === 'BALCAO';
+
+    // Counter sales can only be registered while a cash register is open
+    if (isCounterSale) {
+      const openSession = await this.prisma.cashRegisterSession.findFirst({
+        where: { tenantId, status: 'OPEN' },
+        select: { id: true },
+      });
+      if (!openSession) {
+        throw new ConflictException(
+          'Não é possível registrar venda no balcão sem um caixa aberto. Abra o caixa para continuar.',
+        );
+      }
+    }
 
     // Counter sales require a customer
     if (isCounterSale && !dto.customerId) {
@@ -459,7 +473,16 @@ export class OrdersService {
     if (newStatus === 'SHIPPED') {
       this.eventEmitter.emit(
         'order.shipped',
-        new OrderShippedEvent(order.id, tenantId),
+        new OrderShippedEvent(
+          order.id,
+          tenantId,
+          userId,
+          order.items.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          })),
+        ),
       );
     }
     if (newStatus === 'DELIVERED') {

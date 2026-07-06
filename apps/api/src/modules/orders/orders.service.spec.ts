@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
@@ -92,6 +92,9 @@ function createMockPrisma() {
       findUnique: jest.fn(),
     },
     inventoryItem: {
+      findFirst: jest.fn(),
+    },
+    cashRegisterSession: {
       findFirst: jest.fn(),
     },
     orderStatusHistory: {
@@ -447,6 +450,57 @@ describe('OrdersService', () => {
           changedBy: USER_ID,
         }),
       );
+    });
+
+    // ─── counter sale (BALCAO) requires an open cash register ─────────────
+    describe('counter sale (origin BALCAO)', () => {
+      const counterSaleDto = {
+        ...createDto,
+        origin: 'BALCAO',
+      };
+
+      it('should throw ConflictException when there is no open cash register', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, counterSaleDto as any),
+        ).rejects.toThrow(ConflictException);
+
+        // Must not create the order when the cash register is closed
+        expect(prisma.order.create).not.toHaveBeenCalled();
+      });
+
+      it('should look up the open session scoped by tenant and status OPEN', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, counterSaleDto as any),
+        ).rejects.toThrow(ConflictException);
+
+        const whereArg = prisma.cashRegisterSession.findFirst.mock.calls[0][0].where;
+        expect(whereArg.tenantId).toBe(TENANT_ID);
+        expect(whereArg.status).toBe('OPEN');
+      });
+
+      it('should create the counter sale when a cash register is open', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+        // stock available for both items so validateStockForConfirmation passes
+        prisma.inventoryItem.findFirst.mockResolvedValue({
+          id: 'ii-001',
+          available: 999,
+          product: { name: 'Widget A', sku: 'SKU-001' },
+        });
+
+        await service.create(TENANT_ID, USER_ID, counterSaleDto as any);
+
+        expect(prisma.order.create).toHaveBeenCalled();
+        const data = prisma.order.create.mock.calls[0][0].data;
+        expect(data.status).toBe('COMPLETED');
+        expect(eventEmitter.emit).toHaveBeenCalledWith(
+          'order.counter_sale',
+          expect.anything(),
+        );
+      });
     });
   });
 

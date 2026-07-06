@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Param,
   Body,
   Query,
   UseGuards,
@@ -17,6 +19,7 @@ import {
   MovementQueryDto,
   CreateWarehouseDto,
   AlertQueryDto,
+  UpdateMinStockDto,
 } from './dto/inventory.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -90,6 +93,18 @@ export class InventoryController {
   ) {
     const warehouse = await this.inventoryService.createWarehouse(tenantId, dto);
     return { success: true, data: warehouse };
+  }
+
+  @Patch('items/:id/min-stock')
+  @RequirePermissions('inventory:update')
+  @ApiOperation({ summary: 'Set minimum-stock threshold for an inventory item' })
+  async setMinStock(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateMinStockDto,
+  ) {
+    const item = await this.inventoryService.setMinStock(tenantId, id, dto.minStock);
+    return { success: true, data: item };
   }
 
   @Get('alerts')

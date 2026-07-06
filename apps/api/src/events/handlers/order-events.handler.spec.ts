@@ -5,15 +5,28 @@ import { InventoryService } from '../../modules/inventory/inventory.service';
 import {
   OrderCreatedEvent,
   OrderConfirmedEvent,
+  OrderShippedEvent,
   OrderCancelledEvent,
+  OrderCounterSaleEvent,
 } from '../event-types';
 
 // ─── Mock Factories ──────────────────────────────────────────────────────────
 
 function createMockPrisma() {
+  const tx = {
+    financialAccount: {
+      update: jest.fn().mockResolvedValue({ balance: 0 }),
+    },
+    financialTransaction: {
+      create: jest.fn().mockResolvedValue({}),
+    },
+  };
   return {
     order: {
       findUnique: jest.fn(),
+    },
+    orderPayment: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     accountsReceivable: {
       create: jest.fn(),
@@ -22,6 +35,8 @@ function createMockPrisma() {
     notification: {
       create: jest.fn(),
     },
+    $transaction: jest.fn(async (cb: (t: typeof tx) => unknown) => cb(tx)),
+    _tx: tx,
   };
 }
 
@@ -29,6 +44,8 @@ function createMockInventoryService() {
   return {
     reserveStock: jest.fn().mockResolvedValue(undefined),
     releaseStock: jest.fn().mockResolvedValue(undefined),
+    fulfillReservedStock: jest.fn().mockResolvedValue(undefined),
+    deductStockForSale: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -180,6 +197,148 @@ describe('OrderEventsHandler', () => {
       const event = new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 250, confirmedItems);
 
       await expect(handler.handleOrderConfirmed(event)).resolves.toBeUndefined();
+    });
+  });
+
+  // ─── handleOrderShipped ───────────────────────────────────────────────
+  describe('handleOrderShipped', () => {
+    const shippedItems = [
+      { productId: 'prod-001', variantId: null, quantity: 2 },
+      { productId: 'prod-002', variantId: 'var-001', quantity: 1 },
+    ];
+
+    it('should deduct reserved stock for each item on shipment', async () => {
+      const event = new OrderShippedEvent(ORDER_ID, TENANT_ID, USER_ID, shippedItems);
+      await handler.handleOrderShipped(event);
+
+      expect(inventoryService.fulfillReservedStock).toHaveBeenCalledTimes(2);
+      expect(inventoryService.fulfillReservedStock).toHaveBeenCalledWith(TENANT_ID, 'prod-001', null, 2, ORDER_ID);
+      expect(inventoryService.fulfillReservedStock).toHaveBeenCalledWith(TENANT_ID, 'prod-002', 'var-001', 1, ORDER_ID);
+    });
+
+    it('should NOT reserve stock again on shipment', async () => {
+      const event = new OrderShippedEvent(ORDER_ID, TENANT_ID, USER_ID, shippedItems);
+      await handler.handleOrderShipped(event);
+
+      expect(inventoryService.reserveStock).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when stock deduction fails', async () => {
+      inventoryService.fulfillReservedStock.mockRejectedValue(new Error('Stock error'));
+
+      const event = new OrderShippedEvent(ORDER_ID, TENANT_ID, USER_ID, shippedItems);
+
+      await expect(handler.handleOrderShipped(event)).resolves.toBeUndefined();
+    });
+  });
+
+  // ─── handleOrderCounterSale (balance credit) ──────────────────────────
+  describe('handleOrderCounterSale', () => {
+    const counterItems = [
+      { productId: 'prod-001', variantId: null, quantity: 1 },
+    ];
+
+    beforeEach(() => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        tenantId: TENANT_ID,
+        customerId: 'cust-001',
+        totalAmount: 100,
+        orderNumber: 'PED-000001',
+      });
+      prisma.accountsReceivable.create.mockResolvedValue({});
+      prisma.notification.create.mockResolvedValue({});
+    });
+
+    it('should credit the linked account and record a CREDIT transaction for an immediate payment', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-1',
+          amount: 100,
+          installments: 1,
+          financialAccountId: 'acc-1',
+          paymentMethodId: 'pm-1',
+          paymentMethod: { name: 'Dinheiro', type: 'CASH', defaultAccountId: 'acc-def' },
+        },
+      ]);
+      prisma._tx.financialAccount.update.mockResolvedValue({ balance: 350 });
+
+      const event = new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 100, counterItems);
+      await handler.handleOrderCounterSale(event);
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+      const txArgs = prisma._tx.financialTransaction.create.mock.calls[0][0];
+      expect(txArgs.data).toEqual(
+        expect.objectContaining({
+          tenantId: TENANT_ID,
+          accountId: 'acc-1',
+          type: 'CREDIT',
+          amount: 100,
+          balanceAfter: 350,
+          referenceType: 'order',
+          referenceId: ORDER_ID,
+        }),
+      );
+    });
+
+    it('should fall back to the payment method default account when the payment has none', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-2',
+          amount: 50,
+          installments: 1,
+          financialAccountId: null,
+          paymentMethodId: 'pm-1',
+          paymentMethod: { name: 'PIX', type: 'PIX', defaultAccountId: 'acc-def' },
+        },
+      ]);
+
+      const event = new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 50, counterItems);
+      await handler.handleOrderCounterSale(event);
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'acc-def' } }),
+      );
+    });
+
+    it('should skip crediting when no account can be resolved', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-3',
+          amount: 50,
+          installments: 1,
+          financialAccountId: null,
+          paymentMethodId: 'pm-1',
+          paymentMethod: { name: 'PIX', type: 'PIX', defaultAccountId: null },
+        },
+      ]);
+
+      const event = new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 50, counterItems);
+      await handler.handleOrderCounterSale(event);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should NOT credit for non-immediate payment types (e.g. BOLETO)', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-4',
+          amount: 50,
+          installments: 1,
+          financialAccountId: 'acc-1',
+          paymentMethodId: 'pm-1',
+          paymentMethod: { name: 'Boleto', type: 'BOLETO', defaultAccountId: 'acc-1' },
+        },
+      ]);
+
+      const event = new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 50, counterItems);
+      await handler.handleOrderCounterSale(event);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 

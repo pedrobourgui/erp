@@ -331,6 +331,36 @@ export class InventoryService {
   }
 
   /**
+   * Set the minimum-stock threshold for an inventory item and re-evaluate alerts.
+   */
+  async setMinStock(tenantId: string, itemId: string, minStock: number) {
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id: itemId, tenantId },
+    });
+
+    if (!item) {
+      throw new NotFoundException(
+        `Inventory item with id ${itemId} not found for tenant ${tenantId}`,
+      );
+    }
+
+    const updated = await this.prisma.inventoryItem.update({
+      where: { id: item.id },
+      data: { minStock },
+    });
+
+    // Setting/raising the minimum may immediately put the item below threshold
+    await this.checkAndUpdateAlerts(
+      tenantId,
+      item.productId,
+      item.variantId ?? null,
+      item.warehouseId,
+    );
+
+    return updated;
+  }
+
+  /**
    * Transfer stock between warehouses.
    */
   async transferStock(tenantId: string, userId: string, dto: TransferStockDto) {
@@ -563,15 +593,76 @@ export class InventoryService {
       });
     });
 
-    // Check low stock alert
-    const updated = await this.prisma.inventoryItem.findUnique({
-      where: { id: inventoryItem.id },
-    });
-    if (updated && updated.minStock > 0 && updated.available <= updated.minStock) {
-      await this.createStockAlert(tenantId, productId, variantId, inventoryItem.warehouseId, updated.available, updated.minStock);
-    }
+    // Raise/resolve low- and out-of-stock alerts after the sale
+    await this.checkAndUpdateAlerts(tenantId, productId, variantId, inventoryItem.warehouseId);
 
     this.logger.log(`Deducted ${quantity} units of product ${productId} for counter sale (order ${orderId})`);
+  }
+
+  /**
+   * Convert a reservation into an actual stock-out when a regular order ships.
+   * Units were held in `reserved` on confirmation; now `reserved` and `quantity`
+   * both decrease and an EXIT/SALE movement is recorded. `available` is left
+   * untouched because it was already decremented at reservation time.
+   * (Counter sales use deductStockForSale, which never reserves.)
+   */
+  async fulfillReservedStock(
+    tenantId: string,
+    productId: string,
+    variantId: string | null,
+    quantity: number,
+    orderId: string,
+  ): Promise<void> {
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        tenantId,
+        productId,
+        variantId: variantId ?? null,
+        reserved: { gte: quantity },
+      },
+      include: { warehouse: true },
+      orderBy: { warehouse: { isDefault: 'desc' } },
+    });
+
+    if (!inventoryItem) {
+      this.logger.warn(
+        `Cannot fulfill ${quantity} units of product ${productId}: no matching reservation`,
+      );
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Reservation becomes a real stock-out: reserved and quantity both drop
+      await tx.inventoryItem.update({
+        where: { id: inventoryItem.id },
+        data: {
+          reserved: { decrement: quantity },
+          quantity: { decrement: quantity },
+        },
+      });
+
+      // Create EXIT movement for audit trail
+      await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId,
+          variantId,
+          type: 'EXIT',
+          reason: 'SALE',
+          quantity,
+          fromWarehouseId: inventoryItem.warehouseId,
+          referenceType: 'ORDER',
+          referenceId: orderId,
+          notes: 'Baixa de estoque - expedição do pedido',
+          userId: null,
+        },
+      });
+    });
+
+    // Raise/resolve low- and out-of-stock alerts after the shipment
+    await this.checkAndUpdateAlerts(tenantId, productId, variantId, inventoryItem.warehouseId);
+
+    this.logger.log(`Fulfilled ${quantity} reserved units of product ${productId} for order ${orderId}`);
   }
 
   /**
@@ -707,9 +798,14 @@ export class InventoryService {
       },
     });
 
-    if (!item || item.minStock <= 0) return;
+    if (!item) return;
 
-    if (item.available <= item.minStock) {
+    // Alert on zero stock (out-of-stock) even when no minStock is configured,
+    // and on low stock when the item drops to/below its configured minimum.
+    const needsAlert =
+      item.available <= 0 || (item.minStock > 0 && item.available <= item.minStock);
+
+    if (needsAlert) {
       await this.createStockAlert(
         tenantId,
         productId,
