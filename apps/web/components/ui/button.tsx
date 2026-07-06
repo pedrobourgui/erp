@@ -13,9 +13,9 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm shadow-destructive/20 hover:bg-destructive/90 hover:shadow-md hover:shadow-destructive/25",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent/50 hover:text-accent-foreground hover:border-accent/30",
+          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground hover:border-accent/30",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:border hover:border-input",
         ghost:
           "hover:bg-accent/10 hover:text-accent-foreground",
         link:
@@ -24,7 +24,16 @@ const buttonVariants = cva(
           "bg-success text-success-foreground shadow-sm shadow-success/20 hover:bg-success/90 hover:shadow-md hover:shadow-success/25",
         warning:
           "bg-warning text-warning-foreground shadow-sm shadow-warning/20 hover:bg-warning/90 hover:shadow-md hover:shadow-warning/25",
+        cancel:
+          "border border-input bg-background shadow-sm  hover:text-destructive hover:border-destructive"
       },
+
+      action: {
+        default: "",
+        delete: "",
+        success: "",
+      },
+
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-lg px-3 text-[13px]",
@@ -34,8 +43,28 @@ const buttonVariants = cva(
     },
     defaultVariants: {
       variant: "default",
+      action: "default",
       size: "default",
     },
+    
+    compoundVariants: [
+      {
+        variant: "ghost",
+        action: "default",
+        class: "hover:bg-primary hover:text-primary-foreground"
+      },
+      {
+        variant: "ghost",
+        action: "delete",
+        class: "hover:bg-destructive hover:text-white text-destructive"
+
+      },
+      {
+        variant: "ghost",
+        action: "success",
+        class: "hover:bg-accent hover:text-white text-destructive"
+      }
+    ]
   }
 );
 
@@ -46,11 +75,11 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, action, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, action, size, className }))}
         ref={ref}
         {...props}
       />

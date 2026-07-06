@@ -173,7 +173,7 @@ export function Sidebar() {
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </Button>
       </Tooltip>
-
+        
       {/* Bottom */}
       <div className="relative z-10 border-t border-white/[0.06] px-4 py-3">
         {!collapsed && (

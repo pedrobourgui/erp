@@ -64,7 +64,7 @@ function CustomerActions({ customer }: { customer: CustomerListItem }) {
         </Button>
       </Tooltip>
       <Tooltip content="Excluir">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setShowDelete(true)}>
+        <Button variant="ghost" action="delete" size="icon" className="h-8 w-8 text-destructive" onClick={() => setShowDelete(true)}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </Tooltip>

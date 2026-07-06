@@ -112,7 +112,7 @@ export function ConfirmDialog({
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
-            variant="outline"
+            variant="cancel"
             onClick={handleCancel}
             disabled={loading}
           >

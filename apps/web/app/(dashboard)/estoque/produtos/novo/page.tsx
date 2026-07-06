@@ -326,7 +326,7 @@ export default function NewProductPage() {
                     />
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       onClick={handleMarkupCalc}
                       title="Calcular preço de venda"
                     >
@@ -487,7 +487,7 @@ export default function NewProductPage() {
         <div className="mt-6 flex items-center justify-end gap-3 border-t pt-6">
           <Button
             type="button"
-            variant="outline"
+            variant="cancel"
             onClick={() => router.back()}
           >
             Cancelar

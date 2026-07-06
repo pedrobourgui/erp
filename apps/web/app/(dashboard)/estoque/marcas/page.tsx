@@ -47,8 +47,9 @@ function BrandActions({
       <Tooltip content="Excluir">
         <Button
           variant="ghost"
+          action="delete"
           size="icon"
-          className="h-8 w-8 text-destructive hover:text-destructive"
+          className="h-8 w-8"
           onClick={() => onDelete(brand)}
         >
           <Trash2 className="h-4 w-4" />
