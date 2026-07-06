@@ -230,7 +230,7 @@ function NavItemComponent({
         {isOpen && (
           <div className="ml-[30px] mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
             {item.children?.map((child) => {
-              const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+               const childActive = pathname === child.href;
               return (
                 <Link
                   key={child.href}
