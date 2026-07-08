@@ -80,6 +80,7 @@ const navItems: NavItem[] = [
     icon: Landmark,
     children: [
       { title: "Contas", href: "/financeiro/contas" },
+      { title: "Despesas e Receitas", href: "/financeiro/lancamentos" },
       { title: "Caixas", href: "/financeiro/caixa" },
     ],
   },
