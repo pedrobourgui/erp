@@ -28,18 +28,21 @@ export type AlertStatus = "ACTIVE" | "RESOLVED";
 export interface StockMovement {
   id: string;
   productId: string;
-  productName: string;
-  productSku: string;
-  warehouseId: string;
-  warehouseName: string;
+  productName: string | null;
+  productSku: string | null;
+  /** Destination warehouse for an entry, origin for an exit. */
+  warehouseId: string | null;
+  warehouseName: string | null;
+  fromWarehouseId: string | null;
+  toWarehouseId: string | null;
   type: MovementType;
   reason: MovementReason;
   quantity: number;
-  previousQuantity: number;
-  newQuantity: number;
-  userId: string;
+  unitCost: number | null;
+  userId: string | null;
+  /** "Sistema" for stock moved by a sale or a shipment. */
   userName: string;
-  notes?: string;
+  notes?: string | null;
   createdAt: string;
 }
 
@@ -58,15 +61,17 @@ export interface Warehouse {
 export interface StockAlert {
   id: string;
   productId: string;
-  productName: string;
-  productSku: string;
+  productName: string | null;
+  productSku: string | null;
   warehouseId: string;
-  warehouseName: string;
+  warehouseName: string | null;
   currentStock: number;
   minStock: number;
+  isResolved: boolean;
+  /** Spelled-out `isResolved`; the list badge reads this. */
   status: AlertStatus;
   createdAt: string;
-  resolvedAt?: string;
+  resolvedAt?: string | null;
 }
 
 export interface MovementListParams {
@@ -142,6 +147,7 @@ export function useStockMovements(params: MovementListParams = {}) {
           page: params.page ?? 1,
           limit: params.limit ?? 20,
           type: params.type || undefined,
+          reason: params.reason || undefined,
           productId: params.productId || undefined,
           warehouseId: params.warehouseId || undefined,
           dateFrom: params.dateFrom || undefined,

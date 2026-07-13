@@ -97,4 +97,22 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * Extracts a user-facing message from an API error (NestJS error shape),
+ * so toasts can show the backend's specific message instead of a generic one.
+ * Returns undefined when no usable message is present.
+ */
+export function getApiErrorMessage(error: unknown): string | undefined {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { message?: unknown } | undefined;
+    const message = data?.message;
+    if (typeof message === "string" && message.trim()) return message;
+    if (Array.isArray(message)) {
+      const joined = message.filter((m): m is string => typeof m === "string").join(", ");
+      if (joined.trim()) return joined;
+    }
+  }
+  return undefined;
+}
+
 export default api;

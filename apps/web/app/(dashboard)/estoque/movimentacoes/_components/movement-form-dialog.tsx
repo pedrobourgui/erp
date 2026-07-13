@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { SearchableSelect } from "@/components/forms/searchable-select";
 import {
   useCreateMovement,
   useWarehouses,
@@ -28,7 +29,8 @@ import {
   type MovementReason,
   type CreateMovementPayload,
 } from "@/hooks/use-inventory";
-import { useProducts } from "@/hooks/use-products";
+import api, { getApiErrorMessage } from "@/lib/api";
+import type { PaginatedResponse } from "@erp/shared-types";
 import { Loader2 } from "lucide-react";
 
 // Only manual add/remove is exposed here (transfers/adjustments have their own flows)
@@ -54,14 +56,30 @@ const REASONS_BY_TYPE: Record<"ENTRY" | "EXIT", { value: MovementReason; label: 
   ],
 };
 
-const schema = z.object({
-  type: z.enum(["ENTRY", "EXIT"]),
-  productId: z.string().min(1, "Selecione um produto"),
-  warehouseId: z.string().min(1, "Selecione um depósito"),
-  quantity: z.coerce.number().int().min(1, "Quantidade deve ser ao menos 1"),
-  reason: z.string().min(1, "Selecione um motivo"),
-  notes: z.string().max(500).optional(),
-});
+const schema = z
+  .object({
+    type: z.enum(["ENTRY", "EXIT"]),
+    productId: z.string().min(1, "Selecione um produto"),
+    warehouseId: z.string().min(1, "Selecione um depósito"),
+    quantity: z.coerce
+      .number()
+      .int("Quantidade deve ser um número inteiro")
+      .min(1, "Quantidade deve ser ao menos 1")
+      .max(1_000_000, "Quantidade acima do limite permitido"),
+    reason: z.string().min(1, "Selecione um motivo"),
+    notes: z.string().max(500).optional(),
+  })
+  .superRefine((values, ctx) => {
+    // Reason must match the selected movement type (ENTRY vs EXIT reasons differ)
+    const allowed = REASONS_BY_TYPE[values.type].map((r) => r.value as string);
+    if (values.reason && !allowed.includes(values.reason)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["reason"],
+        message: "Motivo incompatível com o tipo de movimentação",
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -74,16 +92,27 @@ export function MovementFormDialog({ open, onOpenChange }: MovementFormDialogPro
   const { addToast } = useToast();
   const createMovement = useCreateMovement();
   const { data: warehousesResp } = useWarehouses();
-  const { data: productsResp } = useProducts({ limit: 100 });
 
   const warehouses = warehousesResp?.data ?? [];
-  const products = productsResp?.data ?? [];
+
+  // Server-side product search so the picker isn't capped at the first 100 items
+  const loadProducts = useCallback(async (search: string) => {
+    const { data } = await api.get<
+      PaginatedResponse<{ id: string; name: string; sku: string }>
+    >("/products", { params: { search, limit: 20, status: "ACTIVE" } });
+    return (data.data ?? []).map((p) => ({
+      value: p.id,
+      label: p.name,
+      description: p.sku,
+    }));
+  }, []);
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    control,
     reset,
     formState: { errors },
   } = useForm<FormValues>({
@@ -110,8 +139,12 @@ export function MovementFormDialog({ open, onOpenChange }: MovementFormDialogPro
       addToast("Movimentação registrada com sucesso!", "success");
       reset();
       onOpenChange(false);
-    } catch {
-      addToast("Erro ao registrar movimentação. Verifique o estoque e tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getApiErrorMessage(err) ??
+          "Erro ao registrar movimentação. Verifique o estoque e tente novamente.",
+        "error"
+      );
     }
   };
 
@@ -146,18 +179,13 @@ export function MovementFormDialog({ open, onOpenChange }: MovementFormDialogPro
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Produto</label>
-            <Select
-              value={watch("productId")}
-              onValueChange={(v) => setValue("productId", v, { shouldValidate: true })}
-            >
-              <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
-              <SelectContent>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.productId && <p className="text-xs text-destructive">{errors.productId.message}</p>}
+            <SearchableSelect
+              name="productId"
+              control={control}
+              loadOptions={loadProducts}
+              placeholder="Selecione o produto"
+              error={errors.productId?.message}
+            />
           </div>
 
           <div className="space-y-1">

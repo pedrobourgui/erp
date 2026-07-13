@@ -217,9 +217,12 @@ export class FinancialEntriesService {
 
     const includeRevenue = !type || type === 'REVENUE';
     const includeExpense = !type || type === 'EXPENSE';
-    // Transactions are always settled (pago); títulos carry an open/paid status.
+    // A FinancialTransaction is money that already moved — manual entries and
+    // sales alike (SCRUM-41). A título is money still owed, so a settled one is
+    // dropped from the list: its transaction already represents it, and listing
+    // both would count the same money twice.
     const includeTransactions = status !== 'OPEN';
-    const includeTitulos = status !== undefined ? true : true;
+    const includeTitulos = status !== 'PAID';
 
     const dateRange = this.buildDateRange(query.startDate, query.endDate);
     const accountsMap = await this.loadAccountNames(tenantId);
@@ -230,12 +233,8 @@ export class FinancialEntriesService {
       includeExpense,
       accountId,
     });
-    const recWhere = this.buildTituloWhere(tenantId, {
-      dateRange,
-      accountId,
-      status,
-    });
-    const payWhere = recWhere as unknown as Prisma.AccountsPayableWhereInput;
+    const recWhere = this.buildReceivableWhere(tenantId, { dateRange, accountId });
+    const payWhere = this.buildPayableWhere(tenantId, { dateRange, accountId });
 
     const fetchLimit = skip + limit;
     const [txRows, recRows, payRows, txCount, recCount, payCount] =
@@ -253,7 +252,11 @@ export class FinancialEntriesService {
               where: recWhere,
               orderBy: { dueDate: 'desc' },
               take: fetchLimit,
-              include: { chartAccount: { select: { name: true } } },
+              include: {
+                chartAccount: { select: { name: true } },
+                orderPayment: { select: { financialAccountId: true } },
+                paymentMethod: { select: { defaultAccountId: true } },
+              },
             })
           : Promise.resolve([]),
         includeTitulos && includeExpense
@@ -261,7 +264,10 @@ export class FinancialEntriesService {
               where: payWhere,
               orderBy: { dueDate: 'desc' },
               take: fetchLimit,
-              include: { chartAccount: { select: { name: true } } },
+              include: {
+                chartAccount: { select: { name: true } },
+                paymentMethod: { select: { defaultAccountId: true } },
+              },
             })
           : Promise.resolve([]),
         includeTransactions
@@ -320,10 +326,9 @@ export class FinancialEntriesService {
       accountId?: string;
     },
   ): Prisma.FinancialTransactionWhereInput {
-    const where: Prisma.FinancialTransactionWhereInput = {
-      tenantId,
-      referenceType: 'manual',
-    };
+    // No referenceType filter: manual entries, sales ('order') and settlements
+    // ('receivable'/'payable') are all money that moved through an account.
+    const where: Prisma.FinancialTransactionWhereInput = { tenantId };
     if (opts.dateRange) where.createdAt = opts.dateRange;
     if (opts.accountId) where.accountId = opts.accountId;
     if (opts.includeRevenue && !opts.includeExpense) where.type = 'CREDIT';
@@ -331,23 +336,39 @@ export class FinancialEntriesService {
     return where;
   }
 
-  private buildTituloWhere(
+  private buildReceivableWhere(
     tenantId: string,
-    opts: {
-      dateRange?: { gte?: Date; lte?: Date };
-      accountId?: string;
-      status?: 'PAID' | 'OPEN';
-    },
+    opts: { dateRange?: { gte?: Date; lte?: Date }; accountId?: string },
   ): Prisma.AccountsReceivableWhereInput {
     const where: Prisma.AccountsReceivableWhereInput = {
       tenantId,
-      metadata: { path: ['manual'], equals: true },
+      status: { in: OPEN_STATUSES },
     };
     if (opts.dateRange) where.dueDate = opts.dateRange;
-    if (opts.status === 'PAID') where.status = 'PAID';
-    if (opts.status === 'OPEN') where.status = { in: OPEN_STATUSES };
     if (opts.accountId) {
-      where.AND = [
+      // The account of a título is wherever it will land: the one the sale
+      // recorded, the payment method's default, or the manual entry's account.
+      where.OR = [
+        { orderPayment: { financialAccountId: opts.accountId } },
+        { paymentMethod: { defaultAccountId: opts.accountId } },
+        { metadata: { path: ['financialAccountId'], equals: opts.accountId } },
+      ];
+    }
+    return where;
+  }
+
+  private buildPayableWhere(
+    tenantId: string,
+    opts: { dateRange?: { gte?: Date; lte?: Date }; accountId?: string },
+  ): Prisma.AccountsPayableWhereInput {
+    const where: Prisma.AccountsPayableWhereInput = {
+      tenantId,
+      status: { in: OPEN_STATUSES },
+    };
+    if (opts.dateRange) where.dueDate = opts.dateRange;
+    if (opts.accountId) {
+      where.OR = [
+        { paymentMethod: { defaultAccountId: opts.accountId } },
         { metadata: { path: ['financialAccountId'], equals: opts.accountId } },
       ];
     }
@@ -382,19 +403,23 @@ export class FinancialEntriesService {
       opts.includeTitulos && opts.includeRevenue
         ? this.prisma.accountsReceivable.aggregate({
             where: opts.recWhere,
-            _sum: { amount: true },
+            _sum: { amount: true, paidAmount: true },
           })
-        : Promise.resolve({ _sum: { amount: null } }),
+        : Promise.resolve({ _sum: { amount: null, paidAmount: null } }),
       opts.includeTitulos && opts.includeExpense
         ? this.prisma.accountsPayable.aggregate({
             where: opts.payWhere,
-            _sum: { amount: true },
+            _sum: { amount: true, paidAmount: true },
           })
-        : Promise.resolve({ _sum: { amount: null } }),
+        : Promise.resolve({ _sum: { amount: null, paidAmount: null } }),
     ]);
 
-    const revenue = Number(txCredit._sum.amount ?? 0) + Number(recSum._sum.amount ?? 0);
-    const expense = Number(txDebit._sum.amount ?? 0) + Number(paySum._sum.amount ?? 0);
+    // An open título only counts for what is still owed — the part already
+    // settled has become a FinancialTransaction and is counted there.
+    const revenue =
+      Number(txCredit._sum.amount ?? 0) + outstandingOf(recSum._sum);
+    const expense =
+      Number(txDebit._sum.amount ?? 0) + outstandingOf(paySum._sum);
     return { revenue, expense, balance: revenue - expense };
   }
 
@@ -426,16 +451,23 @@ export class FinancialEntriesService {
   }
 
   private mapReceivable(
-    row: { id: string; amount: Prisma.Decimal; description: string; dueDate: Date; status: FinancialEntry['status']; chartAccountId: string | null; chartAccount: { name: string } | null; metadata: Prisma.JsonValue },
+    row: TituloRow & {
+      orderPayment: { financialAccountId: string | null } | null;
+      paymentMethod: { defaultAccountId: string | null } | null;
+    },
     accounts: Map<string, string>,
   ): FinancialEntry {
-    const accountId = this.readAccountIdFromMetadata(row.metadata);
+    const accountId =
+      row.orderPayment?.financialAccountId ??
+      row.paymentMethod?.defaultAccountId ??
+      this.readAccountIdFromMetadata(row.metadata);
+
     return {
       id: row.id,
       kind: 'RECEIVABLE',
       type: 'REVENUE',
       description: row.description,
-      amount: Number(row.amount),
+      amount: outstandingOf(row),
       date: row.dueDate,
       status: row.status,
       accountId,
@@ -446,16 +478,19 @@ export class FinancialEntriesService {
   }
 
   private mapPayable(
-    row: { id: string; amount: Prisma.Decimal; description: string; dueDate: Date; status: FinancialEntry['status']; chartAccountId: string | null; chartAccount: { name: string } | null; metadata: Prisma.JsonValue },
+    row: TituloRow & { paymentMethod: { defaultAccountId: string | null } | null },
     accounts: Map<string, string>,
   ): FinancialEntry {
-    const accountId = this.readAccountIdFromMetadata(row.metadata);
+    const accountId =
+      row.paymentMethod?.defaultAccountId ??
+      this.readAccountIdFromMetadata(row.metadata);
+
     return {
       id: row.id,
       kind: 'PAYABLE',
       type: 'EXPENSE',
       description: row.description,
-      amount: Number(row.amount),
+      amount: outstandingOf(row),
       date: row.dueDate,
       status: row.status,
       accountId,
@@ -472,4 +507,26 @@ export class FinancialEntriesService {
     }
     return null;
   }
+}
+
+interface TituloRow {
+  id: string;
+  amount: Prisma.Decimal;
+  paidAmount: Prisma.Decimal;
+  description: string;
+  dueDate: Date;
+  status: FinancialEntry['status'];
+  chartAccountId: string | null;
+  chartAccount: { name: string } | null;
+  metadata: Prisma.JsonValue;
+}
+
+/** What a título still owes: face value minus whatever has already been settled. */
+function outstandingOf(row: {
+  amount: Prisma.Decimal | number | null;
+  paidAmount: Prisma.Decimal | number | null;
+}): number {
+  const amount = Number(row.amount ?? 0);
+  const paid = Number(row.paidAmount ?? 0);
+  return Math.round((amount - paid) * 100) / 100;
 }

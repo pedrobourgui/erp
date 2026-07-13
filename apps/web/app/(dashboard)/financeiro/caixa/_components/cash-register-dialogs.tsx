@@ -45,8 +45,8 @@ const coerceNumber = (val: unknown) => {
 // ─── Create Cash Register Dialog ───────────────────────────────────────
 
 const createSchema = z.object({
-  name: z.string().min(1, "Nome obrigatorio").max(100),
-  financialAccountId: z.string().min(1, "Conta financeira obrigatoria"),
+  name: z.string().min(1, "Nome obrigatório").max(100),
+  financialAccountId: z.string().min(1, "Conta financeira obrigatória"),
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -137,7 +137,7 @@ export function CreateCashRegisterDialog({
 // ─── Open Session Dialog ───────────────────────────────────────────────
 
 const openSchema = z.object({
-  openingBalance: z.preprocess(coerceNumber, z.number().min(0, "Valor invalido")),
+  openingBalance: z.preprocess(coerceNumber, z.number().min(0, "Valor inválido")),
 });
 
 type OpenFormValues = z.infer<typeof openSchema>;
@@ -197,7 +197,7 @@ export function OpenSessionDialog({
 // ─── Close Session Dialog ──────────────────────────────────────────────
 
 const closeSchema = z.object({
-  closingBalance: z.preprocess(coerceNumber, z.number().min(0, "Valor invalido")),
+  closingBalance: z.preprocess(coerceNumber, z.number().min(0, "Valor inválido")),
   notes: z.string().max(500).optional(),
 });
 
@@ -243,17 +243,17 @@ export function CloseSessionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Fechar Caixa - {reg?.name}</DialogTitle>
-          <DialogDescription>Informe o saldo contado e observacoes.</DialogDescription>
+          <DialogDescription>Informe o saldo contado e observações.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <MoneyInput name="closingBalance" control={control} label="Saldo Contado" />
           <div className="space-y-1">
-            <label className="text-sm font-medium">Observacoes</label>
+            <label className="text-sm font-medium">Observações</label>
             <textarea
               {...formRegister("notes")}
               rows={3}
               maxLength={500}
-              placeholder="Observacoes sobre o fechamento..."
+              placeholder="Observações sobre o fechamento..."
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
@@ -273,8 +273,8 @@ export function CloseSessionDialog({
 // ─── Supply / Withdraw Dialog ──────────────────────────────────────────
 
 const movementSchema = z.object({
-  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
-  reason: z.string().min(1, "Motivo obrigatorio").max(255),
+  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatório")),
+  reason: z.string().min(1, "Motivo obrigatório").max(255),
 });
 
 type MovementFormValues = z.infer<typeof movementSchema>;
@@ -331,7 +331,7 @@ export function MovementDialog({
           <MoneyInput name="amount" control={control} label="Valor" />
           <div className="space-y-1">
             <label className="text-sm font-medium">Motivo *</label>
-            <Input {...formRegister("reason")} placeholder="Motivo da movimentacao" maxLength={255} />
+            <Input {...formRegister("reason")} placeholder="Motivo da movimentação" maxLength={255} />
             {errors.reason && <p className="text-xs text-destructive">{errors.reason.message}</p>}
           </div>
           <DialogFooter>

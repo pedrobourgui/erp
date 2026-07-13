@@ -70,6 +70,8 @@ export interface Product {
   height?: number;
   width?: number;
   length?: number;
+  /** Minimum that seeds each InventoryItem created for this product (SCRUM-37). */
+  defaultMinStock?: number;
   minStock?: number;
   maxStock?: number;
   createdAt?: string;

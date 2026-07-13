@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { InventoryService } from '../../modules/inventory/inventory.service';
+import { isImmediatePayment } from '../../common/constants/payment.constants';
 import {
   OrderCreatedEvent,
   OrderConfirmedEvent,
@@ -21,13 +22,31 @@ export class OrderEventsHandler {
   ) {}
 
   /**
-   * OrderCreated: create notification (stock is reserved on confirmation, not creation).
+   * OrderCreated: credit the bank accounts of immediate payments (an order-based
+   * sale is paid at the counter, like a BALCAO sale) and create the notification.
+   * Stock is reserved on confirmation, not creation.
    */
   @OnEvent(EVENT_NAMES.ORDER_CREATED, { async: true })
   async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
     this.logger.log(`Handling order.created for order ${event.orderId}`);
 
     try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: event.orderId },
+        select: { id: true, orderNumber: true, origin: true },
+      });
+
+      // Only sales made in the store settle on the spot; marketplace/API orders
+      // are settled by their own integration flow.
+      if (order && order.origin === 'MANUAL') {
+        await this.creditImmediatePaymentsToAccounts(
+          event.tenantId,
+          order.id,
+          order.orderNumber,
+          'Venda pedido',
+        );
+      }
+
       // Create in-app notification
       await this.createNotification(
         event.tenantId,
@@ -221,11 +240,16 @@ export class OrderEventsHandler {
         return;
       }
 
-      // Generate receivables per installment (counter sales mark cash/PIX/debit as PAID immediately)
+      // Generate receivables per installment (cash/PIX/debit are PAID immediately)
       await this.generateReceivablesForOrder(order.id, event.tenantId, order.customerId, order.orderNumber, true);
 
       // Credit the linked bank account for immediately-paid payments (cash/PIX/debit)
-      await this.creditImmediatePaymentsToAccounts(event.tenantId, order.id, order.orderNumber);
+      await this.creditImmediatePaymentsToAccounts(
+        event.tenantId,
+        order.id,
+        order.orderNumber,
+        'Venda balcão',
+      );
 
       // Create notification
       await this.createNotification(
@@ -250,21 +274,19 @@ export class OrderEventsHandler {
   // ─── Helpers ────────────────────────────────────────────────────────
 
   /**
-   * Generate AccountsReceivable records per installment from OrderPayments.
-   * For counter sales, immediate payment types (CASH, PIX, DEBIT_CARD) are marked PAID.
-   */
-  /**
    * Credit the linked FinancialAccount for each immediately-paid payment of a
-   * counter sale (cash/PIX/debit), recording a CREDIT FinancialTransaction with
-   * the running balance. Payments without a resolvable account are skipped.
+   * sale (cash/PIX/debit), recording a CREDIT FinancialTransaction with the
+   * running balance. Payments without a resolvable account are skipped.
+   *
+   * Idempotent: a payment already credited (a transaction carrying its
+   * orderPaymentId exists) is skipped, so a replayed event cannot double-count.
    */
   private async creditImmediatePaymentsToAccounts(
     tenantId: string,
     orderId: string,
     orderNumber: string,
+    label: string,
   ): Promise<void> {
-    const IMMEDIATE_TYPES = ['CASH', 'PIX', 'DEBIT_CARD'];
-
     const orderPayments = await this.prisma.orderPayment.findMany({
       where: { orderId, tenantId },
       include: {
@@ -273,7 +295,7 @@ export class OrderEventsHandler {
     });
 
     for (const op of orderPayments) {
-      if (!IMMEDIATE_TYPES.includes(op.paymentMethod.type)) continue;
+      if (!isImmediatePayment(op.paymentMethod.type)) continue;
 
       const accountId = op.financialAccountId ?? op.paymentMethod.defaultAccountId;
       if (!accountId) {
@@ -282,6 +304,17 @@ export class OrderEventsHandler {
         );
         continue;
       }
+
+      const alreadyCredited = await this.prisma.financialTransaction.findFirst({
+        where: {
+          tenantId,
+          referenceType: 'order',
+          referenceId: orderId,
+          metadata: { path: ['orderPaymentId'], equals: op.id },
+        },
+        select: { id: true },
+      });
+      if (alreadyCredited) continue;
 
       const amount = Number(op.amount);
 
@@ -300,15 +333,23 @@ export class OrderEventsHandler {
             type: 'CREDIT',
             amount,
             balanceAfter: account.balance,
-            description: `Venda balcão ${orderNumber} - ${op.paymentMethod.name}`,
+            description: `${label} ${orderNumber} - ${op.paymentMethod.name}`,
             referenceType: 'order',
             referenceId: orderId,
+            metadata: { orderPaymentId: op.id },
           },
         });
       });
     }
   }
 
+  /**
+   * Generate AccountsReceivable records per installment from OrderPayments.
+   * Immediate payment types (CASH, PIX, DEBIT_CARD) are settled at the sale, so
+   * their receivable is born PAID — the account was credited by
+   * `creditImmediatePaymentsToAccounts`. Term payments stay PENDING until they
+   * are settled through the financial-settlements endpoint.
+   */
   private async generateReceivablesForOrder(
     orderId: string,
     tenantId: string,
@@ -316,8 +357,6 @@ export class OrderEventsHandler {
     orderNumber: string,
     isCounterSale: boolean,
   ): Promise<void> {
-    const IMMEDIATE_TYPES = ['CASH', 'PIX', 'DEBIT_CARD'];
-
     const orderPayments = await this.prisma.orderPayment.findMany({
       where: { orderId, tenantId },
       include: {
@@ -355,7 +394,7 @@ export class OrderEventsHandler {
     for (const op of orderPayments) {
       const methodType = op.paymentMethod.type;
       const methodName = op.paymentMethod.name;
-      const isImmediate = IMMEDIATE_TYPES.includes(methodType);
+      const isImmediate = isImmediatePayment(methodType);
       const totalInstallments = op.installments;
       const daysBetween = op.paymentCondition?.daysBetweenInstallments ?? 30;
       const entryPct = op.paymentCondition?.entryPercentage ? Number(op.paymentCondition.entryPercentage) : 0;
@@ -365,7 +404,7 @@ export class OrderEventsHandler {
 
       if (totalInstallments <= 1 || conditionType === 'CASH') {
         // Single payment
-        const isPaid = isCounterSale && isImmediate;
+        const isPaid = isImmediate;
         await this.prisma.accountsReceivable.create({
           data: {
             tenantId,
@@ -388,7 +427,7 @@ export class OrderEventsHandler {
         const entryAmount = Math.round((amount * entryPct) / 100 * 100) / 100;
         const remaining = amount - entryAmount;
         const perInstallment = Math.round((remaining / totalInstallments) * 100) / 100;
-        const isPaidEntry = isCounterSale && isImmediate;
+        const isPaidEntry = isImmediate;
 
         // Entry receivable
         await this.prisma.accountsReceivable.create({

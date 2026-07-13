@@ -15,7 +15,7 @@ import { useCreateOrder } from "@/hooks/use-orders";
 import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, cn } from "@/lib/utils";
-import api from "@/lib/api";
+import api, { getApiErrorMessage } from "@/lib/api";
 import {
   ArrowLeft,
   Save,
@@ -77,14 +77,26 @@ const counterSaleItemSchema = z.object({
   discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
 });
 
-const orderPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
-  paymentConditionId: z.string().optional(),
-  financialAccountId: z.string().optional(),
-  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
-  installments: z.number().optional(),
-  authorizationCode: z.string().optional(),
-});
+const orderPaymentSchema = z
+  .object({
+    paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
+    paymentConditionId: z.string().optional(),
+    financialAccountId: z.string().optional(),
+    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
+    installments: z.number().optional(),
+    authorizationCode: z.string().optional(),
+    // Set by PaymentLine from the selected method; drives the conditional rule below.
+    requiresAuthorization: z.boolean().optional(),
+  })
+  .superRefine((payment, ctx) => {
+    if (payment.requiresAuthorization && !payment.authorizationCode?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["authorizationCode"],
+        message: "Código de autorização obrigatório",
+      });
+    }
+  });
 
 const counterSaleSchema = z
   .object({
@@ -156,6 +168,9 @@ export default function CounterSalePage() {
   // A counter sale can only be finalized while a cash register is open
   const { data: openSessions } = useCashRegisterSessions({ status: "OPEN", limit: 1 });
   const hasOpenCashRegister = (openSessions?.data?.length ?? 0) > 0;
+
+  // An immediate payment without a linked account is refused by the API (SCRUM-30)
+  const [hasMissingAccount, setHasMissingAccount] = useState(false);
 
   // Product search state
   const [productSearch, setProductSearch] = useState("");
@@ -307,8 +322,12 @@ export default function CounterSalePage() {
       });
       addToast("Venda no balcao finalizada com sucesso!", "success");
       router.push(`/vendas/pedidos/${result.data.id}`);
-    } catch {
-      addToast("Erro ao finalizar venda. Verifique o estoque e tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getApiErrorMessage(err) ??
+          "Erro ao finalizar venda. Verifique o estoque e tente novamente.",
+        "error"
+      );
     }
   };
 
@@ -676,6 +695,7 @@ export default function CounterSalePage() {
                   setValue={setValue as never}
                   totalAmount={total}
                   errors={errors.payments as never}
+                  onMissingAccountChange={setHasMissingAccount}
                 />
               </CardContent>
             </Card>
@@ -753,6 +773,20 @@ export default function CounterSalePage() {
                   </div>
                 )}
 
+                {/* Payment method without a linked account (SCRUM-30) */}
+                {hasMissingAccount && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Uma forma de pagamento à vista não tem conta financeira
+                        vinculada. Vincule a conta em Configurações &gt; Métodos de
+                        Pagamento para registrar a venda.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Stock warnings */}
                 {hasStockIssues && (
                   <div className="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
@@ -770,7 +804,13 @@ export default function CounterSalePage() {
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={createOrder.isPending || hasStockIssues || items.length === 0 || !hasOpenCashRegister}
+                    disabled={
+                      createOrder.isPending ||
+                      hasStockIssues ||
+                      items.length === 0 ||
+                      !hasOpenCashRegister ||
+                      hasMissingAccount
+                    }
                   >
                     {createOrder.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

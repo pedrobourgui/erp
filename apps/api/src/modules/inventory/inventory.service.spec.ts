@@ -57,6 +57,9 @@ function makeMovement(overrides: Record<string, unknown> = {}) {
 
 function createMockPrisma() {
   const mockTx = {
+    product: {
+      findUnique: jest.fn().mockResolvedValue({ defaultMinStock: 0 }),
+    },
     inventoryItem: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -400,6 +403,43 @@ describe('InventoryService', () => {
       expect(createArgs.data.tenantId).toBe(TENANT_A);
     });
 
+    // SCRUM-37: minStock lives on the item, but the product carries the default
+    it('should seed the new item minStock from the product defaultMinStock', async () => {
+      tx().product.findUnique.mockResolvedValue({ defaultMinStock: 15 });
+      tx().inventoryItem.findFirst.mockResolvedValue(null);
+      tx().inventoryItem.create.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      await service.createMovement(TENANT_A, USER_ID, {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'INITIAL',
+        quantity: 25,
+        toWarehouseId: WAREHOUSE_A,
+      } as CreateMovementDto);
+
+      const createArgs = tx().inventoryItem.create.mock.calls[0][0];
+      expect(createArgs.data.minStock).toBe(15);
+    });
+
+    it('should seed minStock as 0 when the product has no default', async () => {
+      tx().product.findUnique.mockResolvedValue({ defaultMinStock: 0 });
+      tx().inventoryItem.findFirst.mockResolvedValue(null);
+      tx().inventoryItem.create.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      await service.createMovement(TENANT_A, USER_ID, {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'INITIAL',
+        quantity: 25,
+        toWarehouseId: WAREHOUSE_A,
+      } as CreateMovementDto);
+
+      const createArgs = tx().inventoryItem.create.mock.calls[0][0];
+      expect(createArgs.data.minStock).toBe(0);
+    });
+
     it('should throw NotFoundException when product not found', async () => {
       prisma.product.findFirst.mockResolvedValue(null);
 
@@ -467,6 +507,112 @@ describe('InventoryService', () => {
   });
 
   // ─── findMovements ──────────────────────────────────────────────────────
+
+  // ─── SCRUM-36: movements must carry product, user and warehouse names ────
+  describe('findMovements — flat DTO (SCRUM-36)', () => {
+    /** Prisma row as returned with the relations included. */
+    function makeRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'mov-1',
+        productId: PRODUCT_ID,
+        variantId: null,
+        type: 'ENTRY',
+        reason: 'PURCHASE',
+        quantity: 10,
+        notes: 'compra',
+        userId: 'user-1',
+        createdAt: new Date('2026-07-10'),
+        product: { id: PRODUCT_ID, name: 'Widget', sku: 'SKU-001' },
+        user: { id: 'user-1', name: 'Maria' },
+        fromWarehouse: null,
+        toWarehouse: { id: WAREHOUSE_A, name: 'Principal', code: 'W1' },
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      prisma.inventoryMovement.count.mockResolvedValue(1);
+    });
+
+    it('should include the product relation in the query', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([]);
+      prisma.inventoryMovement.count.mockResolvedValue(0);
+
+      await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      const include = prisma.inventoryMovement.findMany.mock.calls[0][0].include;
+      expect(include.product).toBeDefined();
+    });
+
+    it('should flatten product name and SKU', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([makeRow()]);
+
+      const result = await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({
+        productId: PRODUCT_ID,
+        productName: 'Widget',
+        productSku: 'SKU-001',
+      });
+    });
+
+    it('should flatten the user name', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([makeRow()]);
+
+      const result = await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({ userId: 'user-1', userName: 'Maria' });
+    });
+
+    it('should fall back to "Sistema" when the movement has no user (sale)', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([
+        makeRow({ userId: null, user: null, reason: 'SALE', type: 'EXIT' }),
+      ]);
+
+      const result = await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({ userName: 'Sistema' });
+    });
+
+    it('should use the destination warehouse for an ENTRY', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([makeRow()]);
+
+      const result = await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({
+        warehouseId: WAREHOUSE_A,
+        warehouseName: 'Principal',
+      });
+    });
+
+    it('should use the origin warehouse for an EXIT', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([
+        makeRow({
+          type: 'EXIT',
+          reason: 'SALE',
+          toWarehouse: null,
+          fromWarehouse: { id: WAREHOUSE_B, name: 'Filial', code: 'W2' },
+        }),
+      ]);
+
+      const result = await service.findMovements(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({
+        warehouseId: WAREHOUSE_B,
+        warehouseName: 'Filial',
+      });
+    });
+
+    it('should filter by reason end to end', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([]);
+      prisma.inventoryMovement.count.mockResolvedValue(0);
+
+      await service.findMovements(TENANT_A, { page: 1, limit: 20, reason: 'SALE' });
+
+      const whereArg = prisma.inventoryMovement.findMany.mock.calls[0][0].where;
+      expect(whereArg.reason).toBe('SALE');
+    });
+  });
 
   describe('findMovements', () => {
     it('should return paginated movement history', async () => {
@@ -858,28 +1004,84 @@ describe('InventoryService', () => {
   // ─── getLowStockAlerts ──────────────────────────────────────────────────
 
   describe('getLowStockAlerts', () => {
-    it('should return low stock items via raw query', async () => {
-      const lowStockItems = [
-        {
-          id: 'ii-001',
-          productId: PRODUCT_ID,
-          warehouseId: WAREHOUSE_A,
-          available: 5,
-          minStock: 20,
-          productName: 'Widget',
-          productSku: 'PRD-001',
-          warehouseName: 'Main',
-          warehouseCode: 'MAIN',
-        },
-      ];
-      prisma.stockAlert.findMany.mockResolvedValue(lowStockItems);
+    /** Prisma row as returned with the relations included. */
+    function makeAlertRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'alert-1',
+        productId: PRODUCT_ID,
+        variantId: null,
+        warehouseId: WAREHOUSE_A,
+        currentQty: 3,
+        minStock: 20,
+        isResolved: false,
+        resolvedAt: null,
+        createdAt: new Date('2026-07-10'),
+        product: { id: PRODUCT_ID, name: 'Widget', sku: 'PRD-001' },
+        warehouse: { id: WAREHOUSE_A, name: 'Main', code: 'MAIN' },
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
       prisma.stockAlert.count.mockResolvedValue(1);
+    });
+
+    it('should include the product and warehouse relations in the query', async () => {
+      prisma.stockAlert.findMany.mockResolvedValue([]);
+      prisma.stockAlert.count.mockResolvedValue(0);
+
+      await service.getLowStockAlerts(TENANT_A, {});
+
+      const include = prisma.stockAlert.findMany.mock.calls[0][0].include;
+      expect(include.product).toBeDefined();
+      expect(include.warehouse).toBeDefined();
+    });
+
+    // SCRUM-38: the table reads flat fields; the model only stores ids + currentQty
+    it('should flatten product, warehouse and stock into the DTO', async () => {
+      prisma.stockAlert.findMany.mockResolvedValue([makeAlertRow()]);
 
       const result = await service.getLowStockAlerts(TENANT_A, {});
 
-      expect(result.data).toEqual(lowStockItems);
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].available).toBeLessThanOrEqual(result.data[0].minStock);
+      expect(result.data[0]).toMatchObject({
+        productId: PRODUCT_ID,
+        productName: 'Widget',
+        productSku: 'PRD-001',
+        warehouseId: WAREHOUSE_A,
+        warehouseName: 'Main',
+        currentStock: 3,
+        minStock: 20,
+      });
+    });
+
+    // SCRUM-39: the API never returned `status`, so every alert rendered "Resolvido"
+    it('should derive status ACTIVE from isResolved = false', async () => {
+      prisma.stockAlert.findMany.mockResolvedValue([makeAlertRow({ isResolved: false })]);
+
+      const result = await service.getLowStockAlerts(TENANT_A, {});
+
+      expect(result.data[0]).toMatchObject({ status: 'ACTIVE', isResolved: false });
+    });
+
+    it('should derive status RESOLVED from isResolved = true', async () => {
+      prisma.stockAlert.findMany.mockResolvedValue([
+        makeAlertRow({ isResolved: true, resolvedAt: new Date('2026-07-12') }),
+      ]);
+
+      const result = await service.getLowStockAlerts(TENANT_A, {});
+
+      expect(result.data[0]).toMatchObject({ status: 'RESOLVED', isResolved: true });
+      expect(result.data[0].resolvedAt).toEqual(new Date('2026-07-12'));
+    });
+
+    it('should scope the query by tenant', async () => {
+      prisma.stockAlert.findMany.mockResolvedValue([]);
+      prisma.stockAlert.count.mockResolvedValue(0);
+
+      await service.getLowStockAlerts(TENANT_B, {});
+
+      const where = prisma.stockAlert.findMany.mock.calls[0][0].where;
+      expect(where.tenantId).toBe(TENANT_B);
     });
   });
 

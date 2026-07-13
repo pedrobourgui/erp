@@ -292,6 +292,27 @@ describe('ProductsService', () => {
       sku: 'CUSTOM-SKU-001',
     };
 
+    // SCRUM-37: the product carries the minimum that seeds each InventoryItem
+    it('should persist defaultMinStock', async () => {
+      prisma.product.findFirst.mockResolvedValue(null);
+      prisma.product.create.mockResolvedValue(makeProduct());
+
+      await service.create(TENANT_A, { ...baseDto, defaultMinStock: 12 });
+
+      const data = prisma.product.create.mock.calls[0][0].data;
+      expect(data.defaultMinStock).toBe(12);
+    });
+
+    it('should default defaultMinStock to 0 when omitted', async () => {
+      prisma.product.findFirst.mockResolvedValue(null);
+      prisma.product.create.mockResolvedValue(makeProduct());
+
+      await service.create(TENANT_A, baseDto);
+
+      const data = prisma.product.create.mock.calls[0][0].data;
+      expect(data.defaultMinStock).toBe(0);
+    });
+
     it('should create product with valid data', async () => {
       prisma.product.findFirst.mockResolvedValue(null); // No existing SKU
       const createdProduct = makeProduct({ sku: 'CUSTOM-SKU-001', name: 'New Widget' });
@@ -390,6 +411,16 @@ describe('ProductsService', () => {
   // ─── update ───────────────────────────────────────────────────────────────
 
   describe('update', () => {
+    it('should update defaultMinStock', async () => {
+      prisma.product.findFirst.mockResolvedValue(makeProduct());
+      prisma.product.update.mockResolvedValue(makeProduct());
+
+      await service.update(TENANT_A, 'prod-001', { defaultMinStock: 25 });
+
+      const data = prisma.product.update.mock.calls[0][0].data;
+      expect(data.defaultMinStock).toBe(25);
+    });
+
     it('should update product fields', async () => {
       prisma.product.findFirst.mockResolvedValue(makeProduct());
       prisma.product.update.mockResolvedValue(makeProduct({ name: 'Updated Widget' }));

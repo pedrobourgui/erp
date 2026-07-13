@@ -221,6 +221,7 @@ export class ProductsService {
         salePrice,
         promoPrice: dto.promoPrice,
         markup: dto.markup,
+        defaultMinStock: dto.defaultMinStock ?? 0,
         weight: dto.weight,
         height: dto.height,
         width: dto.width,

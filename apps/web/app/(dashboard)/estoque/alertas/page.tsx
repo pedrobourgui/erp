@@ -68,9 +68,9 @@ const columns: ColumnDef<StockAlert>[] = [
   {
     id: "status",
     header: "Status",
-    accessor: "status",
     cell: (row) => {
-      if (row.status === "ACTIVE") {
+      // The API returns `isResolved` (boolean), not a `status` field.
+      if (!row.isResolved) {
         return (
           <Badge variant="warning" className="text-xs">
             <AlertTriangle className="mr-1 h-3 w-3" />

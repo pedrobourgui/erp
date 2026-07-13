@@ -44,6 +44,7 @@ const TYPE_OPTIONS: { value: PaymentMethodType; label: string }[] = [
   { value: "BOLETO", label: "Boleto" },
   { value: "BANK_TRANSFER", label: "Transferencia" },
   { value: "CHECK", label: "Cheque" },
+  { value: "STORE_CREDIT", label: "Credito na Loja" },
   { value: "OTHER", label: "Outro" },
 ];
 
@@ -55,6 +56,7 @@ const TYPE_LABELS: Record<PaymentMethodType, string> = {
   BOLETO: "Boleto",
   BANK_TRANSFER: "Transferencia",
   CHECK: "Cheque",
+  STORE_CREDIT: "Credito Loja",
   OTHER: "Outro",
 };
 
@@ -66,6 +68,7 @@ const TYPE_BADGE: Record<PaymentMethodType, "success" | "default" | "warning" | 
   BOLETO: "warning",
   BANK_TRANSFER: "secondary",
   CHECK: "warning",
+  STORE_CREDIT: "secondary",
   OTHER: "secondary",
 };
 
@@ -81,6 +84,7 @@ const methodSchema = z.object({
     "BOLETO",
     "BANK_TRANSFER",
     "CHECK",
+    "STORE_CREDIT",
     "OTHER",
   ]),
   feePercentage: z.number().min(0).max(100).default(0),

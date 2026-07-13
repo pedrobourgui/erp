@@ -72,7 +72,7 @@ export function CashRegisterCard({
 
         {!isOpen && (
           <p className="py-2 text-center text-sm text-muted-foreground">
-            Nenhuma sessao aberta
+            Nenhuma sessão aberta
           </p>
         )}
 
@@ -115,7 +115,7 @@ export function CashRegisterCard({
                   <ArrowDownCircle className="h-3.5 w-3.5" />
                 </Button>
               </Tooltip>
-              <Tooltip content="Ver sessao">
+              <Tooltip content="Ver sessão">
                 <Button
                   size="sm"
                   variant="outline"

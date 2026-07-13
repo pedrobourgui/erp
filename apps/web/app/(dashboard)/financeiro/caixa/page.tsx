@@ -47,7 +47,7 @@ export default function CashRegistersPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Caixas</h1>
           <p className="text-muted-foreground">
-            Gerencie os caixas registradores e suas sessoes
+            Gerencie os caixas registradores e suas sessões
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -70,7 +70,7 @@ export default function CashRegistersPage() {
             <Landmark className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
             <p>Nenhum caixa cadastrado</p>
             <p className="mt-1 text-xs">
-              Crie um caixa para comecar a registrar operacoes.
+              Crie um caixa para começar a registrar operações.
             </p>
           </CardContent>
         </Card>
@@ -168,9 +168,9 @@ function SessionDetailDialog({
     <Dialog open={!!reg} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Sessao - {reg?.name}</DialogTitle>
+          <DialogTitle>Sessão - {reg?.name}</DialogTitle>
           <DialogDescription>
-            Detalhes da sessao aberta atualmente.
+            Detalhes da sessão aberta atualmente.
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +180,7 @@ function SessionDetailDialog({
           </div>
         ) : !session ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma sessao aberta para este caixa.
+            Nenhuma sessão aberta para este caixa.
           </p>
         ) : (
           <div className="space-y-4">
@@ -217,7 +217,7 @@ function SessionDetailDialog({
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Saidas</p>
+                <p className="text-muted-foreground">Saídas</p>
                 <p className="font-medium text-red-600">
                   - {formatCurrency(session.totals?.withdrawals ?? 0)}
                 </p>
@@ -233,23 +233,28 @@ function SessionDetailDialog({
             {/* Movements */}
             {session.movements && session.movements.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium">Movimentacoes</p>
+                <p className="mb-2 text-sm font-medium">Movimentações</p>
                 <div className="max-h-60 space-y-2 overflow-y-auto rounded-lg border p-2">
                   {session.movements.map((mov) => (
                     <div
                       key={mov.id}
-                      className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-sm"
+                      className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
                     >
-                      <div>
+                      <div className="flex min-w-0 items-center">
                         <Badge
                           variant={mov.type === "SUPPLY" ? "success" : "destructive"}
-                          className="mr-2"
+                          className="mr-2 shrink-0"
                         >
                           {mov.type === "SUPPLY" ? "Suprimento" : "Sangria"}
                         </Badge>
-                        <span className="text-muted-foreground">{mov.reason}</span>
+                        <span
+                          className="truncate text-muted-foreground"
+                          title={mov.reason}
+                        >
+                          {mov.reason}
+                        </span>
                       </div>
-                      <span className="font-medium">
+                      <span className="shrink-0 font-medium">
                         {mov.type === "WITHDRAW" ? "- " : "+ "}
                         {formatCurrency(mov.amount)}
                       </span>
@@ -259,7 +264,7 @@ function SessionDetailDialog({
               </div>
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                Nenhuma movimentacao registrada nesta sessao.
+                Nenhuma movimentação registrada nesta sessão.
               </p>
             )}
           </div>

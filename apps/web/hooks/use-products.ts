@@ -30,6 +30,7 @@ export interface ProductFormData {
   salePrice: number;
   promoPrice?: number;
   markup?: number;
+  defaultMinStock?: number;
   ncm?: string;
   cest?: string;
   ean?: string;

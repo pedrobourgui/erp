@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod } from "@/hooks/use-payment-methods";
@@ -29,6 +29,8 @@ interface PaymentLineProps {
   selectedMethodType: string | null;
   requiresAuthorization: boolean;
   showCondition: boolean;
+  authorizationError?: string;
+  missingAccount?: boolean;
   onRemove: () => void;
 }
 
@@ -44,6 +46,36 @@ export function shouldShowCondition(type: string | null): boolean {
   return type !== null && CONDITION_TYPES.has(type);
 }
 
+// ─── Linked account (SCRUM-30) ─────────────────────────────────────────
+
+/**
+ * Immediate payments land in a bank account the moment the sale is registered,
+ * so they need one linked. Term payments (boleto, crédito…) resolve their
+ * account later, at settlement.
+ */
+const IMMEDIATE_TYPES = new Set(["CASH", "PIX", "DEBIT_CARD"]);
+
+export function requiresLinkedAccount(type: string | null): boolean {
+  return type !== null && IMMEDIATE_TYPES.has(type);
+}
+
+type PaymentDraft = {
+  paymentMethodId?: string;
+  financialAccountId?: string;
+};
+
+/** True when any payment line would be refused by the API for lacking an account. */
+export function hasMissingAccount(
+  payments: PaymentDraft[] | undefined,
+  methods: PaymentMethod[]
+): boolean {
+  return (payments ?? []).some((payment) => {
+    const method = methods.find((m) => m.id === payment?.paymentMethodId);
+    if (!method || !requiresLinkedAccount(method.type)) return false;
+    return !(payment?.financialAccountId || method.defaultAccountId);
+  });
+}
+
 // ─── Component ─────────────────────────────────────────────────────────
 
 export function PaymentLine({
@@ -55,10 +87,17 @@ export function PaymentLine({
   selectedMethodType,
   requiresAuthorization,
   showCondition,
+  authorizationError,
+  missingAccount,
   onRemove,
 }: PaymentLineProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 dark:bg-muted/10 sm:flex-row sm:items-end">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 dark:bg-muted/10 sm:flex-row sm:items-end",
+        missingAccount && "border-amber-400 dark:border-amber-700"
+      )}
+    >
       {/* Payment Method */}
       <div className="min-w-0 flex-1 space-y-1">
         <label className="text-xs font-medium text-muted-foreground">
@@ -79,6 +118,13 @@ export function PaymentLine({
                     method.defaultAccountId
                   );
                 }
+                // Track whether this method requires an authorization code so the
+                // form schema can make the field conditionally required.
+                setValue(
+                  `payments.${index}.requiresAuthorization`,
+                  method?.requiresAuthorization ?? false,
+                  { shouldValidate: true }
+                );
               }}
             >
               <SelectTrigger className="h-9">
@@ -94,6 +140,13 @@ export function PaymentLine({
             </Select>
           )}
         />
+        {missingAccount && (
+          <p className="flex items-start gap-1 text-xs text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            Sem conta financeira vinculada. Configure em Configurações &gt; Métodos
+            de Pagamento.
+          </p>
+        )}
       </div>
 
       {/* Payment Condition */}
@@ -149,10 +202,17 @@ export function PaymentLine({
                 value={String(field.value ?? "")}
                 placeholder="000000"
                 maxLength={50}
-                className="h-9"
+                className={cn(
+                  "h-9",
+                  authorizationError &&
+                    "border-destructive focus-visible:ring-destructive"
+                )}
               />
             )}
           />
+          {authorizationError && (
+            <p className="text-xs text-destructive">{authorizationError}</p>
+          )}
         </div>
       )}
 

@@ -16,6 +16,7 @@ export type PaymentMethodType =
   | "BOLETO"
   | "BANK_TRANSFER"
   | "CHECK"
+  | "STORE_CREDIT"
   | "OTHER";
 
 export interface PaymentMethod {

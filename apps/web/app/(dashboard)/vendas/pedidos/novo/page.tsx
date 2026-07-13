@@ -12,9 +12,10 @@ import { MoneyInput } from "@/components/forms/money-input";
 import { SearchableSelect } from "@/components/forms/searchable-select";
 import { PaymentSelector } from "@/components/forms/payment-selector";
 import { useCreateOrder } from "@/hooks/use-orders";
+import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, cn } from "@/lib/utils";
-import api from "@/lib/api";
+import api, { getApiErrorMessage } from "@/lib/api";
 import {
   ArrowLeft,
   Save,
@@ -76,14 +77,26 @@ const orderItemSchema = z.object({
   discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
 });
 
-const orderPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
-  paymentConditionId: z.string().optional(),
-  financialAccountId: z.string().optional(),
-  amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
-  installments: z.number().optional(),
-  authorizationCode: z.string().optional(),
-});
+const orderPaymentSchema = z
+  .object({
+    paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
+    paymentConditionId: z.string().optional(),
+    financialAccountId: z.string().optional(),
+    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
+    installments: z.number().optional(),
+    authorizationCode: z.string().optional(),
+    // Set by PaymentLine from the selected method; drives the conditional rule below.
+    requiresAuthorization: z.boolean().optional(),
+  })
+  .superRefine((payment, ctx) => {
+    if (payment.requiresAuthorization && !payment.authorizationCode?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["authorizationCode"],
+        message: "Código de autorização obrigatório",
+      });
+    }
+  });
 
 const newOrderSchema = z
   .object({
@@ -152,6 +165,13 @@ export default function NewOrderPage() {
   const router = useRouter();
   const createOrder = useCreateOrder();
   const { addToast } = useToast();
+
+  // A sale by order can only be registered while a cash register is open
+  const { data: openSessions } = useCashRegisterSessions({ status: "OPEN", limit: 1 });
+  const hasOpenCashRegister = (openSessions?.data?.length ?? 0) > 0;
+
+  // An immediate payment without a linked account is refused by the API (SCRUM-30)
+  const [hasMissingAccount, setHasMissingAccount] = useState(false);
 
   // Product search state
   const [productSearch, setProductSearch] = useState("");
@@ -278,6 +298,10 @@ export default function NewOrderPage() {
   // ─── Submit ───────────────────────────────────────────────────────
 
   const onSubmit = async (data: NewOrderFormValues) => {
+    if (!hasOpenCashRegister) {
+      addToast("Abra o caixa para registrar a venda por pedido.", "error");
+      return;
+    }
     try {
       const result = await createOrder.mutateAsync({
         customerId: data.customerId,
@@ -302,8 +326,11 @@ export default function NewOrderPage() {
       });
       addToast("Pedido criado com sucesso!", "success");
       router.push(`/vendas/pedidos/${result.data.id}`);
-    } catch {
-      addToast("Erro ao criar pedido. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getApiErrorMessage(err) ?? "Erro ao criar pedido. Tente novamente.",
+        "error"
+      );
     }
   };
 
@@ -669,6 +696,7 @@ export default function NewOrderPage() {
                   setValue={setValue as never}
                   totalAmount={total}
                   errors={errors.payments as never}
+                  onMissingAccountChange={setHasMissingAccount}
                 />
               </CardContent>
             </Card>
@@ -737,6 +765,33 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
+                {/* Cash register closed warning */}
+                {!hasOpenCashRegister && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Nenhum caixa aberto. Abra o caixa em Financeiro &gt; Caixa
+                        para registrar a venda por pedido.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment method without a linked account (SCRUM-30) */}
+                {hasMissingAccount && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Uma forma de pagamento à vista não tem conta financeira
+                        vinculada. Vincule a conta em Configurações &gt; Métodos de
+                        Pagamento para registrar a venda.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Stock warnings */}
                 {items.some(
                   (i) =>
@@ -769,7 +824,11 @@ export default function NewOrderPage() {
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={createOrder.isPending}
+                    disabled={
+                      createOrder.isPending ||
+                      !hasOpenCashRegister ||
+                      hasMissingAccount
+                    }
                   >
                     {createOrder.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
