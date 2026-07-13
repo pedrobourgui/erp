@@ -3,6 +3,7 @@ import { FinancialAccountsController } from './financial-accounts.controller';
 import { FinancialAccountsService } from './financial-accounts.service';
 import { FinancialEntriesController } from './financial-entries.controller';
 import { FinancialEntriesService } from './financial-entries.service';
+import { FinancialSettlementsService } from './financial-settlements.service';
 import { ChartOfAccountsController } from './chart-of-accounts.controller';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 
@@ -15,8 +16,13 @@ import { ChartOfAccountsService } from './chart-of-accounts.service';
   providers: [
     FinancialAccountsService,
     FinancialEntriesService,
+    FinancialSettlementsService,
     ChartOfAccountsService,
   ],
-  exports: [FinancialAccountsService, FinancialEntriesService],
+  exports: [
+    FinancialAccountsService,
+    FinancialEntriesService,
+    FinancialSettlementsService,
+  ],
 })
 export class FinancialModule {}

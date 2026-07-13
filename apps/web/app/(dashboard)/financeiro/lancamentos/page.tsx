@@ -17,7 +17,8 @@ import {
 } from "@/hooks/use-financial-entries";
 import { EntryFormDialog } from "./_components/entry-form-dialog";
 import { EntriesFilters } from "./_components/entries-filters";
-import { Plus, ArrowUpCircle, ArrowDownCircle, Scale } from "lucide-react";
+import { SettleEntryDialog } from "./_components/settle-entry-dialog";
+import { Plus, ArrowUpCircle, ArrowDownCircle, Scale, CheckCircle2 } from "lucide-react";
 
 const STATUS_LABEL: Record<FinancialEntryStatus, string> = {
   PAID: "Pago",
@@ -40,12 +41,21 @@ const STATUS_VARIANT: Record<
   REFUNDED: "secondary",
 };
 
+/** A título still owing money can be settled; a transaction is money already moved. */
+function isSettleable(entry: FinancialEntry): boolean {
+  return (
+    entry.kind !== "TRANSACTION" &&
+    ["PENDING", "PARTIALLY_PAID", "OVERDUE"].includes(entry.status)
+  );
+}
+
 export default function FinancialEntriesPage() {
   const [filters, setFilters] = useState<FinancialEntryListParams>({
     page: 1,
     limit: 20,
   });
   const [formOpen, setFormOpen] = useState(false);
+  const [settling, setSettling] = useState<FinancialEntry | null>(null);
 
   const { data, isLoading } = useFinancialEntries(filters);
   const entries = data?.data ?? [];
@@ -87,6 +97,18 @@ export default function FinancialEntriesPage() {
         <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
       ),
     },
+    {
+      id: "actions",
+      header: "",
+      className: "text-right",
+      cell: (r) =>
+        isSettleable(r) ? (
+          <Button size="sm" variant="outline" onClick={() => setSettling(r)}>
+            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+            {r.kind === "RECEIVABLE" ? "Receber" : "Pagar"}
+          </Button>
+        ) : null,
+    },
   ];
 
   return (
@@ -97,7 +119,7 @@ export default function FinancialEntriesPage() {
             Despesas e Receitas
           </h1>
           <p className="text-muted-foreground">
-            Lançamentos financeiros manuais e títulos em aberto
+            Vendas, lançamentos manuais e títulos em aberto
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)}>
@@ -146,6 +168,10 @@ export default function FinancialEntriesPage() {
       />
 
       <EntryFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <SettleEntryDialog
+        entry={settling}
+        onOpenChange={(open) => !open && setSettling(null)}
+      />
     </div>
   );
 }

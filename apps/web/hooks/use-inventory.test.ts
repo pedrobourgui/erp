@@ -128,12 +128,31 @@ describe('useStockMovements', () => {
         page: 1,
         limit: 20,
         type: undefined,
+        reason: undefined,
         productId: undefined,
         warehouseId: undefined,
         dateFrom: undefined,
         dateTo: undefined,
       },
     });
+  });
+
+  // SCRUM-36: the reason filter existed in the UI but was never sent
+  it('should forward the reason filter to the API', async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: { data: [], meta: {} } });
+
+    const { result } = renderHook(() => useStockMovements({ reason: 'SALE' }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      '/inventory/movements',
+      expect.objectContaining({
+        params: expect.objectContaining({ reason: 'SALE' }),
+      })
+    );
   });
 
   it('should pass movement type and warehouse filters', async () => {

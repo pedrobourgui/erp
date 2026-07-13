@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsNumber,
+  IsInt,
   IsEnum,
   IsArray,
   ValidateNested,
@@ -137,6 +138,16 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   markup?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Estoque mínimo padrão. Semeia o minStock de cada item de estoque criado para o produto.',
+    default: 0,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  defaultMinStock?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

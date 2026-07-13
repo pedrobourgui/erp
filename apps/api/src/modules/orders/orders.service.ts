@@ -8,6 +8,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import { isImmediatePayment } from '../../common/constants/payment.constants';
 import {
   CreateOrderDto,
   UpdateOrderStatusDto,
@@ -213,17 +214,29 @@ export class OrdersService {
 
     const isCounterSale = dto.origin === 'BALCAO';
 
-    // Counter sales can only be registered while a cash register is open
-    if (isCounterSale) {
+    // A sale must be registered with an open cash register — both the counter
+    // sale (BALCAO) and the order-based sale (MANUAL / venda por pedido). The
+    // rule is enforced at creation. Marketplace/API origins are external
+    // integrations and are exempt.
+    const resolvedOrigin = dto.origin ?? 'MANUAL';
+    const requiresOpenCashRegister =
+      resolvedOrigin === 'BALCAO' || resolvedOrigin === 'MANUAL';
+
+    // Assumption: at most one cash register session is open per tenant at a time.
+    let openCashRegisterSessionId: string | null = null;
+    if (requiresOpenCashRegister) {
       const openSession = await this.prisma.cashRegisterSession.findFirst({
         where: { tenantId, status: 'OPEN' },
         select: { id: true },
       });
       if (!openSession) {
         throw new ConflictException(
-          'Não é possível registrar venda no balcão sem um caixa aberto. Abra o caixa para continuar.',
+          isCounterSale
+            ? 'Não é possível registrar venda no balcão sem um caixa aberto. Abra o caixa para continuar.'
+            : 'Não é possível registrar a venda sem um caixa aberto. Abra o caixa para continuar.',
         );
       }
+      openCashRegisterSessionId = openSession.id;
     }
 
     // Counter sales require a customer
@@ -252,7 +265,13 @@ export class OrdersService {
       const methodIds = payments.map((p) => p.paymentMethodId);
       const methods = await this.prisma.paymentMethod.findMany({
         where: { id: { in: methodIds }, tenantId },
-        select: { id: true, requiresAuthorization: true, defaultAccountId: true },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          requiresAuthorization: true,
+          defaultAccountId: true,
+        },
       });
 
       const methodMap = new Map(methods.map((m) => [m.id, m]));
@@ -271,6 +290,15 @@ export class OrdersService {
         // Resolve financialAccountId from method default if not provided
         if (!payment.financialAccountId && method.defaultAccountId) {
           payment.financialAccountId = method.defaultAccountId;
+        }
+        // An immediate payment credits a bank account as soon as the sale is
+        // registered — without a linked account the money would vanish, so the
+        // sale is refused instead of silently skipping the credit.
+        if (isImmediatePayment(method.type) && !payment.financialAccountId) {
+          throw new BadRequestException(
+            `A forma de pagamento "${method.name}" não possui conta financeira vinculada. ` +
+              'Vincule uma conta em Configurações > Métodos de Pagamento para registrar a venda.',
+          );
         }
       }
 
@@ -307,6 +335,10 @@ export class OrdersService {
           orderNumber,
           status: isCounterSale ? 'COMPLETED' : 'PENDING',
           origin: (dto.origin as any) || 'MANUAL',
+          // Both in-store sales settle on the spot, so both are linked to the
+          // open session: cash paid on either one lands in the drawer and must
+          // show up in its expected balance. External origins stay unlinked.
+          cashRegisterSessionId: openCashRegisterSessionId,
           customerId: dto.customerId || null,
           salesChannelId: dto.salesChannelId,
           sellerId: dto.sellerId ?? userId,

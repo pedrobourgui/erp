@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { financialAccountKeys } from "@/hooks/use-financial-accounts";
 import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -116,6 +117,49 @@ export function useCreateFinancialEntry() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financialEntryKeys.lists() });
+    },
+  });
+}
+
+// ─── Settle an open título (SCRUM-31/32) ───────────────────────────────
+
+export type SettleableKind = "RECEIVABLE" | "PAYABLE";
+
+export interface SettleFinancialEntryPayload {
+  id: string;
+  kind: SettleableKind;
+  /** Omit to settle the whole outstanding balance. */
+  amount?: number;
+  /** Omit to use the account already linked to the título. */
+  accountId?: string;
+}
+
+export interface SettlementResult {
+  id: string;
+  kind: SettleableKind;
+  status: FinancialEntryStatus;
+  amount: number;
+  paidAmount: number;
+  settledAmount: number;
+  accountId: string;
+}
+
+export function useSettleFinancialEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, kind, amount, accountId }: SettleFinancialEntryPayload) => {
+      const { data } = await api.post<ApiResponse<SettlementResult>>(
+        `/financial-entries/${id}/settle`,
+        { kind, amount, accountId }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      // The settlement moves money: the list, its totals and the account
+      // balances all change.
+      queryClient.invalidateQueries({ queryKey: financialEntryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: financialAccountKeys.all });
     },
   });
 }

@@ -28,6 +28,9 @@ function createMockPrisma() {
     orderPayment: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    financialTransaction: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     accountsReceivable: {
       create: jest.fn(),
       updateMany: jest.fn(),
@@ -121,6 +124,99 @@ describe('OrderEventsHandler', () => {
 
       await expect(handler.handleOrderCreated(event)).resolves.toBeUndefined();
     });
+
+    // ─── SCRUM-31: an order-based sale credits the account at creation ────
+    describe('order-based sale (origin MANUAL) — account credit', () => {
+      const cashPayment = {
+        id: 'op-manual-1',
+        amount: 250,
+        installments: 1,
+        financialAccountId: 'acc-1',
+        paymentMethodId: 'pm-1',
+        paymentMethod: { name: 'Dinheiro', type: 'CASH', defaultAccountId: null },
+      };
+
+      beforeEach(() => {
+        prisma.notification.create.mockResolvedValue({});
+        prisma.order.findUnique.mockResolvedValue({
+          id: ORDER_ID,
+          tenantId: TENANT_ID,
+          orderNumber: 'PED-000001',
+          origin: 'MANUAL',
+        });
+      });
+
+      it('should credit the linked account for an immediate payment', async () => {
+        prisma.orderPayment.findMany.mockResolvedValue([cashPayment]);
+        prisma._tx.financialAccount.update.mockResolvedValue({ balance: 250 });
+
+        await handler.handleOrderCreated(
+          new OrderCreatedEvent(ORDER_ID, TENANT_ID, USER_ID, ITEMS),
+        );
+
+        expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+          where: { id: 'acc-1' },
+          data: { balance: { increment: 250 } },
+          select: { balance: true },
+        });
+        const txArgs = prisma._tx.financialTransaction.create.mock.calls[0][0];
+        expect(txArgs.data).toEqual(
+          expect.objectContaining({
+            accountId: 'acc-1',
+            type: 'CREDIT',
+            amount: 250,
+            balanceAfter: 250,
+            referenceType: 'order',
+            referenceId: ORDER_ID,
+            metadata: { orderPaymentId: 'op-manual-1' },
+          }),
+        );
+      });
+
+      it('should NOT credit twice when the event is replayed (idempotent)', async () => {
+        prisma.orderPayment.findMany.mockResolvedValue([cashPayment]);
+        // A transaction already exists for this order payment
+        prisma.financialTransaction.findFirst.mockResolvedValue({ id: 'ft-existing' });
+
+        await handler.handleOrderCreated(
+          new OrderCreatedEvent(ORDER_ID, TENANT_ID, USER_ID, ITEMS),
+        );
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+      });
+
+      it('should NOT credit a term payment (boleto) at creation', async () => {
+        prisma.orderPayment.findMany.mockResolvedValue([
+          {
+            ...cashPayment,
+            id: 'op-boleto',
+            paymentMethod: { name: 'Boleto', type: 'BOLETO', defaultAccountId: 'acc-1' },
+          },
+        ]);
+
+        await handler.handleOrderCreated(
+          new OrderCreatedEvent(ORDER_ID, TENANT_ID, USER_ID, ITEMS),
+        );
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+      });
+
+      it('should NOT credit for external origins (marketplace)', async () => {
+        prisma.order.findUnique.mockResolvedValue({
+          id: ORDER_ID,
+          tenantId: TENANT_ID,
+          orderNumber: 'PED-000001',
+          origin: 'SHOPEE',
+        });
+        prisma.orderPayment.findMany.mockResolvedValue([cashPayment]);
+
+        await handler.handleOrderCreated(
+          new OrderCreatedEvent(ORDER_ID, TENANT_ID, USER_ID, ITEMS),
+        );
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+      });
+    });
   });
 
   // ─── handleOrderConfirmed ─────────────────────────────────────────────
@@ -179,6 +275,52 @@ describe('OrderEventsHandler', () => {
           title: 'Order confirmed',
         }),
       });
+    });
+
+    // SCRUM-31: cash on an order-based sale is settled at the sale, so its
+    // receivable must not linger as PENDING (it was already credited).
+    it('should mark the receivable of an immediate payment as PAID', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-1',
+          amount: 250,
+          installments: 1,
+          financialAccountId: 'acc-1',
+          paymentMethodId: 'pm-1',
+          paymentMethod: { id: 'pm-1', name: 'Dinheiro', type: 'CASH' },
+          paymentCondition: null,
+        },
+      ]);
+
+      await handler.handleOrderConfirmed(
+        new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 250, confirmedItems),
+      );
+
+      const data = prisma.accountsReceivable.create.mock.calls[0][0].data;
+      expect(data.status).toBe('PAID');
+      expect(data.paidAmount).toBe(250);
+      expect(data.paidAt).toBeInstanceOf(Date);
+    });
+
+    it('should keep the receivable of a term payment PENDING', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          id: 'op-2',
+          amount: 250,
+          installments: 1,
+          financialAccountId: null,
+          paymentMethodId: 'pm-2',
+          paymentMethod: { id: 'pm-2', name: 'Boleto', type: 'BOLETO' },
+          paymentCondition: null,
+        },
+      ]);
+
+      await handler.handleOrderConfirmed(
+        new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 250, confirmedItems),
+      );
+
+      const data = prisma.accountsReceivable.create.mock.calls[0][0].data;
+      expect(data.status).toBe('PENDING');
     });
 
     it('should skip receivable creation when order is not found', async () => {

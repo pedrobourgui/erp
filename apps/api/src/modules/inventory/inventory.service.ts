@@ -289,6 +289,7 @@ export class InventoryService {
         take: limit,
         orderBy,
         include: {
+          product: { select: { id: true, name: true, sku: true } },
           user: { select: { id: true, name: true } },
           fromWarehouse: { select: { id: true, name: true, code: true } },
           toWarehouse: { select: { id: true, name: true, code: true } },
@@ -297,7 +298,42 @@ export class InventoryService {
       this.prisma.inventoryMovement.count({ where }),
     ]);
 
-    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+    return buildPaginatedResponse(
+      data.map((row) => this.toMovementDto(row)),
+      total,
+      { page, limit, sortOrder: 'desc' },
+    );
+  }
+
+  /**
+   * Flatten a movement for the list: the table shows one product, one user and
+   * one warehouse per row, while the model keeps an origin and a destination.
+   */
+  private toMovementDto(row: MovementRow) {
+    // ENTRY lands in the destination; EXIT leaves the origin. A transfer has
+    // both — the destination is the one that matters to the reader.
+    const warehouse = row.toWarehouse ?? row.fromWarehouse;
+
+    return {
+      id: row.id,
+      productId: row.productId,
+      productName: row.product?.name ?? null,
+      productSku: row.product?.sku ?? null,
+      variantId: row.variantId,
+      warehouseId: warehouse?.id ?? null,
+      warehouseName: warehouse?.name ?? null,
+      fromWarehouseId: row.fromWarehouseId ?? null,
+      toWarehouseId: row.toWarehouseId ?? null,
+      type: row.type,
+      reason: row.reason,
+      quantity: row.quantity,
+      unitCost: row.unitCost != null ? Number(row.unitCost) : null,
+      userId: row.userId,
+      // Sales and shipments move stock with no user behind them
+      userName: row.user?.name ?? 'Sistema',
+      notes: row.notes,
+      createdAt: row.createdAt,
+    };
   }
 
   /**
@@ -323,11 +359,42 @@ export class InventoryService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          product: { select: { id: true, name: true, sku: true } },
+          warehouse: { select: { id: true, name: true, code: true } },
+        },
       }),
       this.prisma.stockAlert.count({ where }),
     ]);
 
-    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+    return buildPaginatedResponse(
+      data.map((row) => this.toAlertDto(row)),
+      total,
+      { page, limit, sortOrder: 'desc' },
+    );
+  }
+
+  /**
+   * Flatten a stock alert for the list. The model stores ids and `currentQty`;
+   * the table reads names and `currentStock`, and derives its badge from
+   * `status` — which is `isResolved` spelled out.
+   */
+  private toAlertDto(row: AlertRow) {
+    return {
+      id: row.id,
+      productId: row.productId,
+      productName: row.product?.name ?? null,
+      productSku: row.product?.sku ?? null,
+      variantId: row.variantId,
+      warehouseId: row.warehouseId,
+      warehouseName: row.warehouse?.name ?? null,
+      currentStock: row.currentQty,
+      minStock: row.minStock,
+      isResolved: row.isResolved,
+      status: row.isResolved ? ('RESOLVED' as const) : ('ACTIVE' as const),
+      resolvedAt: row.resolvedAt,
+      createdAt: row.createdAt,
+    };
   }
 
   /**
@@ -736,6 +803,14 @@ export class InventoryService {
         throw new BadRequestException('Cannot create inventory item with negative quantity');
       }
 
+      // The item is created lazily on the first movement, so it inherits the
+      // product's default minimum (SCRUM-37). An item that later gets its own
+      // minimum keeps it — this only seeds the initial value.
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+        select: { defaultMinStock: true },
+      });
+
       await tx.inventoryItem.create({
         data: {
           tenantId,
@@ -745,6 +820,7 @@ export class InventoryService {
           quantity: delta,
           available: delta,
           reserved: 0,
+          minStock: product?.defaultMinStock ?? 0,
         },
       });
     }
@@ -859,4 +935,45 @@ export class InventoryService {
       new StockLowEvent(tenantId, productId, variantId, warehouseId, currentQty, minStock),
     );
   }
+}
+
+// ─── Row shapes returned by the queries above (relations included) ──────────
+
+interface NamedRef {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+interface MovementRow {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  type: MovementType;
+  reason: MovementReason;
+  quantity: number;
+  unitCost: Prisma.Decimal | null;
+  fromWarehouseId: string | null;
+  toWarehouseId: string | null;
+  notes: string | null;
+  userId: string | null;
+  createdAt: Date;
+  product: { id: string; name: string; sku: string } | null;
+  user: { id: string; name: string } | null;
+  fromWarehouse: NamedRef | null;
+  toWarehouse: NamedRef | null;
+}
+
+interface AlertRow {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  warehouseId: string;
+  currentQty: number;
+  minStock: number;
+  isResolved: boolean;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  product: { id: string; name: string; sku: string } | null;
+  warehouse: NamedRef | null;
 }

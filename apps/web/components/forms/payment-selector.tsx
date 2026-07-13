@@ -13,7 +13,12 @@ import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import { usePaymentConditions } from "@/hooks/use-payment-conditions";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Plus, CreditCard } from "lucide-react";
-import { PaymentLine, shouldShowCondition } from "./payment-line";
+import {
+  PaymentLine,
+  shouldShowCondition,
+  requiresLinkedAccount,
+  hasMissingAccount,
+} from "./payment-line";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -22,6 +27,11 @@ interface PaymentSelectorProps {
   setValue: UseFormSetValue<FieldValues>;
   totalAmount: number;
   errors?: Record<string, unknown>;
+  /**
+   * Fires whenever an immediate payment line lacks a linked account — the API
+   * refuses such a sale (SCRUM-30), so the page must block its submit.
+   */
+  onMissingAccountChange?: (missing: boolean) => void;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────
@@ -31,6 +41,7 @@ export function PaymentSelector({
   setValue,
   totalAmount,
   errors,
+  onMissingAccountChange,
 }: PaymentSelectorProps) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -69,6 +80,12 @@ export function PaymentSelector({
       }
     }
   }, [fields.length, totalAmount, payments, setValue]);
+
+  const missingAccount = hasMissingAccount(payments, methods);
+
+  useEffect(() => {
+    onMissingAccountChange?.(missingAccount);
+  }, [missingAccount, onMissingAccountChange]);
 
   const paymentTotal = (payments ?? []).reduce(
     (sum, p) => sum + (Number(p?.amount) || 0),
@@ -115,6 +132,15 @@ export function PaymentSelector({
               (m) => m.id === payment?.paymentMethodId
             );
             const methodType = selectedMethod?.type ?? null;
+            const lineError = (
+              errors as unknown as
+                | Array<{ authorizationCode?: { message?: string } }>
+                | undefined
+            )?.[index];
+
+            const lineMissingAccount =
+              requiresLinkedAccount(methodType) &&
+              !(payment?.financialAccountId || selectedMethod?.defaultAccountId);
 
             return (
               <PaymentLine
@@ -129,6 +155,8 @@ export function PaymentSelector({
                   selectedMethod?.requiresAuthorization ?? false
                 }
                 showCondition={shouldShowCondition(methodType)}
+                authorizationError={lineError?.authorizationCode?.message}
+                missingAccount={lineMissingAccount}
                 onRemove={() => remove(index)}
               />
             );

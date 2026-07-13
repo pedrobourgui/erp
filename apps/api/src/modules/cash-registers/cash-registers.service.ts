@@ -251,10 +251,21 @@ export class CashRegistersService {
       .filter((m) => m.type === 'WITHDRAW')
       .reduce((sum, m) => sum + Number(m.amount), 0);
 
-    // TODO: In a full implementation, sum sales paid in cash during the session
-    // For now, expectedBalance = openingBalance + supplies - withdrawals
+    // Sum sales paid in cash during this session — only CASH payments enter the
+    // physical drawer (assumption: one open session per tenant, so counter sales
+    // are stamped with this session id at creation).
+    const cashSalesAgg = await this.prisma.orderPayment.aggregate({
+      _sum: { amount: true },
+      where: {
+        tenantId,
+        paymentMethod: { type: 'CASH' },
+        order: { cashRegisterSessionId: session.id },
+      },
+    });
+    const cashSales = Number(cashSalesAgg._sum.amount ?? 0);
+
     const expectedBalance =
-      Number(session.openingBalance) + supplies - withdrawals;
+      Number(session.openingBalance) + supplies - withdrawals + cashSales;
 
     const difference = dto.closingBalance - expectedBalance;
 

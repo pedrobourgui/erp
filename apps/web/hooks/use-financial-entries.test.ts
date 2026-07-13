@@ -16,6 +16,7 @@ import api from '@/lib/api';
 import {
   useFinancialEntries,
   useCreateFinancialEntry,
+  useSettleFinancialEntry,
   financialEntryKeys,
 } from './use-financial-entries';
 
@@ -163,6 +164,54 @@ describe('useCreateFinancialEntry', () => {
       date: '2026-07-08',
       paid: false,
       dueDate: '2026-08-08',
+    });
+  });
+});
+
+describe('useSettleFinancialEntry', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should POST the settlement to /financial-entries/:id/settle', async () => {
+    mockedApi.post.mockResolvedValue({
+      data: {
+        success: true,
+        data: { id: 'ar-1', kind: 'RECEIVABLE', status: 'PAID', settledAmount: 250 },
+      },
+    });
+
+    const { result } = renderHook(() => useSettleFinancialEntry(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      id: 'ar-1',
+      kind: 'RECEIVABLE',
+      amount: 250,
+      accountId: 'acc-1',
+    });
+
+    expect(mockedApi.post).toHaveBeenCalledWith('/financial-entries/ar-1/settle', {
+      kind: 'RECEIVABLE',
+      amount: 250,
+      accountId: 'acc-1',
+    });
+  });
+
+  it('should omit amount and account so the API settles the full outstanding balance', async () => {
+    mockedApi.post.mockResolvedValue({
+      data: { success: true, data: { id: 'ap-1', kind: 'PAYABLE', status: 'PAID' } },
+    });
+
+    const { result } = renderHook(() => useSettleFinancialEntry(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({ id: 'ap-1', kind: 'PAYABLE' });
+
+    expect(mockedApi.post).toHaveBeenCalledWith('/financial-entries/ap-1/settle', {
+      kind: 'PAYABLE',
+      amount: undefined,
+      accountId: undefined,
     });
   });
 });

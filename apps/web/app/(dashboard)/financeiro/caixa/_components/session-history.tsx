@@ -45,7 +45,7 @@ const columns: ColumnDef<CashRegisterSession>[] = [
   },
   {
     id: "difference",
-    header: "Diferenca",
+    header: "Diferença",
     cell: (row) => {
       if (row.difference == null) return "—";
       const diff = Number(row.difference);
@@ -78,7 +78,7 @@ export function SessionHistory() {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold tracking-tight">
-        Historico de sessoes
+        Histórico de sessões
       </h2>
       <DataTable
         columns={columns}
@@ -90,8 +90,8 @@ export function SessionHistory() {
           setPage(1);
         }}
         isLoading={isLoading}
-        emptyMessage="Nenhuma sessao registrada"
-        emptyDescription="As sessoes de caixa abertas e fechadas aparecerao aqui."
+        emptyMessage="Nenhuma sessão registrada"
+        emptyDescription="As sessões de caixa abertas e fechadas aparecerão aqui."
       />
     </div>
   );

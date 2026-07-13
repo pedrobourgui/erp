@@ -97,6 +97,15 @@ function createMockPrisma() {
     cashRegisterSession: {
       findFirst: jest.fn(),
     },
+    paymentMethod: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    paymentCondition: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    orderPayment: {
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     orderStatusHistory: {
       findMany: jest.fn(),
       create: jest.fn(),
@@ -296,6 +305,8 @@ describe('OrdersService', () => {
       prisma.product.findMany.mockResolvedValue(products);
       // For generateOrderNumber - no existing orders
       prisma.order.findFirst.mockResolvedValue(null);
+      // A sale (default origin MANUAL) requires an open cash register at creation
+      prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-open-default' });
       prisma.order.create.mockImplementation(async ({ data, include }: Record<string, unknown>) => ({
         id: 'order-uuid-new',
         tenantId: TENANT_ID,
@@ -500,6 +511,162 @@ describe('OrdersService', () => {
           'order.counter_sale',
           expect.anything(),
         );
+      });
+    });
+
+    // ─── order-based sale (origin MANUAL) also requires an open cash register ─
+    describe('order-based sale (origin MANUAL / venda por pedido)', () => {
+      const orderSaleDto = {
+        ...createDto,
+        origin: 'MANUAL',
+      };
+
+      it('should throw ConflictException when there is no open cash register', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, orderSaleDto as any),
+        ).rejects.toThrow(ConflictException);
+
+        // Must not create the order when the cash register is closed
+        expect(prisma.order.create).not.toHaveBeenCalled();
+      });
+
+      it('should look up the open session scoped by tenant and status OPEN', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, orderSaleDto as any),
+        ).rejects.toThrow(ConflictException);
+
+        const whereArg = prisma.cashRegisterSession.findFirst.mock.calls[0][0].where;
+        expect(whereArg.tenantId).toBe(TENANT_ID);
+        expect(whereArg.status).toBe('OPEN');
+      });
+
+      it('should create the order (status PENDING) when a cash register is open', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+
+        await service.create(TENANT_ID, USER_ID, orderSaleDto as any);
+
+        expect(prisma.order.create).toHaveBeenCalled();
+        const data = prisma.order.create.mock.calls[0][0].data;
+        // Order-based sale keeps the PENDING lifecycle (not COMPLETED like the counter sale)
+        expect(data.status).toBe('PENDING');
+      });
+
+      it('should stamp the open session so cash paid on the order reaches the drawer', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+
+        await service.create(TENANT_ID, USER_ID, orderSaleDto as any);
+
+        const data = prisma.order.create.mock.calls[0][0].data;
+        expect(data.cashRegisterSessionId).toBe('session-uuid-001');
+      });
+    });
+
+    // ─── external channels are exempt from the open-cash-register rule ────────
+    describe('external channel origins (exempt)', () => {
+      it('should NOT require an open cash register for marketplace origins', async () => {
+        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+
+        await service.create(
+          TENANT_ID,
+          USER_ID,
+          { ...createDto, origin: 'SHOPEE' } as any,
+        );
+
+        expect(prisma.order.create).toHaveBeenCalled();
+      });
+    });
+
+    // ─── SCRUM-30: payment method must resolve to a financial account ─────────
+    describe('payment method without a linked financial account', () => {
+      // createDto totals 250 (245 - 10 discount + 15 shipping)
+      const payWith = (method: Record<string, unknown>, payment: Record<string, unknown> = {}) => {
+        prisma.paymentMethod.findMany.mockResolvedValue([method]);
+        return {
+          ...createDto,
+          payments: [{ paymentMethodId: method.id, amount: 250, ...payment }],
+        };
+      };
+
+      it('should throw BadRequestException when an immediate method has no account', async () => {
+        const dto = payWith({
+          id: 'pm-cash',
+          name: 'Dinheiro',
+          type: 'CASH',
+          requiresAuthorization: false,
+          defaultAccountId: null,
+        });
+
+        await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(prisma.order.create).not.toHaveBeenCalled();
+      });
+
+      it('should name the offending payment method in the error message', async () => {
+        const dto = payWith({
+          id: 'pm-pix',
+          name: 'PIX',
+          type: 'PIX',
+          requiresAuthorization: false,
+          defaultAccountId: null,
+        });
+
+        await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+          /PIX/,
+        );
+      });
+
+      it('should accept an immediate method that falls back to the default account', async () => {
+        const dto = payWith({
+          id: 'pm-debit',
+          name: 'Cartão Débito',
+          type: 'DEBIT_CARD',
+          requiresAuthorization: false,
+          defaultAccountId: 'acc-001',
+        });
+
+        await service.create(TENANT_ID, USER_ID, dto as any);
+
+        expect(prisma.orderPayment.createMany).toHaveBeenCalled();
+        const rows = prisma.orderPayment.createMany.mock.calls[0][0].data;
+        expect(rows[0].financialAccountId).toBe('acc-001');
+      });
+
+      it('should accept an immediate method when the account comes on the payment', async () => {
+        const dto = payWith(
+          {
+            id: 'pm-cash',
+            name: 'Dinheiro',
+            type: 'CASH',
+            requiresAuthorization: false,
+            defaultAccountId: null,
+          },
+          { financialAccountId: 'acc-explicit' },
+        );
+
+        await service.create(TENANT_ID, USER_ID, dto as any);
+
+        const rows = prisma.orderPayment.createMany.mock.calls[0][0].data;
+        expect(rows[0].financialAccountId).toBe('acc-explicit');
+      });
+
+      it('should NOT block a term method (boleto) without a linked account', async () => {
+        // Boleto settles later — the account is resolved at settlement, not at the sale
+        const dto = payWith({
+          id: 'pm-boleto',
+          name: 'Boleto',
+          type: 'BOLETO',
+          requiresAuthorization: false,
+          defaultAccountId: null,
+        });
+
+        await service.create(TENANT_ID, USER_ID, dto as any);
+
+        expect(prisma.order.create).toHaveBeenCalled();
       });
     });
   });

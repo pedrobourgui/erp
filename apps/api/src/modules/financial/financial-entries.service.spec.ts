@@ -29,13 +29,13 @@ function createMockPrisma(mockTx: ReturnType<typeof createMockTx>) {
       create: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
-      aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }),
+      aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null, paidAmount: null } }),
     },
     accountsPayable: {
       create: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
-      aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }),
+      aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null, paidAmount: null } }),
     },
     $transaction: jest.fn((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx)),
   };
@@ -244,7 +244,7 @@ describe('FinancialEntriesService', () => {
 
       expect(prisma.financialTransaction.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ tenantId: TENANT_A, referenceType: 'manual' }),
+          where: expect.objectContaining({ tenantId: TENANT_A }),
         }),
       );
       expect(result.data).toHaveLength(1);
@@ -252,6 +252,131 @@ describe('FinancialEntriesService', () => {
       expect(result.meta.total).toBe(1);
       expect(result.totals.revenue).toBe(100);
       expect(result.totals.balance).toBe(100);
+    });
+
+    // ─── SCRUM-41: sales must show up as receitas ─────────────────────────
+    describe('sales (SCRUM-41)', () => {
+      it('should NOT restrict transactions to manual entries', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        // A sale books a transaction with referenceType 'order'; filtering by
+        // 'manual' is what used to hide it from the list.
+        expect(where.referenceType).toBeUndefined();
+      });
+
+      it('should list the transaction of a counter sale as a receita', async () => {
+        prisma.financialTransaction.findMany.mockResolvedValue([
+          {
+            id: 'trx-sale',
+            type: 'CREDIT',
+            amount: 250,
+            description: 'Venda balcão PED-000001 - Dinheiro',
+            createdAt: new Date('2026-07-10'),
+            accountId: 'acc-1',
+            chartAccountId: null,
+            chartAccount: null,
+          },
+        ]);
+        prisma.financialTransaction.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0]).toMatchObject({
+          kind: 'TRANSACTION',
+          type: 'REVENUE',
+          amount: 250,
+          description: 'Venda balcão PED-000001 - Dinheiro',
+        });
+      });
+
+      it('should NOT restrict títulos to manual entries', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const where = prisma.accountsReceivable.findMany.mock.calls[0][0].where;
+        expect(where.metadata).toBeUndefined();
+        expect(where.tenantId).toBe(TENANT_A);
+      });
+
+      it('should list only open títulos (a settled one is represented by its transaction)', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const where = prisma.accountsReceivable.findMany.mock.calls[0][0].where;
+        expect(where.status).toEqual({
+          in: ['PENDING', 'PARTIALLY_PAID', 'OVERDUE'],
+        });
+      });
+
+      it('should skip títulos entirely when filtering by PAID', async () => {
+        await service.findAll(TENANT_A, { status: 'PAID' });
+
+        expect(prisma.accountsReceivable.findMany).not.toHaveBeenCalled();
+        expect(prisma.accountsPayable.findMany).not.toHaveBeenCalled();
+        expect(prisma.financialTransaction.findMany).toHaveBeenCalled();
+      });
+
+      it('should report the outstanding balance of a partially paid título', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          {
+            id: 'ar-1',
+            amount: 250,
+            paidAmount: 100,
+            description: 'PED-000002 - Boleto',
+            dueDate: new Date('2026-08-01'),
+            status: 'PARTIALLY_PAID',
+            chartAccountId: null,
+            chartAccount: null,
+            metadata: null,
+            orderPayment: { financialAccountId: 'acc-1' },
+            paymentMethod: null,
+          },
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        // 250 owed - 100 already received = 150 still open
+        expect(result.data[0]).toMatchObject({ kind: 'RECEIVABLE', amount: 150 });
+      });
+
+      it('should total open títulos by their outstanding balance', async () => {
+        prisma.accountsReceivable.aggregate.mockResolvedValue({
+          _sum: { amount: 250, paidAmount: 100 },
+        });
+
+        const result = await service.findAll(TENANT_A, { type: 'REVENUE' });
+
+        expect(result.totals.revenue).toBe(150);
+      });
+
+      it('should resolve the account name of a sale título from its order payment', async () => {
+        prisma.financialAccount.findMany.mockResolvedValue([
+          { id: 'acc-1', name: 'Conta Corrente' },
+        ]);
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          {
+            id: 'ar-1',
+            amount: 250,
+            paidAmount: 0,
+            description: 'PED-000002 - Boleto',
+            dueDate: new Date('2026-08-01'),
+            status: 'PENDING',
+            chartAccountId: null,
+            chartAccount: null,
+            metadata: null,
+            orderPayment: { financialAccountId: 'acc-1' },
+            paymentMethod: null,
+          },
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0]).toMatchObject({
+          accountId: 'acc-1',
+          accountName: 'Conta Corrente',
+        });
+      });
     });
 
     it('should exclude transactions when filtering by OPEN status', async () => {
@@ -286,15 +411,17 @@ describe('FinancialEntriesService', () => {
       expect(result.totals.balance).toBe(180);
     });
 
-    it('should filter títulos by the manual metadata flag scoped to the tenant', async () => {
+    it('should scope títulos by tenant', async () => {
       await service.findAll(TENANT_B, {});
 
       expect(prisma.accountsReceivable.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            tenantId: TENANT_B,
-            metadata: { path: ['manual'], equals: true },
-          }),
+          where: expect.objectContaining({ tenantId: TENANT_B }),
+        }),
+      );
+      expect(prisma.accountsPayable.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenantId: TENANT_B }),
         }),
       );
     });

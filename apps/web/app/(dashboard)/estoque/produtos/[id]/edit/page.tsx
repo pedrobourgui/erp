@@ -40,6 +40,13 @@ const productSchema = z.object({
     z.number({ required_error: "Preço de venda é obrigatório", invalid_type_error: "Preço de venda deve ser um número" }).min(0.01, "Preço de venda é obrigatório"),
   ),
   promoPrice: optionalNumber,
+  defaultMinStock: z.preprocess(
+    (val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
+    z
+      .number()
+      .int("Estoque mínimo deve ser um número inteiro")
+      .min(0, "Estoque mínimo não pode ser negativo"),
+  ),
   ncm: z.string().max(10, "NCM deve ter no máximo 10 caracteres").optional(),
   cest: z.string().max(9, "CEST deve ter no máximo 9 caracteres").optional(),
   ean: z.string().max(14, "EAN deve ter no máximo 14 caracteres").optional(),
@@ -101,6 +108,7 @@ export default function EditProductPage() {
     defaultValues: {
       name: "", sku: "", description: "", category: "", brand: "",
       costPrice: 0, markup: 0, salePrice: 0, promoPrice: 0,
+      defaultMinStock: 0,
       ncm: "", cest: "", ean: "",
       weight: 0, height: 0, width: 0, length: 0,
     },
@@ -113,6 +121,7 @@ export default function EditProductPage() {
         sku: product.sku,
         description: product.description ?? "",
         costPrice: product.costPrice,
+        defaultMinStock: product.defaultMinStock ?? 0,
         salePrice: product.salePrice,
         promoPrice: product.promoPrice ?? 0,
         markup: product.markup ?? 0,
@@ -148,6 +157,7 @@ export default function EditProductPage() {
         categoryId: data.category || undefined,
         brandId: data.brand || undefined,
         costPrice: data.costPrice,
+        defaultMinStock: data.defaultMinStock,
         salePrice: data.salePrice,
         promoPrice: data.promoPrice,
         markup: data.markup,
@@ -249,6 +259,25 @@ export default function EditProductPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <SearchableSelect name="category" control={control} options={categoryOptions} label="Categoria" placeholder="Selecionar categoria..." />
                 <SearchableSelect name="brand" control={control} options={brandOptions} label="Marca" placeholder="Selecionar marca..." />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Estoque mínimo</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    {...register("defaultMinStock", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Gera alerta quando o estoque do produto ficar neste nível ou
+                    abaixo. Vale para cada depósito onde o produto tiver estoque.
+                  </p>
+                  {fieldError("defaultMinStock") && (
+                    <p className="text-xs text-destructive">{fieldError("defaultMinStock")}</p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { AxiosError } from 'axios';
+import { getApiErrorMessage } from './api';
+
+function axiosErrorWith(data: unknown): AxiosError {
+  const err = new AxiosError('Request failed');
+  err.response = { data, status: 400, statusText: 'Bad Request', headers: {}, config: {} } as never;
+  return err;
+}
+
+describe('getApiErrorMessage', () => {
+  it('returns the string message from a NestJS-style error body', () => {
+    expect(getApiErrorMessage(axiosErrorWith({ message: 'Estoque insuficiente' }))).toBe(
+      'Estoque insuficiente'
+    );
+  });
+
+  it('joins an array of messages', () => {
+    expect(
+      getApiErrorMessage(axiosErrorWith({ message: ['Campo A inválido', 'Campo B inválido'] }))
+    ).toBe('Campo A inválido, Campo B inválido');
+  });
+
+  it('returns undefined when there is no usable message', () => {
+    expect(getApiErrorMessage(axiosErrorWith({}))).toBeUndefined();
+    expect(getApiErrorMessage(axiosErrorWith({ message: '   ' }))).toBeUndefined();
+    expect(getApiErrorMessage(axiosErrorWith({ message: 42 }))).toBeUndefined();
+  });
+
+  it('returns undefined for non-Axios errors', () => {
+    expect(getApiErrorMessage(new Error('boom'))).toBeUndefined();
+    expect(getApiErrorMessage('nope')).toBeUndefined();
+    expect(getApiErrorMessage(undefined)).toBeUndefined();
+  });
+});
 
 describe('api module', () => {
   beforeEach(() => {

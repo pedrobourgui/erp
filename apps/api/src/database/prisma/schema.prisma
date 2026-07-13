@@ -587,6 +587,11 @@ model Product {
   width     Decimal? @db.Decimal(10, 2)
   length    Decimal? @db.Decimal(10, 2)
 
+  // Estoque
+  // Mínimo padrão do produto: semeia o minStock de cada InventoryItem criado.
+  // O item pode ter um mínimo próprio, que prevalece sobre este.
+  defaultMinStock Int @default(0)
+
   // Organização
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
@@ -608,6 +613,8 @@ model Product {
   variants           ProductVariant[]
   images             ProductImage[]
   inventoryItems     InventoryItem[]
+  inventoryMovements InventoryMovement[]
+  stockAlerts        StockAlert[]
   orderItems         OrderItem[]
   quotationItems     QuotationItem[]
   purchaseOrderItems PurchaseOrderItem[]
@@ -689,6 +696,7 @@ model Warehouse {
   inventoryItems  InventoryItem[]
   movementsFrom   InventoryMovement[] @relation("MovementFrom")
   movementsTo     InventoryMovement[] @relation("MovementTo")
+  stockAlerts     StockAlert[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -733,6 +741,7 @@ model InventoryMovement {
   tenantId      String
 
   productId     String
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   variantId     String?
   type          MovementType
   reason        MovementReason
@@ -768,8 +777,10 @@ model StockAlert {
   tenantId    String
 
   productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   variantId   String?
   warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
 
   currentQty  Int
   minStock    Int
@@ -830,6 +841,11 @@ model Order {
   sellerId      String?
   seller        User?       @relation(fields: [sellerId], references: [id])
 
+  // Sessão de caixa (venda de balcão) — vincula a venda em dinheiro à sessão
+  // aberta no momento da criação, para conciliação do caixa no fechamento.
+  cashRegisterSessionId String?
+  cashRegisterSession   CashRegisterSession? @relation(fields: [cashRegisterSessionId], references: [id])
+
   // Marketplace
   marketplaceOrderId String? // ID do pedido no marketplace
   marketplaceData    Json?   // dados extras do marketplace
@@ -874,6 +890,7 @@ model Order {
   @@index([tenantId, origin])
   @@index([tenantId, createdAt])
   @@index([tenantId, marketplaceOrderId])
+  @@index([cashRegisterSessionId])
   @@map("orders")
 }
 
@@ -1312,6 +1329,7 @@ model CashRegisterSession {
   notes           String?           @db.VarChar(500)
 
   movements       CashRegisterMovement[]
+  orders          Order[]
 
   @@index([tenantId])
   @@index([cashRegisterId])

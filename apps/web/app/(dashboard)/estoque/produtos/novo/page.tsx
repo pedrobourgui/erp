@@ -51,6 +51,15 @@ const productSchema = z.object({
   ),
   promoPrice: optionalNumber,
 
+  // Estoque
+  defaultMinStock: z.preprocess(
+    (val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
+    z
+      .number()
+      .int("Estoque mínimo deve ser um número inteiro")
+      .min(0, "Estoque mínimo não pode ser negativo"),
+  ),
+
   // Fiscal
   ncm: z.string().max(10, "NCM deve ter no máximo 10 caracteres").optional(),
   cest: z.string().max(9, "CEST deve ter no máximo 9 caracteres").optional(),
@@ -116,6 +125,7 @@ export default function NewProductPage() {
       category: "",
       brand: "",
       costPrice: 0,
+      defaultMinStock: 0,
       markup: 0,
       salePrice: 0,
       promoPrice: 0,
@@ -166,6 +176,7 @@ export default function NewProductPage() {
         ncm: data.ncm,
         cest: data.cest,
         ean: data.ean,
+        defaultMinStock: data.defaultMinStock,
         weight: data.weight,
         height: data.height,
         width: data.width,
@@ -295,6 +306,28 @@ export default function NewProductPage() {
                   label="Marca"
                   placeholder="Selecionar marca..."
                 />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Estoque mínimo</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    {...register("defaultMinStock", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Gera alerta quando o estoque do produto ficar neste nível ou
+                    abaixo. Vale para cada depósito onde o produto tiver estoque.
+                  </p>
+                  {fieldError("defaultMinStock") && (
+                    <p className="text-xs text-destructive">
+                      {fieldError("defaultMinStock")}
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
