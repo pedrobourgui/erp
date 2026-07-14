@@ -1,9 +1,10 @@
 import {
   Injectable,
   NotFoundException,
-  ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { Prisma, BankAccountType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import {
@@ -11,6 +12,7 @@ import {
   UpdateFinancialAccountDto,
   FinancialAccountQueryDto,
 } from './dto/financial-account.dto';
+import { TransferBetweenAccountsDto } from './dto/transfer.dto';
 import {
   PaginatedResponse,
   buildPaginatedResponse,
@@ -161,5 +163,118 @@ export class FinancialAccountsService {
     );
 
     return updated;
+  }
+
+  /**
+   * Transferência entre contas — SCRUM-14.
+   * Debita a origem e credita o destino atomicamente, gerando dois
+   * FinancialTransaction vinculados por um transferId compartilhado.
+   */
+  async transfer(tenantId: string, dto: TransferBetweenAccountsDto) {
+    if (dto.fromAccountId === dto.toAccountId) {
+      throw new BadRequestException(
+        'A conta de origem e a de destino devem ser diferentes',
+      );
+    }
+
+    const amount = Math.round(dto.amount * 100) / 100;
+    if (amount <= 0) {
+      throw new BadRequestException('O valor da transferência deve ser maior que zero');
+    }
+
+    const [from, to] = await Promise.all([
+      this.prisma.financialAccount.findFirst({
+        where: { id: dto.fromAccountId, tenantId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.financialAccount.findFirst({
+        where: { id: dto.toAccountId, tenantId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    if (!from) {
+      throw new NotFoundException(
+        `Financial account with id ${dto.fromAccountId} not found for tenant ${tenantId}`,
+      );
+    }
+    if (!to) {
+      throw new NotFoundException(
+        `Financial account with id ${dto.toAccountId} not found for tenant ${tenantId}`,
+      );
+    }
+
+    const transferId = randomUUID();
+    const when = dto.date ? new Date(dto.date) : new Date();
+    const description =
+      dto.description?.trim() || `Transferência ${from.name} → ${to.name}`;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const source = await tx.financialAccount.update({
+        where: { id: from.id },
+        data: { balance: { decrement: amount } },
+        select: { balance: true },
+      });
+
+      const destination = await tx.financialAccount.update({
+        where: { id: to.id },
+        data: { balance: { increment: amount } },
+        select: { balance: true },
+      });
+
+      const debit = await tx.financialTransaction.create({
+        data: {
+          tenantId,
+          accountId: from.id,
+          type: 'DEBIT',
+          amount,
+          balanceAfter: source.balance,
+          description,
+          referenceType: 'transfer',
+          referenceId: transferId,
+          metadata: { transferId, direction: 'out', counterpartyAccountId: to.id },
+          createdAt: when,
+        },
+      });
+
+      const credit = await tx.financialTransaction.create({
+        data: {
+          tenantId,
+          accountId: to.id,
+          type: 'CREDIT',
+          amount,
+          balanceAfter: destination.balance,
+          description,
+          referenceType: 'transfer',
+          referenceId: transferId,
+          metadata: { transferId, direction: 'in', counterpartyAccountId: from.id },
+          createdAt: when,
+        },
+      });
+
+      return {
+        sourceBalance: source.balance,
+        destinationBalance: destination.balance,
+        debit,
+        credit,
+      };
+    });
+
+    this.logger.log(
+      `Transfer ${transferId}: ${amount} from ${from.id} to ${to.id} (tenant ${tenantId})`,
+    );
+
+    return {
+      transferId,
+      amount,
+      description,
+      date: when,
+      fromAccountId: from.id,
+      toAccountId: to.id,
+      sourceBalance: result.sourceBalance,
+      destinationBalance: result.destinationBalance,
+      debitTransactionId: result.debit.id,
+      creditTransactionId: result.credit.id,
+    };
   }
 }

@@ -39,9 +39,11 @@ import {
   Clock,
   CreditCard,
   User,
+  ArrowRightLeft,
 } from "lucide-react";
 import type { OrderStatus } from "@erp/shared-types";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ExchangeDialog } from "./_components/exchange-dialog";
 
 // ─── Tabs ───────────────────────────────────────────────────────────────
 
@@ -268,7 +270,9 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "itens" && <ItemsTab items={order.items ?? []} />}
+      {activeTab === "itens" && (
+        <ItemsTab items={order.items ?? []} orderId={orderId} />
+      )}
       {activeTab === "cliente" && <CustomerTab order={order} />}
       {activeTab === "envio" && <ShippingTab order={order} />}
       {activeTab === "financeiro" && <FinanceTab order={order} />}
@@ -292,8 +296,9 @@ export default function OrderDetailPage() {
 
 // ─── Items tab ──────────────────────────────────────────────────────────
 
-function ItemsTab({ items }: { items: OrderItem[] }) {
+function ItemsTab({ items, orderId }: { items: OrderItem[]; orderId: string }) {
   const subtotal = items.reduce((sum, item) => sum + Number(item.totalPrice ?? 0), 0);
+  const [exchangeItem, setExchangeItem] = useState<OrderItem | null>(null);
 
   return (
     <Card>
@@ -322,6 +327,9 @@ function ItemsTab({ items }: { items: OrderItem[] }) {
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Total
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  Ações
                 </th>
               </tr>
             </thead>
@@ -359,6 +367,16 @@ function ItemsTab({ items }: { items: OrderItem[] }) {
                   <td className="px-4 py-3 text-right font-medium">
                     {formatCurrency(Number(item.totalPrice))}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExchangeItem(item)}
+                    >
+                      <ArrowRightLeft className="mr-1 h-3.5 w-3.5" />
+                      Trocar
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -373,11 +391,19 @@ function ItemsTab({ items }: { items: OrderItem[] }) {
                 <td className="px-4 py-3 text-right font-semibold">
                   {formatCurrency(subtotal)}
                 </td>
+                <td />
               </tr>
             </tfoot>
           </table>
         </div>
       </CardContent>
+
+      <ExchangeDialog
+        open={!!exchangeItem}
+        onOpenChange={(open) => !open && setExchangeItem(null)}
+        orderId={orderId}
+        item={exchangeItem}
+      />
     </Card>
   );
 }

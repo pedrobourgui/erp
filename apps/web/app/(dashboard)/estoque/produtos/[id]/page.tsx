@@ -19,9 +19,16 @@ import {
   Package,
   DollarSign,
   Barcode,
-  Ruler,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ProductGeneralCard,
+  ProductFiscalCard,
+} from "./_components/product-general-card";
+import { ProductVariantsCard } from "./_components/product-variants-card";
+import { ProductImagesCard } from "./_components/product-images-card";
+import { ProductStockCard } from "./_components/product-stock-card";
+import type { ProductDetail } from "./_components/types";
 
 // ─── Page ───────────────────────────────────────────────────────────────
 
@@ -35,7 +42,7 @@ export default function ProductDetailPage() {
   const { addToast } = useToast();
   const [showDelete, setShowDelete] = useState(false);
 
-  const product = productResp?.data;
+  const product = productResp?.data as ProductDetail | undefined;
 
   if (isLoading) {
     return (
@@ -145,6 +152,25 @@ export default function ProductDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ProductGeneralCard product={product} />
+      <ProductFiscalCard product={product} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ProductVariantsCard variants={product.variants ?? []} />
+        <ProductStockCard
+          items={product.inventoryItems ?? []}
+          summary={
+            product.inventorySummary ?? {
+              totalQuantity: 0,
+              totalReserved: 0,
+              totalAvailable: 0,
+            }
+          }
+        />
+      </div>
+
+      <ProductImagesCard images={product.images ?? []} />
 
       <ConfirmDialog
         open={showDelete}

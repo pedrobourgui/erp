@@ -13,16 +13,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { KPICard } from "@/components/charts/kpi-card";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { useDashboardData, type DashboardKPI } from "@/hooks/use-dashboard";
+import { formatCurrency } from "@/lib/utils";
+import {
+  useDashboardData,
+  type DashboardKPI,
+  type SalesTrendPoint,
+} from "@/hooks/use-dashboard";
 import { useRecentOrders, type OrderListItem } from "@/hooks/use-orders";
 import {
   DollarSign,
-  ShoppingCart,
   TrendingUp,
   AlertTriangle,
   ArrowRight,
-  Loader2,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -32,6 +36,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from "recharts";
 
 // ─── Shared chart tooltip style ──────────────────────────────────────────
@@ -52,6 +58,7 @@ export default function DashboardPage() {
 
   const kpis = dashResp?.data?.kpis;
   const ordersByStatus = dashResp?.data?.ordersByStatus ?? [];
+  const salesTrend = dashResp?.data?.salesTrend ?? [];
   const recentOrders = recentOrdersResp?.data ?? [];
 
   return (
@@ -62,6 +69,8 @@ export default function DashboardPage() {
       </div>
 
       <KPISection kpis={kpis} isLoading={dashLoading} />
+
+      <SalesTrendSection data={salesTrend} isLoading={dashLoading} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <RecentOrdersSection orders={recentOrders} isLoading={ordersLoading} />
@@ -82,8 +91,8 @@ function KPISection({
 }) {
   if (isLoading || !kpis) {
     return (
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-36 animate-pulse rounded-xl border bg-muted" />
         ))}
       </div>
@@ -91,47 +100,124 @@ function KPISection({
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
       <div className="animate-slide-up stagger-1">
         <KPICard
-          label="Faturamento"
-          value={kpis.revenue.value}
-          formattedValue={formatCurrency(kpis.revenue.value)}
-          trend={{ value: kpis.revenue.trend, label: "vs. mês anterior" }}
+          label="Vendas do Dia"
+          value={kpis.todaySales.value}
+          formattedValue={formatCurrency(kpis.todaySales.value)}
           icon={<DollarSign className="h-5 w-5" />}
-          sparklineData={kpis.revenue.sparkline}
+          sparklineData={kpis.todaySales.sparkline}
         />
       </div>
       <div className="animate-slide-up stagger-2">
         <KPICard
-          label="Pedidos"
-          value={kpis.orders.value}
-          formattedValue={kpis.orders.value.toLocaleString("pt-BR")}
-          trend={{ value: kpis.orders.trend, label: "vs. mês anterior" }}
-          icon={<ShoppingCart className="h-5 w-5" />}
-          sparklineData={kpis.orders.sparkline}
+          label="Ticket Médio"
+          value={kpis.avgTicket.value}
+          formattedValue={formatCurrency(kpis.avgTicket.value)}
+          trend={
+            kpis.avgTicket.trend !== undefined
+              ? { value: kpis.avgTicket.trend, label: "vs. mês anterior" }
+              : undefined
+          }
+          icon={<TrendingUp className="h-5 w-5" />}
         />
       </div>
       <div className="animate-slide-up stagger-3">
         <KPICard
-          label="Ticket Médio"
-          value={kpis.avgTicket.value}
-          formattedValue={formatCurrency(kpis.avgTicket.value)}
-          trend={{ value: kpis.avgTicket.trend, label: "vs. mês anterior" }}
-          icon={<TrendingUp className="h-5 w-5" />}
-          sparklineData={kpis.avgTicket.sparkline}
+          label="A Receber (aberto)"
+          value={kpis.receivablesOpen.value}
+          formattedValue={formatCurrency(kpis.receivablesOpen.value)}
+          icon={<ArrowDownLeft className="h-5 w-5" />}
         />
       </div>
       <div className="animate-slide-up stagger-4">
         <KPICard
+          label="A Pagar (aberto)"
+          value={kpis.payablesOpen.value}
+          formattedValue={formatCurrency(kpis.payablesOpen.value)}
+          icon={<ArrowUpRight className="h-5 w-5" />}
+        />
+      </div>
+      <div className="animate-slide-up stagger-5">
+        <KPICard
           label="Estoque Crítico"
           value={kpis.lowStockAlerts.value}
           formattedValue={`${kpis.lowStockAlerts.value} itens`}
-          trend={{ value: kpis.lowStockAlerts.trend, label: "vs. mês anterior" }}
           icon={<AlertTriangle className="h-5 w-5" />}
         />
       </div>
     </div>
+  );
+}
+
+// ─── Sales Trend Section ────────────────────────────────────────────────
+
+function SalesTrendSection({
+  data,
+  isLoading,
+}: {
+  data: SalesTrendPoint[];
+  isLoading: boolean;
+}) {
+  const hasSales = data.some((d) => d.total > 0);
+
+  return (
+    <Card className="animate-slide-up">
+      <CardHeader>
+        <CardTitle className="text-lg font-heading">Vendas do Período</CardTitle>
+        <CardDescription>Faturamento diário dos últimos 14 dias</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="h-[240px] animate-pulse rounded bg-muted" />
+        ) : !hasSales ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Sem vendas no período
+          </p>
+        ) : (
+          <div className="h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="salesTrendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(v: string) => v.slice(5)}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v: number) => formatCurrency(v)}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={90}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v: number) => [formatCurrency(v), "Vendas"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  fill="url(#salesTrendFill)"
+                  name="Vendas"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

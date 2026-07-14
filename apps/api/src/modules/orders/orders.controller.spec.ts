@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { ExchangeOrderItemUseCase } from './use-cases/exchange-order-item.use-case';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -49,6 +50,7 @@ describe('OrdersController', () => {
       controllers: [OrdersController],
       providers: [
         { provide: OrdersService, useValue: ordersService },
+        { provide: ExchangeOrderItemUseCase, useValue: { execute: jest.fn() } },
         { provide: PrismaService, useValue: {} },
         Reflector,
       ],

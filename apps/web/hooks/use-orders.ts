@@ -253,6 +253,42 @@ export function useCreateOrder() {
   });
 }
 
+// ─── Exchange order item (SCRUM-21) ─────────────────────────────────────
+
+export interface ExchangeOrderItemPayload {
+  id: string; // order id
+  orderItemId: string;
+  newProductId: string;
+  newVariantId?: string;
+  quantity?: number;
+  notes?: string;
+}
+
+export interface ExchangeResult {
+  orderId: string;
+  difference: number;
+  differenceKind: "RECEIVABLE" | "PAYABLE" | "NONE";
+  totalAmount: number;
+}
+
+export function useExchangeOrderItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: ExchangeOrderItemPayload) => {
+      const { data } = await api.post<ApiResponse<ExchangeResult>>(
+        `/orders/${id}/exchange`,
+        payload
+      );
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+    },
+  });
+}
+
 export function useRecentOrders(limit: number = 5) {
   return useQuery({
     queryKey: ["orders", "recent", limit],

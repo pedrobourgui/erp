@@ -15,12 +15,15 @@ import {
 import {
   useCustomers,
   useDeleteCustomer,
+  customerKeys,
   type CustomerListItem,
   type CustomerSegment,
 } from "@/hooks/use-customers";
+import { useQueryClient } from "@tanstack/react-query";
+import { ImportCsvDialog } from "@/components/forms/import-csv-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { maskDocument, maskPhone } from "@/lib/masks";
-import { Plus, SlidersHorizontal, X, Eye, Trash2 } from "lucide-react";
+import { Plus, Upload, SlidersHorizontal, X, Eye, Trash2 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 
 // ─── Config ─────────────────────────────────────────────────────────────
@@ -178,6 +181,8 @@ export default function CustomersPage() {
   const [sort, setSort] = useState<SortState | null>(null);
   const [segmentFilter, setSegmentFilter] = useState<CustomerSegment | "">("");
   const [showFilters, setShowFilters] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useCustomers({
     page,
@@ -204,11 +209,27 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">Gerencie sua base de clientes</p>
         </div>
-        <Button onClick={() => router.push("/clientes/novo")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button onClick={() => router.push("/clientes/novo")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
+
+      <ImportCsvDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        domain="customers"
+        title="Importar clientes via CSV"
+        onCompleted={() =>
+          queryClient.invalidateQueries({ queryKey: customerKeys.lists() })
+        }
+      />
 
       <div className="flex items-center gap-2">
         <Button

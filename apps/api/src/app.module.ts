@@ -26,6 +26,8 @@ import { PaymentConditionsModule } from './modules/payment-conditions/payment-co
 import { HealthModule } from './modules/health/health.module';
 import { EventsModule } from './events/events.module';
 import { JobsModule } from './jobs/jobs.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { ImportsModule } from './modules/imports/imports.module';
 import { appConfig } from './config/app.config';
 
 @Module({
@@ -103,6 +105,8 @@ import { appConfig } from './config/app.config';
     // Infrastructure
     EventsModule,
     JobsModule,
+    StorageModule,
+    ImportsModule,
   ],
 })
 export class AppModule {}

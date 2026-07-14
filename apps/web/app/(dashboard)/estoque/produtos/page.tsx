@@ -12,9 +12,12 @@ import {
   type ColumnDef,
   type SortState,
 } from "@/components/tables/data-table";
-import { useProducts, useDeleteProduct } from "@/hooks/use-products";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProducts, useDeleteProduct, productKeys } from "@/hooks/use-products";
+import { ImportCsvDialog } from "@/components/forms/import-csv-dialog";
 import { formatCurrency } from "@/lib/utils";
 import {
+  Upload,
   Plus,
   SlidersHorizontal,
   X,
@@ -195,6 +198,8 @@ export default function ProductsListPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const queryClient = useQueryClient();
   // Data
   const { data, isLoading } = useProducts({
     page,
@@ -229,11 +234,27 @@ export default function ProductsListPage() {
             Gerencie seu catálogo de produtos
           </p>
         </div>
-        <Button onClick={() => router.push("/estoque/produtos/novo")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Produto
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button onClick={() => router.push("/estoque/produtos/novo")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
+
+      <ImportCsvDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        domain="products"
+        title="Importar produtos via CSV"
+        onCompleted={() =>
+          queryClient.invalidateQueries({ queryKey: productKeys.lists() })
+        }
+      />
 
       {/* Filters toggle */}
       <div className="flex items-center gap-2">

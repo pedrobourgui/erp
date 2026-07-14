@@ -18,6 +18,8 @@ import {
   CancelOrderDto,
   OrderQueryDto,
 } from './dto/order.dto';
+import { ExchangeOrderItemDto } from './dto/exchange-order-item.dto';
+import { ExchangeOrderItemUseCase } from './use-cases/exchange-order-item.use-case';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -31,7 +33,10 @@ import {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly exchangeOrderItem: ExchangeOrderItemUseCase,
+  ) {}
 
   @Get()
   @RequirePermissions('orders:read')
@@ -91,6 +96,20 @@ export class OrdersController {
   ) {
     const order = await this.ordersService.cancel(tenantId, id, userId, dto);
     return { success: true, data: order };
+  }
+
+  @Post(':id/exchange')
+  @RequirePermissions('orders:update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Exchange an order item for another product/variant' })
+  async exchange(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @Param('id') id: string,
+    @Body() dto: ExchangeOrderItemDto,
+  ) {
+    const result = await this.exchangeOrderItem.execute(tenantId, id, userId, dto);
+    return { success: true, data: result };
   }
 
   @Get(':id/timeline')

@@ -17,6 +17,7 @@ import {
   UpdateFinancialAccountDto,
   FinancialAccountQueryDto,
 } from './dto/financial-account.dto';
+import { TransferBetweenAccountsDto } from './dto/transfer.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -62,6 +63,18 @@ export class FinancialAccountsController {
   ) {
     const account = await this.financialAccountsService.create(tenantId, dto);
     return { success: true, data: account };
+  }
+
+  @Post('transfer')
+  @RequirePermissions('financial:create')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Transfer funds between two financial accounts' })
+  async transfer(
+    @CurrentTenant() tenantId: string,
+    @Body() dto: TransferBetweenAccountsDto,
+  ) {
+    const result = await this.financialAccountsService.transfer(tenantId, dto);
+    return { success: true, data: result };
   }
 
   @Patch(':id')

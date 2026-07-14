@@ -10,11 +10,16 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, InviteUserDto, PaginationDto } from './dto/user.dto';
-import { CurrentTenant } from '../../common/decorators/tenant.decorator';
+import { UpdateProfileDto, ChangePasswordDto } from './dto/profile.dto';
+import { UploadedFileLike } from '../storage/storage.service';
+import { CurrentTenant, CurrentUser } from '../../common/decorators/tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -42,6 +47,55 @@ export class UsersController {
       success: true,
       ...result,
     };
+  }
+
+  // ─── Self-service profile (SCRUM-23) ────────────────────────────────────
+  // Declared before the ':id' routes so "me" is not captured as an id param.
+
+  @Get('me')
+  @ApiOperation({ summary: 'Obter o perfil do usuário autenticado' })
+  async getOwnProfile(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+  ) {
+    const user = await this.usersService.getOwnProfile(tenantId, userId);
+    return { success: true, data: user };
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Atualizar o próprio cadastro' })
+  async updateOwnProfile(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const user = await this.usersService.updateOwnProfile(tenantId, userId, dto);
+    return { success: true, data: user };
+  }
+
+  @Post('me/password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trocar a própria senha' })
+  async changeOwnPassword(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.usersService.changeOwnPassword(tenantId, userId, dto);
+    return { success: true };
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Enviar/atualizar o próprio avatar' })
+  async updateOwnAvatar(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @UploadedFile() file: UploadedFileLike,
+  ) {
+    const user = await this.usersService.updateOwnAvatar(tenantId, userId, file);
+    return { success: true, data: user };
   }
 
   @Get(':id')
