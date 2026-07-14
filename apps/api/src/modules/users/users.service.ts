@@ -10,9 +10,28 @@ import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { RedisService } from '../../database/redis/redis.service';
+import {
+  StorageService,
+  UploadedFileLike,
+} from '../storage/storage.service';
 import { CreateUserDto, UpdateUserDto, InviteUserDto } from './dto/user.dto';
+import { UpdateProfileDto, ChangePasswordDto } from './dto/profile.dto';
 
 const BCRYPT_SALT_ROUNDS = 12;
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const PROFILE_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  status: true,
+  avatar: true,
+  roleId: true,
+  role: { select: { id: true, name: true } },
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 @Injectable()
 export class UsersService {
@@ -23,6 +42,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly storage: StorageService,
   ) {}
 
   async findAll(tenantId: string, pagination: { page: number; limit: number }) {
@@ -271,5 +291,132 @@ export class UsersService {
     });
 
     this.logger.log(`Usuário removido (soft delete): ${id} no tenant ${tenantId}`);
+  }
+
+  // ─── Self-service profile (SCRUM-23) ────────────────────────────────────
+
+  /** Loads the authenticated user's own profile. */
+  async getOwnProfile(tenantId: string, userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, deletedAt: null },
+      select: PROFILE_SELECT,
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    return user;
+  }
+
+  /** Updates the authenticated user's own cadastral data. */
+  async updateOwnProfile(tenantId: string, userId: string, dto: UpdateProfileDto) {
+    const existing = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, deletedAt: null },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (dto.email && dto.email !== existing.email) {
+      const emailTaken = await this.prisma.user.findFirst({
+        where: { tenantId, email: dto.email, deletedAt: null, id: { not: userId } },
+      });
+
+      if (emailTaken) {
+        throw new ConflictException(`Já existe um usuário com o email ${dto.email}`);
+      }
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.phone !== undefined) updateData.phone = dto.phone;
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: PROFILE_SELECT,
+    });
+
+    this.logger.log(`Perfil atualizado pelo próprio usuário: ${userId}`);
+
+    return user;
+  }
+
+  /** Changes the authenticated user's password, validating the current one. */
+  async changeOwnPassword(tenantId: string, userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, deletedAt: null },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const matches = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!matches) {
+      throw new BadRequestException('A senha atual está incorreta');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('A nova senha deve ser diferente da atual');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    this.logger.log(`Senha alterada pelo próprio usuário: ${userId}`);
+
+    return { success: true };
+  }
+
+  /** Uploads and sets the authenticated user's avatar. */
+  async updateOwnAvatar(tenantId: string, userId: string, file?: UploadedFileLike) {
+    if (!file) {
+      throw new BadRequestException('Nenhum arquivo enviado');
+    }
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('O avatar deve ser uma imagem');
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      throw new BadRequestException('A imagem deve ter no máximo 5 MB');
+    }
+
+    const existing = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const ext = file.originalname.includes('.')
+      ? file.originalname.split('.').pop()
+      : 'png';
+    const objectName = `avatars/${tenantId}/${userId}-${Date.now()}.${ext}`;
+
+    const stored = await this.storage.uploadBuffer(
+      objectName,
+      file.buffer,
+      file.mimetype,
+    );
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: stored.url },
+      select: PROFILE_SELECT,
+    });
+
+    this.logger.log(`Avatar atualizado pelo próprio usuário: ${userId}`);
+
+    return user;
   }
 }

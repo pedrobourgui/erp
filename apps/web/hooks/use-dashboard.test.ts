@@ -45,14 +45,16 @@ describe('useDashboardData', () => {
     const mockData = {
       data: {
         kpis: {
-          revenue: { value: 50000, trend: 12.5, sparkline: [100, 200, 300] },
-          orders: { value: 120, trend: 5.2, sparkline: [10, 20, 30] },
-          avgTicket: { value: 416.67, trend: -2.1, sparkline: [400, 410, 420] },
-          lowStockAlerts: { value: 3, trend: 0 },
+          todaySales: { value: 750, sparkline: [100, 200, 300] },
+          avgTicket: { value: 416.67, trend: -2.1 },
+          receivablesOpen: { value: 800 },
+          payablesOpen: { value: 500 },
+          lowStockAlerts: { value: 3 },
         },
         ordersByStatus: [
           { status: 'PENDING', label: 'Pendente', count: 10, color: '#ffc107' },
         ],
+        salesTrend: [{ date: '2026-07-01', total: 100 }],
       },
     };
     mockedApi.get.mockResolvedValueOnce({ data: mockData });

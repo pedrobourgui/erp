@@ -8,10 +8,13 @@ import {
 import { UsersService } from './users.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { RedisService } from '../../database/redis/redis.service';
+import { StorageService } from '../storage/storage.service';
 import { InviteUserDto, CreateUserDto } from './dto/user.dto';
+import * as bcrypt from 'bcryptjs';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn().mockResolvedValue('$2b$12$hashedPasswordValue'),
+  compare: jest.fn().mockResolvedValue(true),
 }));
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -61,6 +64,16 @@ function createMockPrisma() {
   };
 }
 
+function createMockStorage() {
+  return {
+    uploadBuffer: jest
+      .fn()
+      .mockResolvedValue({ key: 'avatars/x.png', url: 'http://minio/erp-files/avatars/x.png' }),
+    getObjectBuffer: jest.fn(),
+    removeObject: jest.fn(),
+  };
+}
+
 function createMockRedis() {
   return {
     get: jest.fn().mockResolvedValue(null),
@@ -81,16 +94,19 @@ describe('UsersService', () => {
   let service: UsersService;
   let prisma: ReturnType<typeof createMockPrisma>;
   let redis: ReturnType<typeof createMockRedis>;
+  let storage: ReturnType<typeof createMockStorage>;
 
   beforeEach(async () => {
     prisma = createMockPrisma();
     redis = createMockRedis();
+    storage = createMockStorage();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: redis },
+        { provide: StorageService, useValue: storage },
       ],
     }).compile();
 
@@ -384,6 +400,120 @@ describe('UsersService', () => {
 
       const findArgs = prisma.user.findFirst.mock.calls[0][0];
       expect(findArgs.where.tenantId).toBe(TENANT_A);
+    });
+  });
+
+  // ─── self-service profile (SCRUM-23) ────────────────────────────────────
+
+  describe('updateOwnProfile', () => {
+    it('should update own cadastral data scoped to the authenticated user', async () => {
+      prisma.user.findFirst.mockResolvedValue(makeUser());
+      prisma.user.update.mockResolvedValue(makeUser({ name: 'Novo Nome' }));
+
+      const result = await service.updateOwnProfile(TENANT_A, 'user-001', {
+        name: 'Novo Nome',
+      });
+
+      expect(result.name).toBe('Novo Nome');
+      const findArgs = prisma.user.findFirst.mock.calls[0][0];
+      expect(findArgs.where).toMatchObject({ id: 'user-001', tenantId: TENANT_A });
+      expect(prisma.user.update.mock.calls[0][0].where).toEqual({ id: 'user-001' });
+    });
+
+    it('should reject an email already used by another user', async () => {
+      prisma.user.findFirst
+        .mockResolvedValueOnce(makeUser({ email: 'old@example.com' }))
+        .mockResolvedValueOnce(makeUser({ id: 'other', email: 'taken@example.com' }));
+
+      await expect(
+        service.updateOwnProfile(TENANT_A, 'user-001', { email: 'taken@example.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw NotFound when the user does not belong to the tenant', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateOwnProfile(TENANT_A, 'user-001', { name: 'X' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('changeOwnPassword', () => {
+    const dto = { currentPassword: 'atual123', newPassword: 'nova12345' };
+
+    it('should hash and store the new password when the current one matches', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'user-001', password: 'hash-atual' });
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+      await service.changeOwnPassword(TENANT_A, 'user-001', dto);
+
+      expect(bcrypt.compare).toHaveBeenCalledWith('atual123', 'hash-atual');
+      expect(prisma.user.update.mock.calls[0][0].data.password).toBe(
+        '$2b$12$hashedPasswordValue',
+      );
+    });
+
+    it('should reject when the current password is wrong', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'user-001', password: 'hash-atual' });
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+
+      await expect(
+        service.changeOwnPassword(TENANT_A, 'user-001', dto),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject when the new password equals the current one', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'user-001', password: 'hash-atual' });
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+      await expect(
+        service.changeOwnPassword(TENANT_A, 'user-001', {
+          currentPassword: 'same123',
+          newPassword: 'same123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('updateOwnAvatar', () => {
+    const file = {
+      originalname: 'foto.png',
+      buffer: Buffer.from('img'),
+      mimetype: 'image/png',
+      size: 1234,
+    };
+
+    it('should upload the avatar and persist its URL', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'user-001' });
+      prisma.user.update.mockResolvedValue(
+        makeUser({ avatar: 'http://minio/erp-files/avatars/x.png' }),
+      );
+
+      const result = await service.updateOwnAvatar(TENANT_A, 'user-001', file);
+
+      expect(storage.uploadBuffer).toHaveBeenCalledTimes(1);
+      expect(prisma.user.update.mock.calls[0][0].data.avatar).toBe(
+        'http://minio/erp-files/avatars/x.png',
+      );
+      expect(result.avatar).toBe('http://minio/erp-files/avatars/x.png');
+    });
+
+    it('should reject a non-image file', async () => {
+      await expect(
+        service.updateOwnAvatar(TENANT_A, 'user-001', {
+          ...file,
+          mimetype: 'text/csv',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(storage.uploadBuffer).not.toHaveBeenCalled();
+    });
+
+    it('should reject when no file is provided', async () => {
+      await expect(
+        service.updateOwnAvatar(TENANT_A, 'user-001', undefined),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

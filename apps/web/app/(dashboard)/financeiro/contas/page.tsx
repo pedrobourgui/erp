@@ -31,7 +31,10 @@ import {
   type BankAccountType,
 } from "@/hooks/use-financial-accounts";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Pencil, Loader2, Building2, Wallet, Landmark, Smartphone } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { TransferDialog } from "./_components/transfer-dialog";
+import { ImportCsvDialog } from "@/components/forms/import-csv-dialog";
+import { Plus, Pencil, Loader2, Building2, Wallet, Landmark, Smartphone, ArrowRightLeft, Upload } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────
 
@@ -83,7 +86,10 @@ type AccountFormValues = z.infer<typeof accountSchema>;
 export default function FinancialAccountsPage() {
   const { data, isLoading } = useFinancialAccounts();
   const [formOpen, setFormOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialAccount | null>(null);
+  const queryClient = useQueryClient();
 
   const accounts = data?.data ?? [];
 
@@ -108,11 +114,35 @@ export default function FinancialAccountsPage() {
             Gerencie suas contas bancarias e caixas
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Conta
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar Despesas
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setTransferOpen(true)}
+            disabled={accounts.length < 2}
+          >
+            <ArrowRightLeft className="mr-2 h-4 w-4" />
+            Transferência
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Conta
+          </Button>
+        </div>
       </div>
+
+      <ImportCsvDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        domain="expenses"
+        title="Importar despesas via CSV"
+        onCompleted={() =>
+          queryClient.invalidateQueries({ queryKey: ["financial-entries"] })
+        }
+      />
 
       <AccountsTable
         accounts={accounts}
@@ -124,6 +154,12 @@ export default function FinancialAccountsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         editing={editing}
+      />
+
+      <TransferDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        accounts={accounts}
       />
     </div>
   );

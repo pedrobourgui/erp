@@ -4,26 +4,18 @@ import type { ApiResponse } from "@erp/shared-types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
+export interface DashboardKpi {
+  value: number;
+  trend?: number;
+  sparkline?: number[];
+}
+
 export interface DashboardKPI {
-  revenue: {
-    value: number;
-    trend: number;
-    sparkline: number[];
-  };
-  orders: {
-    value: number;
-    trend: number;
-    sparkline: number[];
-  };
-  avgTicket: {
-    value: number;
-    trend: number;
-    sparkline: number[];
-  };
-  lowStockAlerts: {
-    value: number;
-    trend: number;
-  };
+  todaySales: DashboardKpi;
+  avgTicket: DashboardKpi;
+  receivablesOpen: DashboardKpi;
+  payablesOpen: DashboardKpi;
+  lowStockAlerts: DashboardKpi;
 }
 
 export interface OrdersByStatus {
@@ -33,9 +25,15 @@ export interface OrdersByStatus {
   color: string;
 }
 
+export interface SalesTrendPoint {
+  date: string;
+  total: number;
+}
+
 export interface DashboardData {
   kpis: DashboardKPI;
   ordersByStatus: OrdersByStatus[];
+  salesTrend: SalesTrendPoint[];
 }
 
 // ─── Query keys ─────────────────────────────────────────────────────────
