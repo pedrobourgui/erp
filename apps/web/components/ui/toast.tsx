@@ -1,10 +1,11 @@
 "use client";
 
+import { X, CheckCircle2, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
-import { X, CheckCircle2, AlertTriangle, AlertCircle, Info } from "lucide-react";
+
 import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -114,8 +115,7 @@ export function Toaster({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      {mounted &&
-        createPortal(
+      {mounted ? createPortal(
           <div className="fixed bottom-4 right-4 z-[100] flex flex-col-reverse gap-2 pointer-events-none">
             {toasts.map((toast) => (
               <ToastItem
@@ -126,7 +126,7 @@ export function Toaster({ children }: { children: React.ReactNode }) {
             ))}
           </div>,
           document.body
-        )}
+        ) : null}
     </ToastContext.Provider>
   );
 }

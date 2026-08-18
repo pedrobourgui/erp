@@ -7,6 +7,14 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, OrderStatus } from '@prisma/client';
+import { getAllowedTransitions } from '@erp/constants';
+import { toDateRange } from '../../common/utils/date-range.util';
+import {
+  calculateItemTotal,
+  calculateOrderTotals,
+  maxItemDiscount,
+  roundMoney,
+} from '@erp/validators';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { isImmediatePayment } from '../../common/constants/payment.constants';
 import {
@@ -28,22 +36,7 @@ import {
   OrderCancelledEvent,
   OrderCounterSaleEvent,
 } from '../../events/event-types';
-
-/**
- * Allowed status transitions for the order state machine.
- */
-const ORDER_STATUS_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ['PENDING', 'CANCELLED'],
-  PENDING: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PICKING', 'CANCELLED'],
-  PICKING: ['PACKED', 'CANCELLED'],
-  PACKED: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED'],
-  DELIVERED: ['COMPLETED', 'RETURNED'],
-  COMPLETED: [],
-  CANCELLED: [],
-  RETURNED: [],
-};
+import { formatBRL } from '../../common/utils/money.util';
 
 @Injectable()
 export class OrdersService {
@@ -85,11 +78,10 @@ export class OrdersService {
     if (origin) where.origin = origin as any;
     if (customerId) where.customerId = customerId;
 
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) (where.createdAt as any).gte = new Date(dateFrom);
-      if (dateTo) (where.createdAt as any).lte = new Date(dateTo);
-    }
+    // VD-09: `lte: new Date(dateTo)` is midnight *starting* the final day, so
+    // filtering "today" returned nothing — every order of the day is after it.
+    const createdAt = toDateRange(dateFrom, dateTo);
+    if (createdAt) where.createdAt = createdAt;
 
     if (search) {
       where.OR = [
@@ -113,7 +105,17 @@ export class OrdersService {
       this.prisma.order.count({ where }),
     ]);
 
-    return buildPaginatedResponse(data, total, { page, limit, sortBy, sortOrder });
+    // Same reason as in findOne: the list's quick actions render from this.
+    const rows = data.map((order) => ({
+      ...order,
+      allowedTransitions: this.allowedTransitionsFor(order),
+      // AE-14: o dashboard lê `customerName` plano; a API só devolvia
+      // `customer.name` aninhado, e a coluna CLIENTE ficava vazia com o nome
+      // ali do lado no banco.
+      customerName: order.customer?.name ?? null,
+    }));
+
+    return buildPaginatedResponse(rows, total, { page, limit, sortBy, sortOrder });
   }
 
   /**
@@ -161,10 +163,58 @@ export class OrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('Pedido não encontrado');
     }
 
-    return order;
+    // `changedBy` is a bare userId with no relation, so the timeline would show
+    // an opaque cuid without this lookup (VD-06).
+    const changedByIds = [
+      ...new Set(
+        order.statusHistory
+          .map((entry) => entry.changedBy)
+          .filter((userId): userId is string => Boolean(userId)),
+      ),
+    ];
+    const changedByUsers = changedByIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: changedByIds }, tenantId },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userNameById = new Map(changedByUsers.map((u) => [u.id, u.name]));
+
+    // The UI renders its status buttons from allowedTransitions. Keeping the
+    // state machine on the server is what stops front and back from drifting
+    // apart (VD-02: the UI offered PICKING -> SHIPPED, always rejected by the API).
+    return {
+      ...order,
+      allowedTransitions: this.allowedTransitionsFor(order),
+      statusHistory: order.statusHistory.map((entry) => ({
+        ...entry,
+        changedByName: entry.changedBy
+          ? userNameById.get(entry.changedBy) ?? null
+          : null,
+      })),
+    };
+  }
+
+  /**
+   * Actions the UI may offer for an order.
+   *
+   * It is the state machine plus one exception: a counter sale is born
+   * COMPLETED, which is terminal, and reversing it (VD-14) is the only thing
+   * left to do with it. `RETURNED` here is served by `POST /orders/:id/reverse`,
+   * not by `PATCH /status` — the transition itself stays invalid.
+   */
+  private allowedTransitionsFor(order: {
+    status: string;
+    origin: string;
+  }): string[] {
+    const transitions = getAllowedTransitions(order.status as never);
+    if (order.origin === 'BALCAO' && order.status === 'COMPLETED') {
+      return [...transitions, 'RETURNED'];
+    }
+    return transitions;
   }
 
   /**
@@ -181,7 +231,7 @@ export class OrdersService {
     if (products.length !== new Set(productIds).size) {
       const foundIds = new Set(products.map((p) => p.id));
       const missing = productIds.filter((id) => !foundIds.has(id));
-      throw new BadRequestException(`Products not found: ${missing.join(', ')}`);
+      throw new BadRequestException(`Produtos não encontrados: ${missing.join(', ')}`);
     }
 
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -189,11 +239,29 @@ export class OrdersService {
     // Generate sequential order number
     const orderNumber = await this.generateOrderNumber(tenantId);
 
-    // Calculate item totals
+    // VD-10: the cart limits the discount to the line value in its zod schema,
+    // but the API only ran `calculateItemTotal`, which **clamps** the result at
+    // zero. A discount of R$ 80 on a R$ 50 line was therefore accepted and
+    // stored as a completed sale of R$ 0,00 — the screen validated, the
+    // database did not. The rule belongs here too.
+    for (const item of dto.items) {
+      const discount = roundMoney(item.discount ?? 0);
+      if (discount <= 0) continue;
+
+      const maximum = maxItemDiscount(item);
+      if (discount > maximum) {
+        const product = productMap.get(item.productId)!;
+        throw new BadRequestException(
+          `O desconto de ${formatBRL(discount)} em ${product.name} (${product.sku}) passa do valor da linha: máximo ${formatBRL(maximum)}.`,
+        );
+      }
+    }
+
+    // VD-10: same arithmetic the cart runs, from @erp/validators — two
+    // implementations of it is what made the screen total and the stored total
+    // disagree.
     const itemsData = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
-      const discount = item.discount ?? 0;
-      const totalPrice = item.quantity * item.unitPrice - discount;
 
       return {
         productId: item.productId,
@@ -202,15 +270,31 @@ export class OrdersService {
         name: product.name,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        discount,
-        totalPrice: Math.max(totalPrice, 0),
+        discount: roundMoney(item.discount ?? 0),
+        totalPrice: calculateItemTotal(item),
       };
     });
 
-    const subtotal = itemsData.reduce((sum, i) => sum + i.totalPrice, 0);
-    const orderDiscount = dto.discount ?? 0;
-    const shippingCost = dto.shippingCost ?? 0;
-    const totalAmount = subtotal - orderDiscount + shippingCost;
+    const {
+      subtotal,
+      discount: orderDiscount,
+      shippingCost,
+      total: totalAmount,
+    } = calculateOrderTotals({
+      items: dto.items,
+      discount: dto.discount,
+      shippingCost: dto.shippingCost,
+    });
+
+    // Same reasoning as the per-item check: `calculateOrderTotals` caps the
+    // order discount at the subtotal, so an excessive one was accepted and
+    // quietly reduced instead of refused.
+    const requestedDiscount = roundMoney(dto.discount ?? 0);
+    if (requestedDiscount > subtotal) {
+      throw new BadRequestException(
+        `O desconto de ${formatBRL(requestedDiscount)} passa do subtotal do pedido (${formatBRL(subtotal)}).`,
+      );
+    }
 
     const isCounterSale = dto.origin === 'BALCAO';
 
@@ -222,21 +306,42 @@ export class OrdersService {
     const requiresOpenCashRegister =
       resolvedOrigin === 'BALCAO' || resolvedOrigin === 'MANUAL';
 
-    // Assumption: at most one cash register session is open per tenant at a time.
+    // FN-05: a loja pode ter dois PDVs abertos ao mesmo tempo — isso é
+    // legítimo. O que não pode é o sistema escolher por conta própria: pegar a
+    // primeira sessão aberta carimbava a venda no caixa errado e quebrava o
+    // fechamento dos dois. Com mais de um caixa aberto, quem vende diz qual.
     let openCashRegisterSessionId: string | null = null;
     if (requiresOpenCashRegister) {
-      const openSession = await this.prisma.cashRegisterSession.findFirst({
+      const openSessions = await this.prisma.cashRegisterSession.findMany({
         where: { tenantId, status: 'OPEN' },
         select: { id: true },
       });
-      if (!openSession) {
+
+      if (openSessions.length === 0) {
         throw new ConflictException(
           isCounterSale
             ? 'Não é possível registrar venda no balcão sem um caixa aberto. Abra o caixa para continuar.'
             : 'Não é possível registrar a venda sem um caixa aberto. Abra o caixa para continuar.',
         );
       }
-      openCashRegisterSessionId = openSession.id;
+
+      if (dto.cashRegisterSessionId) {
+        const chosen = openSessions.find(
+          (session) => session.id === dto.cashRegisterSessionId,
+        );
+        if (!chosen) {
+          throw new ConflictException(
+            'O caixa informado não está aberto. Selecione um caixa aberto para registrar a venda.',
+          );
+        }
+        openCashRegisterSessionId = chosen.id;
+      } else if (openSessions.length > 1) {
+        throw new ConflictException(
+          'Há mais de um caixa aberto: informe em qual deles a venda deve ser registrada.',
+        );
+      } else {
+        openCashRegisterSessionId = openSessions[0].id;
+      }
     }
 
     // Counter sales require a customer
@@ -257,7 +362,7 @@ export class OrdersService {
       const paymentSum = payments.reduce((sum, p) => sum + p.amount, 0);
       if (Math.abs(paymentSum - finalTotal) > 0.01) {
         throw new BadRequestException(
-          `Soma dos pagamentos (${paymentSum.toFixed(2)}) difere do total do pedido (${finalTotal.toFixed(2)})`,
+          `A soma dos pagamentos (${formatBRL(paymentSum)}) difere do total do pedido (${formatBRL(finalTotal)})`,
         );
       }
 
@@ -318,8 +423,11 @@ export class OrdersService {
               `Condição de pagamento ${payment.paymentConditionId} não encontrada`,
             );
           }
-          // Default installments from condition if not specified
-          if (payment.paymentConditionId && !payment.installments) {
+          // VD-05: the number of installments belongs to the condition, not to
+          // the client. The old code only filled it in when the field was
+          // absent, and the PDV always sent `installments: 1` — so "3x sem
+          // juros" generated a single receivable for the whole amount.
+          if (payment.paymentConditionId) {
             const cond = conditionMap.get(payment.paymentConditionId);
             if (cond) payment.installments = cond.installments;
           }
@@ -357,7 +465,8 @@ export class OrdersService {
             create: {
               fromStatus: null,
               toStatus: isCounterSale ? 'COMPLETED' : 'PENDING',
-              notes: isCounterSale ? 'Venda no balcão' : 'Order created',
+              // O histórico do pedido é lido pelo usuário: nasce em pt-BR.
+              notes: isCounterSale ? 'Venda no balcão' : 'Pedido criado',
               changedBy: userId,
             },
           },
@@ -426,20 +535,29 @@ export class OrdersService {
     userId: string,
     dto: UpdateOrderStatusDto,
   ) {
+    // VD-01: cancelling is not a plain column change — it has to release the
+    // reserved stock and cancel the receivable. There is exactly one place that
+    // does all of it, so any caller asking for CANCELLED is routed there.
+    if (dto.status === 'CANCELLED') {
+      return this.cancel(tenantId, id, userId, {
+        reason: dto.notes?.trim() || 'Cancelado pelo usuário',
+      });
+    }
+
     const order = await this.prisma.order.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: { items: true },
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('Pedido não encontrado');
     }
 
     const currentStatus = order.status;
     const newStatus = dto.status;
 
     // Validate transition
-    const allowedTransitions = ORDER_STATUS_TRANSITIONS[currentStatus] || [];
+    const allowedTransitions = getAllowedTransitions(currentStatus);
     if (!allowedTransitions.includes(newStatus)) {
       throw new BadRequestException(
         `Cannot transition from ${currentStatus} to ${newStatus}. Allowed: ${allowedTransitions.join(', ') || 'none'}`,
@@ -543,10 +661,10 @@ export class OrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('Pedido não encontrado');
     }
 
-    const allowedTransitions = ORDER_STATUS_TRANSITIONS[order.status] || [];
+    const allowedTransitions = getAllowedTransitions(order.status);
     if (!allowedTransitions.includes('CANCELLED')) {
       throw new BadRequestException(
         `Cannot cancel order in status ${order.status}`,
@@ -600,7 +718,7 @@ export class OrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('Pedido não encontrado');
     }
 
     const history = await this.prisma.orderStatusHistory.findMany({

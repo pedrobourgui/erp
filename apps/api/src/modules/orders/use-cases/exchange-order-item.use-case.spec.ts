@@ -222,4 +222,48 @@ describe('ExchangeOrderItemUseCase', () => {
       useCase.execute(TENANT_A, ORDER_ID, USER_ID, dto),
     ).rejects.toThrow(NotFoundException);
   });
+
+  // VD-03: exchanging an item on a closed order created phantom stock, consumed
+  // real stock of the replacement and issued a refund for a sale that no longer existed.
+  describe('VD-03 — orders in a terminal status are immutable', () => {
+    it.each(['CANCELLED', 'RETURNED', 'COMPLETED'])(
+      'should refuse the exchange when the order is %s',
+      async (status) => {
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status }));
+
+        await expect(
+          useCase.execute(TENANT_A, ORDER_ID, USER_ID, dto),
+        ).rejects.toThrow(BadRequestException);
+
+        // nothing may be touched: no stock, no movement, no financial entry
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(tx.inventoryItem.update).not.toHaveBeenCalled();
+        expect(tx.inventoryMovement.create).not.toHaveBeenCalled();
+        expect(tx.accountsReceivable.create).not.toHaveBeenCalled();
+        expect(tx.accountsPayable.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['PENDING', 'CONFIRMED', 'PICKING', 'DELIVERED'])(
+      'should allow the exchange when the order is %s',
+      async (status) => {
+        primeHappyPath(60);
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status }));
+
+        await expect(
+          useCase.execute(TENANT_A, ORDER_ID, USER_ID, dto),
+        ).resolves.toBeDefined();
+      },
+    );
+
+    it('should say why in Portuguese', async () => {
+      prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'CANCELLED' }));
+
+      await expect(
+        useCase.execute(TENANT_A, ORDER_ID, USER_ID, dto),
+      ).rejects.toThrow(
+        'Não é possível trocar itens do pedido PED-000001: ele está cancelado.',
+      );
+    });
+  });
 });

@@ -1,6 +1,10 @@
 "use client";
 
+import { Loader2, Upload, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +13,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import {
   useUploadImport,
@@ -18,7 +20,7 @@ import {
   type ImportDomain,
   type ImportStatus,
 } from "@/hooks/use-imports";
-import { Loader2, Upload, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
 
 const COLUMNS: Record<ImportDomain, string> = {
   products: "sku, name, salePrice, costPrice, description, ncm, ean",
@@ -61,20 +63,28 @@ export function ImportCsvDialog({ open, onOpenChange, domain, title, onCompleted
     job && ["COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED"].includes(job.status);
 
   useEffect(() => {
-    if (isDone) onCompleted?.();
+    if (isDone) {onCompleted?.();}
   }, [isDone, onCompleted]);
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     setFileName(file.name);
     try {
       const created = await upload.mutateAsync({ domain, file });
       setJobId(created.id);
       addToast("Arquivo enviado! Processando em segundo plano.", "success");
     } catch (error) {
-      addToast(error instanceof Error ? error.message : "Erro ao enviar arquivo.", "error");
+      addToast(
+        getMutationErrorMessage(
+          error,
+          error instanceof Error ? error.message : "Erro ao enviar arquivo."
+        ),
+        "error"
+      );
     }
   };
 
@@ -118,8 +128,7 @@ export function ImportCsvDialog({ open, onOpenChange, domain, title, onCompleted
             </Button>
           )}
 
-          {job && (
-            <div className="space-y-3">
+          {job ? <div className="space-y-3">
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-muted-foreground" />
@@ -130,8 +139,7 @@ export function ImportCsvDialog({ open, onOpenChange, domain, title, onCompleted
                 </Badge>
               </div>
 
-              {isDone && (
-                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              {isDone ? <div className="grid grid-cols-3 gap-2 text-center text-sm">
                   <div className="rounded-lg border p-2">
                     <p className="text-xs text-muted-foreground">Linhas</p>
                     <p className="font-bold">{job.totalRows}</p>
@@ -144,17 +152,13 @@ export function ImportCsvDialog({ open, onOpenChange, domain, title, onCompleted
                     <p className="text-xs text-muted-foreground">Com erro</p>
                     <p className="font-bold text-destructive">{job.errorRows}</p>
                   </div>
-                </div>
-              )}
+                </div> : null}
 
-              {isDone && job.errorRows === 0 && (
-                <p className="flex items-center gap-2 text-sm text-emerald-600">
+              {isDone && job.errorRows === 0 ? <p className="flex items-center gap-2 text-sm text-emerald-600">
                   <CheckCircle2 className="h-4 w-4" /> Importação concluída sem erros.
-                </p>
-              )}
+                </p> : null}
 
-              {job.errors && job.errors.length > 0 && (
-                <div className="max-h-48 overflow-y-auto rounded-lg border">
+              {job.errors && job.errors.length > 0 ? <div className="max-h-48 overflow-y-auto rounded-lg border">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 border-b bg-muted/60">
                       <tr>
@@ -176,10 +180,8 @@ export function ImportCsvDialog({ open, onOpenChange, domain, title, onCompleted
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )}
-            </div>
-          )}
+                </div> : null}
+            </div> : null}
         </div>
 
         <DialogFooter>

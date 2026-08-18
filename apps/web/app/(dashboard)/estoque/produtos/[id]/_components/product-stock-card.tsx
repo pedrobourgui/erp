@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TruncatedText } from "@/components/ui/truncated-text";
 import { formatCurrency } from "@/lib/utils";
+
 import type { ProductInventoryDetail } from "./types";
 
 type ProductStockCardProps = {
@@ -56,10 +58,14 @@ export function ProductStockCard({ items, summary }: ProductStockCardProps) {
                   return (
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-2 pr-4">
-                        <span className="font-medium">{item.warehouse.name}</span>
-                        <span className="ml-1 font-mono text-xs text-muted-foreground">
-                          {item.warehouse.code}
-                        </span>
+                        <TruncatedText
+                          text={item.warehouse.name}
+                          className="max-w-[28ch] font-medium"
+                        />
+                        <TruncatedText
+                          text={item.warehouse.code}
+                          className="max-w-[28ch] font-mono text-xs text-muted-foreground"
+                        />
                       </td>
                       <td className="py-2 pr-4 text-right tabular-nums">{item.quantity}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{item.reserved}</td>

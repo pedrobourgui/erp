@@ -1,10 +1,12 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+
 import { useProfileQuery } from "@/hooks/use-profile";
+
 import { AvatarUploader } from "./_components/avatar-uploader";
-import { ProfileForm } from "./_components/profile-form";
 import { PasswordForm } from "./_components/password-form";
+import { ProfileForm } from "./_components/profile-form";
 
 export default function ProfilePage() {
   const { data: profile, isLoading } = useProfileQuery();

@@ -1,0 +1,45 @@
+{
+  "landmarks": {
+    "skipLink": false,
+    "mainId": null,
+    "navAriaLabel": null,
+    "headerTag": true,
+    "ariaCurrentCount": 0,
+    "activeNavItems": [
+      {
+        "text": "Estoque",
+        "ariaCurrent": null
+      },
+      {
+        "text": "Produtos",
+        "ariaCurrent": null
+      }
+    ]
+  },
+  "tabOrder": [
+    "sidebar:a:EERP System",
+    "sidebar:a:Dashboard",
+    "sidebar:button:Estoque",
+    "sidebar:a:Produtos",
+    "sidebar:a:Categorias",
+    "sidebar:a:Marcas",
+    "sidebar:a:Movimentações",
+    "sidebar:a:Depósitos",
+    "sidebar:a:Alertas",
+    "sidebar:button:Vendas",
+    "sidebar:a:Clientes",
+    "sidebar:button:Financeiro",
+    "sidebar:button:Configurações",
+    "sidebar:button:"
+  ],
+  "tableSemantics": {
+    "role": null,
+    "ariaLabel": null,
+    "caption": false,
+    "thScope": 0,
+    "thTotal": 7,
+    "sortableThRole": 0,
+    "ariaSort": 0,
+    "checkboxNoLabel": 0
+  }
+}

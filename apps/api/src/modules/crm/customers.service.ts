@@ -4,18 +4,22 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import {
   CreateCustomerDto,
   UpdateCustomerDto,
   CustomerQueryDto,
+  CreateCustomerAddressDto,
+  UpdateCustomerAddressDto,
 } from './dto/customer.dto';
 import {
   PaginatedResponse,
   buildPaginatedResponse,
   buildPrismaOrderBy,
 } from '../../common/utils/pagination';
+import { formatDocument, onlyDigits } from '@erp/validators';
+import { sumMoney } from '../../common/utils/money.util';
 
 @Injectable()
 export class CustomersService {
@@ -87,12 +91,24 @@ export class CustomersService {
           _count: {
             select: { orders: true },
           },
+          // AE-13: a tabela lê `totalOrders` e `totalSpent`; a API devolvia só
+          // `_count.orders`, então as duas colunas ficavam vazias — e um
+          // cliente com três pedidos aparecia como se nunca tivesse comprado.
+          // Um `select` aninhado evita o N+1 de somar pedido a pedido.
+          orders: {
+            where: { status: { notIn: NON_BILLABLE_ORDER_STATUSES } },
+            select: { totalAmount: true },
+          },
         },
       }),
       this.prisma.customer.count({ where }),
     ]);
 
-    return buildPaginatedResponse(data, total, { page, limit, sortBy, sortOrder });
+    return buildPaginatedResponse(
+      data.map(withOrderTotals),
+      total,
+      { page, limit, sortBy, sortOrder },
+    );
   }
 
   /**
@@ -131,14 +147,18 @@ export class CustomersService {
    * Create a new customer.
    */
   async create(tenantId: string, dto: CreateCustomerDto) {
-    // Check for duplicate document within tenant
-    if (dto.document) {
+    // AE-15: documento é guardado só com dígitos. Comparar a string com a
+    // máscara deixava `12345678909` e `123.456.789-09` conviverem como dois
+    // clientes — e a duplicidade era burlável só mudando a formatação.
+    const document = dto.document ? onlyDigits(dto.document) : undefined;
+
+    if (document) {
       const existing = await this.prisma.customer.findFirst({
-        where: { tenantId, document: dto.document, deletedAt: null },
+        where: { tenantId, document, deletedAt: null },
       });
       if (existing) {
         throw new ConflictException(
-          `Já existe um cliente com o documento "${dto.document}"`,
+          `Já existe um cliente com o documento "${formatDocument(document)}"`,
         );
       }
     }
@@ -161,7 +181,7 @@ export class CustomersService {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
-        document: dto.document,
+        document,
         documentType: dto.documentType,
         tradeName: dto.tradeName,
         segment: dto.segment,
@@ -193,19 +213,24 @@ export class CustomersService {
       );
     }
 
-    // Check for duplicate document if changed
-    if (dto.document && dto.document !== existing.document) {
+    // AE-15: mesma normalização da criação, senão editar um cliente com a
+    // máscara "muda" o documento e escapa da checagem de duplicidade.
+    const normalizedDocument = dto.document
+      ? onlyDigits(dto.document)
+      : undefined;
+
+    if (normalizedDocument && normalizedDocument !== existing.document) {
       const docExists = await this.prisma.customer.findFirst({
         where: {
           tenantId,
-          document: dto.document,
+          document: normalizedDocument,
           deletedAt: null,
           id: { not: id },
         },
       });
       if (docExists) {
         throw new ConflictException(
-          `Já existe um cliente com o documento "${dto.document}"`,
+          `Já existe um cliente com o documento "${formatDocument(normalizedDocument)}"`,
         );
       }
     }
@@ -233,7 +258,7 @@ export class CustomersService {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
-        document: dto.document,
+        document: normalizedDocument,
         documentType: dto.documentType,
         tradeName: dto.tradeName,
         segment: dto.segment,
@@ -275,4 +300,178 @@ export class CustomersService {
     );
     return { success: true, message: 'Cliente removido com sucesso' };
   }
+
+  // ─── Addresses (AE-16) ──────────────────────────────────────────────────
+
+  /**
+   * Confirms the customer belongs to the tenant before touching its addresses.
+   *
+   * `CustomerAddress` has no `tenantId` of its own — it is scoped through the
+   * customer, so every address operation has to pass here first. Skipping it
+   * would let an id from another tenant be edited by anyone who guessed it.
+   */
+  private async assertCustomerOfTenant(tenantId: string, customerId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!customer) {
+      throw new NotFoundException(`Cliente com id ${customerId} não encontrado`);
+    }
+    return customer;
+  }
+
+  async findAddresses(tenantId: string, customerId: string) {
+    await this.assertCustomerOfTenant(tenantId, customerId);
+
+    return this.prisma.customerAddress.findMany({
+      where: { customerId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async createAddress(
+    tenantId: string,
+    customerId: string,
+    dto: CreateCustomerAddressDto,
+  ) {
+    await this.assertCustomerOfTenant(tenantId, customerId);
+
+    const existingCount = await this.prisma.customerAddress.count({
+      where: { customerId },
+    });
+
+    // The first address is the default whether or not the box was ticked — a
+    // customer whose only address is not the default has no delivery address.
+    const isDefault = dto.isDefault === true || existingCount === 0;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.customerAddress.updateMany({
+          where: { customerId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      const address = await tx.customerAddress.create({
+        data: {
+          customerId,
+          label: dto.label,
+          street: dto.street,
+          number: dto.number,
+          complement: dto.complement,
+          neighborhood: dto.neighborhood,
+          city: dto.city,
+          state: dto.state.toUpperCase(),
+          zipCode: onlyDigits(dto.zipCode),
+          isDefault,
+        },
+      });
+
+      this.logger.log(`Customer address created: ${address.id} for ${customerId}`);
+      return address;
+    });
+  }
+
+  async updateAddress(
+    tenantId: string,
+    customerId: string,
+    addressId: string,
+    dto: UpdateCustomerAddressDto,
+  ) {
+    await this.assertCustomerOfTenant(tenantId, customerId);
+
+    const existing = await this.prisma.customerAddress.findFirst({
+      where: { id: addressId, customerId },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Endereço com id ${addressId} não encontrado`);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // AE-12c, same shape: demote the previous default in the same
+      // transaction, or two addresses end up marked as the main one.
+      if (dto.isDefault === true) {
+        await tx.customerAddress.updateMany({
+          where: { customerId, isDefault: true, id: { not: addressId } },
+          data: { isDefault: false },
+        });
+      }
+
+      return tx.customerAddress.update({
+        where: { id: addressId },
+        data: {
+          ...(dto.label !== undefined && { label: dto.label }),
+          ...(dto.street !== undefined && { street: dto.street }),
+          ...(dto.number !== undefined && { number: dto.number }),
+          ...(dto.complement !== undefined && { complement: dto.complement }),
+          ...(dto.neighborhood !== undefined && { neighborhood: dto.neighborhood }),
+          ...(dto.city !== undefined && { city: dto.city }),
+          ...(dto.state !== undefined && { state: dto.state.toUpperCase() }),
+          ...(dto.zipCode !== undefined && { zipCode: onlyDigits(dto.zipCode) }),
+          // Un-ticking the default is refused silently: the customer would be
+          // left with no main address at all. Promote another one instead.
+          ...(dto.isDefault === true && { isDefault: true }),
+        },
+      });
+    });
+  }
+
+  async removeAddress(tenantId: string, customerId: string, addressId: string) {
+    await this.assertCustomerOfTenant(tenantId, customerId);
+
+    const existing = await this.prisma.customerAddress.findFirst({
+      where: { id: addressId, customerId },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Endereço com id ${addressId} não encontrado`);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.customerAddress.delete({ where: { id: addressId } });
+
+      // Deleting the default promotes the oldest survivor, so the customer is
+      // never left with addresses but no main one.
+      if (existing.isDefault) {
+        const next = await tx.customerAddress.findFirst({
+          where: { customerId },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true },
+        });
+        if (next) {
+          await tx.customerAddress.update({
+            where: { id: next.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+    });
+
+    this.logger.log(`Customer address removed: ${addressId} from ${customerId}`);
+    return { success: true, message: 'Endereço removido com sucesso' };
+  }
+}
+
+/** Pedidos que não representam venda concretizada, para os totais do cliente. */
+const NON_BILLABLE_ORDER_STATUSES: OrderStatus[] = [
+  'CANCELLED',
+  'RETURNED',
+  'DRAFT',
+];
+
+/**
+ * Troca a relação crua por `totalOrders` e `totalSpent` — os campos que a tela
+ * lê (AE-13). O somatório vai em centavos: três pedidos somados como float já
+ * bastam para um total terminar em `...0000001` (FN-28).
+ */
+function withOrderTotals(customer: Record<string, unknown>) {
+  const { _count, orders, ...rest } = customer as {
+    _count?: { orders: number };
+    orders?: { totalAmount: unknown }[];
+  } & Record<string, unknown>;
+  return {
+    ...rest,
+    totalOrders: _count?.orders ?? 0,
+    totalSpent: sumMoney((orders ?? []).map((order) => order.totalAmount as never)),
+  };
 }

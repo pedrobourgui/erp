@@ -1,4 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Satoshi:wght@400;500;700;900&display=swap');
+/* Sem @import de fonte.
+   Plus Jakarta Sans já é auto-hospedada por `next/font` em app/layout.tsx —
+   pedi-la de novo ao Google Fonts era uma requisição render-blocking para
+   baixar o que já estava no bundle. E `Satoshi` **não é distribuída pelo
+   Google Fonts** (é da Fontshare): o import falhava em silêncio e todo
+   `font-heading` sempre caiu em Plus Jakarta Sans. O design system prometia
+   dois tipos e entregava um; agora ele diz a verdade. Para de fato ganhar o
+   contraste tipográfico, auto-hospedar Satoshi via `next/font/local`. */
 
 @tailwind base;
 @tailwind components;
@@ -22,7 +29,11 @@
     --secondary-foreground: 222 47% 11%;
 
     --muted: 215 25% 95%;
-    --muted-foreground: 215 16% 47%;
+    /* DS-04: 47% dava 4,511:1 em ponto flutuante — passa — mas o browser
+       arredonda para rgb(101,117,139) antes de pintar e o pixel real media
+       4,4949:1, reprovando AA por 0,005. Este token responde por ~90% dos 96
+       achados de contraste do ciclo, em 27 das 28 rotas. 43% leva a 5,208:1. */
+    --muted-foreground: 215 16% 43%;
 
     --accent: 160 84% 39%;
     --accent-foreground: 0 0% 100%;
@@ -102,8 +113,22 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  /* Foco visível: um tratamento só, para tudo.
+     A auditoria encontrou quatro na mesma página — `2px solid + ring` no
+     avatar, `1px auto` (o default do browser) nos links da lista, `3px none`
+     (invisível) na navegação lateral e `3px auto` nos itens do menu. Num ERP
+     operado por teclado, não saber onde está o foco é não saber o que a
+     próxima tecla vai fazer.
+     Fica em `@layer base` de propósito: as utilities do Tailwind vencem, então
+     o `ring` do <Button> continua sendo a exceção deliberada — e visível. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Satoshi', 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
     letter-spacing: -0.02em;
   }
 }
@@ -329,4 +354,111 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* ─── Painel de filtros ──────────────────────────────────────────────────
+ *
+ * O painel fica na tela **enquanto houver espaço** — e espaço é a largura da
+ * área de conteúdo, não a do viewport. Os dois não andam juntos: recolher a
+ * sidebar devolve ~190px sem que o viewport mude um pixel, e um breakpoint de
+ * viewport continuaria escondendo filtros que agora cabem.
+ *
+ * Por isso a medida é uma container query sobre `.filters-scope`, declarada no
+ * layout do dashboard. As colunas do grid seguem a mesma régua: seria
+ * incoerente o painel aparecer por ter espaço e continuar em duas colunas
+ * porque o viewport diz `sm`.
+ *
+ * Escrito em CSS puro de propósito: o plugin de container queries do Tailwind
+ * não está no projeto, e uma regra só não justifica a dependência.
+ *
+ * Navegador sem suporte a `@container` (Chrome <105, Safari <16) ignora os
+ * blocos e cai no modo com botão — o comportamento anterior, não uma tela
+ * quebrada.
+ */
+@layer components {
+  .filters-scope {
+    container: filters / inline-size;
+  }
+
+  /* Sem espaço declarado, quem manda é o botão. */
+  .filters-panel {
+    display: none;
+  }
+
+  .filters-panel[data-open="true"] {
+    display: block;
+  }
+
+  .filters-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Numa coluna só não há para onde esticar: o campo largo ocupa a linha. */
+  .filters-field--wide {
+    grid-column: span 1;
+  }
+
+  /*
+   * Um seletor de data se resolve em "dd/mm/yyyy" mais o ícone do calendário —
+   * 156px medidos no Chromium. O `w-full` do `Input` esticava isso até os 220px
+   * da coluna, dando a um campo de data o mesmo peso visual do de cliente.
+   *
+   * `width: auto` devolve a decisão ao navegador em vez de fixar um número que
+   * erra com outra fonte, outro locale ou outro formato de data. A célula do
+   * grid continua com a largura de sempre, então as colunas seguem alinhadas.
+   *
+   * O seletor tem classe + elemento (0,1,1) e por isso vence o `.w-full`
+   * (0,1,0) do design system, sem `!important`.
+   */
+  .filters-grid input[type="date"] {
+    width: auto;
+    max-width: 100%;
+  }
+
+  @container filters (min-width: 480px) {
+    .filters-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filters-field--wide {
+      grid-column: span 2;
+    }
+  }
+
+  @container filters (min-width: 768px) {
+    .filters-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container filters (min-width: 1024px) {
+    .filters-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /*
+   * O ponto em que o painel passa a morar na tela.
+   *
+   * 720px de área de conteúdo é onde cabem três colunas confortáveis de ~230px
+   * — bem acima dos 181px em que "Todos os status" já cabia inteiro. A medida
+   * vale para o painel inteiro porque nada mais divide a linha com ele.
+   *
+   * Abaixo disso o painel viraria uma torre de campos empilhados empurrando a
+   * tabela para baixo, que é justamente o que o botão existe para evitar.
+   */
+  @container filters (min-width: 720px) {
+    .filters-panel {
+      display: block;
+    }
+
+    /* Aplicado ao invólucro do botão, não ao botão: o `Button` traz um
+       `inline-flex` das próprias variantes, e utility do Tailwind vence
+       `@layer components`. */
+    .filters-trigger {
+      display: none;
+    }
+  }
 }

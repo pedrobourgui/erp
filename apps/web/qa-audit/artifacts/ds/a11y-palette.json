@@ -1,0 +1,20 @@
+{
+  "opened": 1,
+  "focused": "input",
+  "tooShort": 1,
+  "beforeTab": "input",
+  "afterTab": "FORA:a:Início",
+  "semantics": {
+    "ariaModal": null,
+    "inputRole": null,
+    "ariaActivedescendant": null,
+    "ariaExpanded": null,
+    "ariaControls": null,
+    "listboxRole": null,
+    "optionRoles": 0,
+    "resultButtons": 0,
+    "liveRegion": false
+  },
+  "closed": false,
+  "focusAfterClose": "a"
+}

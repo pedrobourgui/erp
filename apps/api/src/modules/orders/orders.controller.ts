@@ -19,7 +19,9 @@ import {
   OrderQueryDto,
 } from './dto/order.dto';
 import { ExchangeOrderItemDto } from './dto/exchange-order-item.dto';
+import { ReverseSaleDto } from './dto/reverse-sale.dto';
 import { ExchangeOrderItemUseCase } from './use-cases/exchange-order-item.use-case';
+import { ReverseSaleUseCase } from './use-cases/reverse-sale.use-case';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -36,6 +38,7 @@ export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly exchangeOrderItem: ExchangeOrderItemUseCase,
+    private readonly reverseSale: ReverseSaleUseCase,
   ) {}
 
   @Get()
@@ -109,6 +112,23 @@ export class OrdersController {
     @Body() dto: ExchangeOrderItemDto,
   ) {
     const result = await this.exchangeOrderItem.execute(tenantId, id, userId, dto);
+    return { success: true, data: result };
+  }
+
+  @Post(':id/reverse')
+  @RequirePermissions('orders:update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Reverse a finished sale: return the stock, undo the receivables and mark the order as RETURNED',
+  })
+  async reverse(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @Param('id') id: string,
+    @Body() dto: ReverseSaleDto,
+  ) {
+    const result = await this.reverseSale.execute(tenantId, id, userId, dto);
     return { success: true, data: result };
   }
 

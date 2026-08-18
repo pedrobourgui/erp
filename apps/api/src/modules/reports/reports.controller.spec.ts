@@ -67,15 +67,27 @@ describe('ReportsController', () => {
       const dashboardData = makeDashboardData();
       service.getDashboard.mockResolvedValue(dashboardData);
 
-      const result = await controller.getDashboard(TENANT_ID);
+      const result = await controller.getDashboard(TENANT_ID, ['financial:read']);
 
-      expect(service.getDashboard).toHaveBeenCalledWith(TENANT_ID);
+      expect(service.getDashboard).toHaveBeenCalledWith(TENANT_ID, {
+        includeFinancial: true,
+      });
       expect(result).toEqual({ success: true, data: dashboardData });
     });
 
     it('should require reports:read permission', () => {
       const metadata = Reflect.getMetadata(PERMISSIONS_KEY, controller.getDashboard);
       expect(metadata).toEqual(['reports:read']);
+    });
+
+    it('should leave the financial KPIs out for a caller without financial:read', async () => {
+      service.getDashboard.mockResolvedValue(makeDashboardData());
+
+      await controller.getDashboard(TENANT_ID, ['reports:read', 'orders:read']);
+
+      expect(service.getDashboard).toHaveBeenCalledWith(TENANT_ID, {
+        includeFinancial: false,
+      });
     });
   });
 });

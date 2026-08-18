@@ -1,7 +1,9 @@
-import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ImageOff } from "lucide-react";
+import Image from "next/image";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import type { ProductImageDetail } from "./types";
 
 type ProductImagesCardProps = {
@@ -17,7 +19,7 @@ export function ProductImagesCard({ images }: ProductImagesCardProps) {
       <CardContent>
         {images.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-            <ImageOff className="h-8 w-8" />
+            <ImageOff className="h-10 w-10 md:h-8 md:w-8" />
             <p className="text-sm">Nenhuma imagem cadastrada.</p>
           </div>
         ) : (

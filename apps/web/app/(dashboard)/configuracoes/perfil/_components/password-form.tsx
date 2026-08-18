@@ -1,23 +1,38 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import {
+  checkPassword,
+} from "@erp/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/api";
-import { useChangePassword } from "@/hooks/use-profile";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { PasswordStrength } from "@/components/forms/password-strength";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
+import { useChangePassword } from "@/hooks/use-profile";
+import { getApiErrorMessage } from "@/lib/api";
 
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Informe a senha atual"),
+    // FN-25: mínimo de 6 sem complexidade nenhuma protegendo um ERP inteiro.
+    // A política vem de @erp/validators — a mesma que a API aplica.
     newPassword: z
       .string()
-      .min(6, "A nova senha deve ter no mínimo 6 caracteres")
-      .max(72),
+      .max(72)
+      .superRefine((value, ctx) => {
+        const result = checkPassword(value);
+        if (!result.valid) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: result.message ?? "Senha inválida",
+          });
+        }
+      }),
     confirmPassword: z.string().min(1, "Confirme a nova senha"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -39,6 +54,7 @@ export function PasswordForm() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -67,35 +83,34 @@ export function PasswordForm() {
         <CardTitle>Trocar senha</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* FN-26: noValidate tira a validação nativa do browser, que aparece em
+            inglês e ignora as mensagens do zod. */}
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4"
+          noValidate
+        >
           <div className="space-y-1">
             <label className="text-sm font-medium">Senha atual *</label>
             <Input type="password" autoComplete="current-password" {...register("currentPassword")} />
-            {errors.currentPassword && (
-              <p className="text-xs text-destructive">{errors.currentPassword.message}</p>
-            )}
+            {errors.currentPassword ? <p className="text-xs text-destructive">{errors.currentPassword.message}</p> : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Nova senha *</label>
               <Input type="password" autoComplete="new-password" {...register("newPassword")} />
-              {errors.newPassword && (
-                <p className="text-xs text-destructive">{errors.newPassword.message}</p>
-              )}
+              <PasswordStrength password={watch("newPassword") ?? ""} />
+              {errors.newPassword ? <p className="text-xs text-destructive">{errors.newPassword.message}</p> : null}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Confirmar nova senha *</label>
               <Input type="password" autoComplete="new-password" {...register("confirmPassword")} />
-              {errors.confirmPassword && (
-                <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
-              )}
+              {errors.confirmPassword ? <p className="text-xs text-destructive">{errors.confirmPassword.message}</p> : null}
             </div>
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={changePassword.isPending}>
-              {changePassword.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {changePassword.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Trocar senha
             </Button>
           </div>

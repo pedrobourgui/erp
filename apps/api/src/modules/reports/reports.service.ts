@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, FinancialStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import {
+  shiftDateKey,
+  startOfDayInTz,
+  toLocalDateKey,
+} from '../../common/utils/date-range.util';
 
 const OPEN_FINANCIAL_STATUSES: FinancialStatus[] = [
   'PENDING',
@@ -42,12 +47,20 @@ export interface DashboardKpi {
   sparkline?: number[];
 }
 
+/** What the caller is allowed to see in the dashboard payload. */
+export interface DashboardScope {
+  /** Open receivables and payables. Requires `financial:read`. */
+  includeFinancial?: boolean;
+}
+
 export interface DashboardData {
   kpis: {
     todaySales: DashboardKpi;
     avgTicket: DashboardKpi;
-    receivablesOpen: DashboardKpi;
-    payablesOpen: DashboardKpi;
+    /** Absent when the caller cannot read the financial module. */
+    receivablesOpen?: DashboardKpi;
+    /** Absent when the caller cannot read the financial module. */
+    payablesOpen?: DashboardKpi;
     lowStockAlerts: DashboardKpi;
   };
   ordersByStatus: Array<{
@@ -70,17 +83,25 @@ export class ReportsService {
    * average ticket, open receivables/payables, stock alerts, orders by status
    * and a daily sales series — all computed in the backend.
    */
-  async getDashboard(tenantId: string): Promise<DashboardData> {
+  async getDashboard(
+    tenantId: string,
+    scope: DashboardScope = {},
+  ): Promise<DashboardData> {
+    // AE-27/FN-09: a seller reaches this endpoint with `reports:read`, so the
+    // financial KPIs must not travel to them at all. Hiding them only in the UI
+    // would still ship "A Pagar R$ 11.730,00" in the response body.
+    const { includeFinancial = true } = scope;
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const trendStart = new Date(now.getTime() - (SALES_TREND_DAYS - 1) * 24 * 60 * 60 * 1000);
-    const trendDayStart = new Date(
-      trendStart.getFullYear(),
-      trendStart.getMonth(),
-      trendStart.getDate(),
-    );
+
+    // "Today" and the trend window are civil days of the tenant, not of the
+    // server: `getFullYear()` and friends read the *process* timezone, so a
+    // deploy in UTC would show the wrong day's sales (TZ-01).
+    const todayKey = toLocalDateKey(now);
+    const trendStartKey = shiftDateKey(todayKey, -(SALES_TREND_DAYS - 1));
+    const todayStart = startOfDayInTz(todayKey);
+    const trendDayStart = startOfDayInTz(trendStartKey);
 
     const [
       currentPeriod,
@@ -103,14 +124,18 @@ export class ReportsService {
         },
         _sum: { totalAmount: true },
       }),
-      this.prisma.accountsReceivable.aggregate({
-        where: { tenantId, status: { in: OPEN_FINANCIAL_STATUSES } },
-        _sum: { amount: true, paidAmount: true },
-      }),
-      this.prisma.accountsPayable.aggregate({
-        where: { tenantId, status: { in: OPEN_FINANCIAL_STATUSES } },
-        _sum: { amount: true, paidAmount: true },
-      }),
+      includeFinancial
+        ? this.prisma.accountsReceivable.aggregate({
+            where: { tenantId, status: { in: OPEN_FINANCIAL_STATUSES } },
+            _sum: { amount: true, paidAmount: true },
+          })
+        : null,
+      includeFinancial
+        ? this.prisma.accountsPayable.aggregate({
+            where: { tenantId, status: { in: OPEN_FINANCIAL_STATUSES } },
+            _sum: { amount: true, paidAmount: true },
+          })
+        : null,
       this.prisma.stockAlert.count({ where: { tenantId, isResolved: false } }),
       this.prisma.order.groupBy({
         by: ['status'],
@@ -133,7 +158,7 @@ export class ReportsService {
     const prevAvgTicket =
       previousPeriod.count > 0 ? previousPeriod.revenue / previousPeriod.count : 0;
 
-    const salesTrend = this.buildSalesTrend(trendDayStart, trendOrders);
+    const salesTrend = this.buildSalesTrend(trendStartKey, trendOrders);
 
     return {
       kpis: {
@@ -145,18 +170,22 @@ export class ReportsService {
           value: Number(avgTicket.toFixed(2)),
           trend: this.calculateVariation(avgTicket, prevAvgTicket),
         },
-        receivablesOpen: {
-          value: this.outstanding(
-            receivablesAgg._sum.amount,
-            receivablesAgg._sum.paidAmount,
-          ),
-        },
-        payablesOpen: {
-          value: this.outstanding(
-            payablesAgg._sum.amount,
-            payablesAgg._sum.paidAmount,
-          ),
-        },
+        ...(receivablesAgg && payablesAgg
+          ? {
+              receivablesOpen: {
+                value: this.outstanding(
+                  receivablesAgg._sum.amount,
+                  receivablesAgg._sum.paidAmount,
+                ),
+              },
+              payablesOpen: {
+                value: this.outstanding(
+                  payablesAgg._sum.amount,
+                  payablesAgg._sum.paidAmount,
+                ),
+              },
+            }
+          : {}),
         lowStockAlerts: {
           value: lowStockCount,
         },
@@ -183,23 +212,29 @@ export class ReportsService {
     return Number(Math.max(0, amount - paid).toFixed(2));
   }
 
-  /** Buckets orders into a daily sales series of SALES_TREND_DAYS entries. */
+  /**
+   * Buckets orders into a daily sales series of SALES_TREND_DAYS entries.
+   *
+   * Both the buckets and the orders are keyed by the tenant's civil day
+   * (`toLocalDateKey`). Keying the orders with `toISOString()` — as this used
+   * to do — dropped every sale made after 21:00 in UTC-3 into the next UTC day,
+   * where no bucket matched, and the sale vanished from the chart (TZ-01).
+   */
   private buildSalesTrend(
-    start: Date,
+    startKey: string,
     orders: Array<{ totalAmount: Prisma.Decimal; createdAt: Date }>,
   ): Array<{ date: string; total: number }> {
     const buckets: Array<{ date: string; total: number }> = [];
     const keyIndex = new Map<string, number>();
 
     for (let i = 0; i < SALES_TREND_DAYS; i++) {
-      const day = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
-      const key = day.toISOString().slice(0, 10);
+      const key = shiftDateKey(startKey, i);
       keyIndex.set(key, i);
       buckets.push({ date: key, total: 0 });
     }
 
     for (const order of orders) {
-      const key = order.createdAt.toISOString().slice(0, 10);
+      const key = toLocalDateKey(order.createdAt);
       const idx = keyIndex.get(key);
       if (idx !== undefined) {
         buckets[idx].total = Number(

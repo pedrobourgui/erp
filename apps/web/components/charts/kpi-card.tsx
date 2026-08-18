@@ -1,14 +1,15 @@
 "use client";
 
-import React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import React from "react";
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
 } from "recharts";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -42,16 +43,19 @@ export function KPICard({
   const chartData = sparklineData?.map((v, i) => ({ idx: i, value: v }));
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="p-6">
+    // AE-30: a row of KPI cards used to have as many heights as it had shapes —
+    // the sparkline added 64px, the trend line 20px, the rest nothing. The card
+    // fills its grid cell and the sparkline hangs from the bottom, so the labels
+    // and figures line up across the row whatever each card carries.
+    <Card className={cn("h-full overflow-hidden", className)}>
+      <CardContent className="flex h-full flex-col p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{label}</p>
             <p className="text-2xl font-bold tracking-tight">
               {formattedValue ?? String(value)}
             </p>
-            {trend && (
-              <div className="flex items-center gap-1 pt-0.5">
+            {trend ? <div className="flex items-center gap-1 pt-0.5">
                 {isPositive ? (
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
                 ) : (
@@ -66,27 +70,21 @@ export function KPICard({
                   {isPositive ? "+" : ""}
                   {trend.value.toFixed(1)}%
                 </span>
-                {trend.label && (
-                  <span className="text-xs text-muted-foreground">
+                {trend.label ? <span className="text-xs text-muted-foreground">
                     {trend.label}
-                  </span>
-                )}
-              </div>
-            )}
+                  </span> : null}
+              </div> : null}
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            {icon && (
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {icon ? <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 {icon}
-              </div>
-            )}
+              </div> : null}
           </div>
         </div>
 
         {/* Sparkline */}
-        {chartData && chartData.length > 1 && (
-          <div className="mt-4 h-12">
+        {chartData && chartData.length > 1 ? <div data-testid="kpi-sparkline" className="mt-auto h-16 pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -112,8 +110,7 @@ export function KPICard({
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        )}
+          </div> : null}
       </CardContent>
     </Card>
   );

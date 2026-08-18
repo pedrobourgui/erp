@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { ExchangeOrderItemUseCase } from './use-cases/exchange-order-item.use-case';
+import { ReverseSaleUseCase } from './use-cases/reverse-sale.use-case';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -42,15 +43,18 @@ function makeOrder() {
 describe('OrdersController', () => {
   let controller: OrdersController;
   let ordersService: ReturnType<typeof createMockOrdersService>;
+  let reverseSale: { execute: jest.Mock };
 
   beforeEach(async () => {
     ordersService = createMockOrdersService();
+    reverseSale = { execute: jest.fn().mockResolvedValue({ orderId: 'order-uuid-001' }) };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OrdersController],
       providers: [
         { provide: OrdersService, useValue: ordersService },
         { provide: ExchangeOrderItemUseCase, useValue: { execute: jest.fn() } },
+        { provide: ReverseSaleUseCase, useValue: reverseSale },
         { provide: PrismaService, useValue: {} },
         Reflector,
       ],
@@ -158,6 +162,35 @@ describe('OrdersController', () => {
 
     it('should require orders:update permission', () => {
       const metadata = Reflect.getMetadata(PERMISSIONS_KEY, controller.cancel);
+      expect(metadata).toEqual(['orders:update']);
+    });
+  });
+
+  // ─── reverse (VD-14) ──────────────────────────────────────────────────
+  describe('POST /orders/:id/reverse', () => {
+    it('should pass tenantId, userId, id and dto to the use case', async () => {
+      const dto = { reason: 'Cliente desistiu' };
+      const reversal = { orderId: 'order-uuid-001', status: 'RETURNED' };
+      reverseSale.execute.mockResolvedValue(reversal);
+
+      const result = await controller.reverse(
+        TENANT_ID,
+        USER_ID,
+        'order-uuid-001',
+        dto as any,
+      );
+
+      expect(reverseSale.execute).toHaveBeenCalledWith(
+        TENANT_ID,
+        'order-uuid-001',
+        USER_ID,
+        dto,
+      );
+      expect(result).toEqual({ success: true, data: reversal });
+    });
+
+    it('should require orders:update permission', () => {
+      const metadata = Reflect.getMetadata(PERMISSIONS_KEY, controller.reverse);
       expect(metadata).toEqual(['orders:update']);
     });
   });

@@ -2,7 +2,7 @@ import {
   IsOptional,
   IsString,
   IsNumber,
-  IsEnum,
+  IsIn,
   IsBoolean,
   Min,
 } from 'class-validator';
@@ -36,12 +36,12 @@ export class PaymentConditionQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional({ enum: ['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'] })
   @IsOptional()
-  @IsEnum(['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'])
+  @IsIn(['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'])
   type?: string;
 
   @ApiPropertyOptional()

@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { cn, formatCurrency } from "@/lib/utils";
+
 import type { ProductDetail } from "./types";
 
 type ProductGeneralCardProps = {
@@ -13,11 +15,29 @@ const PRODUCT_TYPE_LABELS: Record<string, string> = {
   SERVICE: "Serviço",
 };
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+/**
+ * AE-31: the value used to be a plain `<p>` in a grid column. A 255-character
+ * name — the schema's own limit — ran past the column and painted over the SKU
+ * and Tipo fields next to it, so a long name did not just look bad, it hid two
+ * other fields. `min-w-0` gives the column something to clip against.
+ */
+function Field({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  mono?: boolean;
+}) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value ?? "—"}</p>
+      <TruncatedText
+        as="p"
+        text={value}
+        className={cn("text-sm font-medium", mono && "font-mono")}
+      />
     </div>
   );
 }
@@ -30,7 +50,7 @@ export function ProductGeneralCard({ product }: ProductGeneralCardProps) {
       </CardHeader>
       <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Nome" value={product.name} />
-        <Field label="SKU" value={<span className="font-mono">{product.sku}</span>} />
+        <Field label="SKU" value={product.sku} mono />
         <Field label="Tipo" value={PRODUCT_TYPE_LABELS[product.type ?? "SIMPLE"] ?? product.type} />
         <Field label="Categoria" value={product.category?.name} />
         <Field label="Marca" value={product.brand?.name} />
@@ -39,19 +59,16 @@ export function ProductGeneralCard({ product }: ProductGeneralCardProps) {
         <Field label="Preço de venda" value={formatCurrency(product.salePrice)} />
         <Field
           label="Preço promocional"
-          value={product.promoPrice ? formatCurrency(product.promoPrice) : "—"}
+          value={product.promoPrice ? formatCurrency(product.promoPrice) : null}
         />
-        <div className="sm:col-span-2 lg:col-span-3">
-          <Field
-            label="Descrição"
-            value={
-              product.description ? (
-                <span className="whitespace-pre-wrap font-normal">{product.description}</span>
-              ) : (
-                "—"
-              )
-            }
-          />
+        <div className="min-w-0 space-y-1 sm:col-span-2 lg:col-span-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</p>
+          {/* The description is allowed to grow — it has the full width of the
+              card and its own line breaks. `break-words` is what keeps a single
+              unbroken 2000-character string inside the card anyway. */}
+          <p className="whitespace-pre-wrap break-words text-sm font-medium">
+            {product.description || "—"}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -77,10 +94,10 @@ export function ProductFiscalCard({ product }: ProductGeneralCardProps) {
         />
         {hasDimensions ? (
           <>
-            <Field label="Peso (kg)" value={product.weight ?? "—"} />
-            <Field label="Altura (cm)" value={product.height ?? "—"} />
-            <Field label="Largura (cm)" value={product.width ?? "—"} />
-            <Field label="Comprimento (cm)" value={product.length ?? "—"} />
+            <Field label="Peso (kg)" value={product.weight} />
+            <Field label="Altura (cm)" value={product.height} />
+            <Field label="Largura (cm)" value={product.width} />
+            <Field label="Comprimento (cm)" value={product.length} />
           </>
         ) : null}
       </CardContent>

@@ -3,7 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsNumber,
-  IsEnum,
+  IsIn,
   // IsUUID removed: DB uses cuid(), not uuid
   IsDateString,
   IsBoolean,
@@ -12,7 +12,7 @@ import {
   IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateMovementDto {
   @ApiProperty()
@@ -25,11 +25,11 @@ export class CreateMovementDto {
   variantId?: string;
 
   @ApiProperty({ enum: ['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'] })
-  @IsEnum(['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'])
+  @IsIn(['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'])
   type: string;
 
   @ApiProperty({ enum: ['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'] })
-  @IsEnum(['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'])
+  @IsIn(['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'])
   reason: string;
 
   @ApiProperty()
@@ -99,6 +99,36 @@ export class TransferStockDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
+
+export class AdjustStockDto {
+  @ApiProperty()
+  @IsString()
+  productId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
+  @ApiProperty()
+  @IsString()
+  warehouseId: string;
+
+  @ApiProperty({ description: 'Balance counted on the shelf; the delta is derived from it' })
+  @IsInt()
+  @Min(0)
+  countedQuantity: number;
+
+  @ApiProperty({ enum: ['COUNT', 'ADJUSTMENT', 'DAMAGE', 'THEFT', 'INITIAL'] })
+  @IsIn(['COUNT', 'ADJUSTMENT', 'DAMAGE', 'THEFT', 'INITIAL'])
+  reason: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -182,6 +212,14 @@ export class CreateWarehouseDto {
   isDefault?: boolean = false;
 }
 
+export class UpdateWarehouseDto extends PartialType(CreateWarehouseDto) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  isActive?: boolean;
+}
+
 export class AlertQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -199,8 +237,18 @@ export class AlertQueryDto {
 
   @ApiPropertyOptional({ enum: ['ACTIVE', 'RESOLVED'] })
   @IsOptional()
-  @IsEnum(['ACTIVE', 'RESOLVED'])
+  @IsIn(['ACTIVE', 'RESOLVED'])
   status?: string;
+
+  @ApiPropertyOptional({ description: 'Only alerts of this warehouse' })
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Only alerts of this product' })
+  @IsOptional()
+  @IsString()
+  productId?: string;
 }
 
 export class MovementQueryDto {
@@ -230,7 +278,7 @@ export class MovementQueryDto {
 
   @ApiPropertyOptional({ enum: ['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'] })
   @IsOptional()
-  @IsEnum(['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'])
+  @IsIn(['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT', 'RETURN', 'PRODUCTION'])
   type?: string;
 
   @ApiPropertyOptional()
@@ -245,7 +293,7 @@ export class MovementQueryDto {
 
   @ApiPropertyOptional({ enum: ['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'] })
   @IsOptional()
-  @IsEnum(['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'])
+  @IsIn(['PURCHASE', 'SALE', 'TRANSFER', 'ADJUSTMENT', 'RETURN_CUSTOMER', 'RETURN_SUPPLIER', 'DAMAGE', 'THEFT', 'PRODUCTION', 'INITIAL', 'COUNT'])
   reason?: string;
 
   @ApiPropertyOptional()
@@ -255,6 +303,6 @@ export class MovementQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 }

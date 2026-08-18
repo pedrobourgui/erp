@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
+
 import { Input } from "@/components/ui/input";
 
 interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {

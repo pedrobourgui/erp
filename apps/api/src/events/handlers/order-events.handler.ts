@@ -3,6 +3,11 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { InventoryService } from '../../modules/inventory/inventory.service';
 import { isImmediatePayment } from '../../common/constants/payment.constants';
+import { roundMoney, splitInstallments } from '@erp/validators';
+import {
+  civilDaysFrom,
+  civilInstallmentDueDates,
+} from '../../common/utils/date-range.util';
 import {
   OrderCreatedEvent,
   OrderConfirmedEvent,
@@ -274,6 +279,27 @@ export class OrderEventsHandler {
   // ─── Helpers ────────────────────────────────────────────────────────
 
   /**
+   * The account of the cash register the sale was rung on, when there is one.
+   * `null` for a sale with no session (integrations, order-based sales).
+   */
+  private async resolveDrawerAccountId(
+    tenantId: string,
+    orderId: string,
+  ): Promise<string | null> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        tenantId: true,
+        cashRegisterSession: {
+          select: { cashRegister: { select: { financialAccountId: true } } },
+        },
+      },
+    });
+    if (!order || order.tenantId !== tenantId) return null;
+    return order.cashRegisterSession?.cashRegister?.financialAccountId ?? null;
+  }
+
+  /**
    * Credit the linked FinancialAccount for each immediately-paid payment of a
    * sale (cash/PIX/debit), recording a CREDIT FinancialTransaction with the
    * running balance. Payments without a resolvable account are skipped.
@@ -294,10 +320,23 @@ export class OrderEventsHandler {
       },
     });
 
+    // FN-15: dinheiro vivo entra na gaveta do caixa onde a venda foi feita, não
+    // na conta padrão do método. Com as duas contas diferentes, o fechamento do
+    // caixa não via a venda e a conta do método recebia dinheiro que nunca
+    // esteve lá — foi o que a conciliação de um dia inteiro expôs.
+    const drawerAccountId = await this.resolveDrawerAccountId(tenantId, orderId);
+
     for (const op of orderPayments) {
       if (!isImmediatePayment(op.paymentMethod.type)) continue;
 
-      const accountId = op.financialAccountId ?? op.paymentMethod.defaultAccountId;
+      // Para dinheiro vivo a gaveta vence qualquer padrão: a nota está
+      // fisicamente ali. A conta do pagamento (que hoje é só uma cópia do
+      // padrão do método) só decide para PIX e débito, onde faz sentido
+      // escolher em qual conta o dinheiro caiu.
+      const accountId =
+        (op.paymentMethod.type === 'CASH' ? drawerAccountId : null) ??
+        op.financialAccountId ??
+        op.paymentMethod.defaultAccountId;
       if (!accountId) {
         this.logger.warn(
           `No bank account linked for payment ${op.id} (order ${orderNumber}); balance not updated`,
@@ -380,7 +419,7 @@ export class OrderEventsHandler {
             description: `${isCounterSale ? 'Venda balcão' : 'Pedido'} ${orderNumber}`,
             amount: order.totalAmount,
             status: isCounterSale ? 'PAID' : 'PENDING',
-            dueDate: isCounterSale ? new Date() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            dueDate: civilDaysFrom(new Date(), isCounterSale ? 0 : 30),
             paidAt: isCounterSale ? new Date() : null,
           },
         });
@@ -417,16 +456,17 @@ export class OrderEventsHandler {
             totalInstallments: 1,
             amount,
             status: isPaid ? 'PAID' : 'PENDING',
-            dueDate: isImmediate ? now : new Date(now.getTime() + daysBetween * DAY_MS),
+            dueDate: civilDaysFrom(now, isImmediate ? 0 : daysBetween),
             paidAt: isPaid ? now : null,
             paidAmount: isPaid ? amount : 0,
           },
         });
       } else if (conditionType === 'ENTRY_PLUS_INSTALLMENT' && entryPct > 0) {
         // Entry + installments
-        const entryAmount = Math.round((amount * entryPct) / 100 * 100) / 100;
-        const remaining = amount - entryAmount;
-        const perInstallment = Math.round((remaining / totalInstallments) * 100) / 100;
+        const entryAmount = roundMoney((amount * entryPct) / 100);
+        const remaining = roundMoney(amount - entryAmount);
+        const installmentAmounts = splitInstallments(remaining, totalInstallments);
+        const dueDates = civilInstallmentDueDates(now, totalInstallments, daysBetween);
         const isPaidEntry = isImmediate;
 
         // Entry receivable
@@ -442,7 +482,7 @@ export class OrderEventsHandler {
             totalInstallments: totalInstallments + 1,
             amount: entryAmount,
             status: isPaidEntry ? 'PAID' : 'PENDING',
-            dueDate: now,
+            dueDate: civilDaysFrom(now, 0),
             paidAt: isPaidEntry ? now : null,
             paidAmount: isPaidEntry ? entryAmount : 0,
           },
@@ -450,10 +490,6 @@ export class OrderEventsHandler {
 
         // Installments
         for (let i = 1; i <= totalInstallments; i++) {
-          const installmentAmount = i === totalInstallments
-            ? remaining - perInstallment * (totalInstallments - 1)
-            : perInstallment;
-
           await this.prisma.accountsReceivable.create({
             data: {
               tenantId,
@@ -464,21 +500,19 @@ export class OrderEventsHandler {
               description: `${orderNumber} - ${methodName} (${i}/${totalInstallments})`,
               installment: i,
               totalInstallments: totalInstallments + 1,
-              amount: installmentAmount,
+              amount: installmentAmounts[i - 1],
               status: 'PENDING',
-              dueDate: new Date(now.getTime() + i * daysBetween * DAY_MS),
+              dueDate: dueDates[i - 1],
             },
           });
         }
       } else {
-        // Pure installments
-        const perInstallment = Math.round((amount / totalInstallments) * 100) / 100;
+        // VD-05: pure installments. The split lives in @erp/validators so the
+        // preview the seller sees is the exact set of receivables created here.
+        const installmentAmounts = splitInstallments(amount, totalInstallments);
+        const dueDates = civilInstallmentDueDates(now, totalInstallments, daysBetween);
 
         for (let i = 1; i <= totalInstallments; i++) {
-          const installmentAmount = i === totalInstallments
-            ? amount - perInstallment * (totalInstallments - 1)
-            : perInstallment;
-
           await this.prisma.accountsReceivable.create({
             data: {
               tenantId,
@@ -489,9 +523,9 @@ export class OrderEventsHandler {
               description: `${orderNumber} - ${methodName} (${i}/${totalInstallments})`,
               installment: i,
               totalInstallments,
-              amount: installmentAmount,
+              amount: installmentAmounts[i - 1],
               status: 'PENDING',
-              dueDate: new Date(now.getTime() + i * daysBetween * DAY_MS),
+              dueDate: dueDates[i - 1],
             },
           });
         }

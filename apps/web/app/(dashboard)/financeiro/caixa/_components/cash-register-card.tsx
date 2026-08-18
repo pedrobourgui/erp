@@ -1,10 +1,5 @@
 "use client";
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
 import {
   DoorOpen,
   DoorClosed,
@@ -12,8 +7,14 @@ import {
   ArrowDownCircle,
   Eye,
 } from "lucide-react";
+import React from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { CashRegister } from "@/hooks/use-cash-registers";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -47,16 +48,13 @@ export function CashRegisterCard({
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isOpen && reg.currentSession && (
-          <div className="space-y-2 text-sm">
-            {reg.currentSession.operator && (
-              <div className="flex justify-between">
+        {isOpen && reg.currentSession ? <div className="space-y-2 text-sm">
+            {reg.currentSession.operator ? <div className="flex justify-between">
                 <span className="text-muted-foreground">Operador</span>
                 <span className="font-medium">
                   {reg.currentSession.operator.name}
                 </span>
-              </div>
-            )}
+              </div> : null}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Aberto em</span>
               <span>{formatDateTime(reg.currentSession.openedAt)}</span>
@@ -67,8 +65,7 @@ export function CashRegisterCard({
                 {formatCurrency(reg.currentSession.openingBalance)}
               </span>
             </div>
-          </div>
-        )}
+          </div> : null}
 
         {!isOpen && (
           <p className="py-2 text-center text-sm text-muted-foreground">
@@ -88,9 +85,13 @@ export function CashRegisterCard({
             </Button>
           ) : (
             <>
+              {/* Fechar o caixa é rotina de fim de turno, não destruição de
+                  dado — e vinha em vermelho cheio enquanto "Abrir Caixa", o
+                  ato simétrico, vinha em primário. Regra do sistema:
+                  preenchimento vermelho destrói dado, contorno vermelho
+                  reverte dado, primário avança o fluxo. */}
               <Button
                 size="sm"
-                variant="destructive"
                 className="flex-1"
                 onClick={() => onClose(reg)}
               >

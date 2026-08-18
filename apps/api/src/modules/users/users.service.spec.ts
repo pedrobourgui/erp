@@ -60,6 +60,7 @@ function createMockPrisma() {
     },
     role: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
   };
 }
@@ -514,6 +515,55 @@ describe('UsersService', () => {
       await expect(
         service.updateOwnAvatar(TENANT_A, 'user-001', undefined),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ─── findRoles (FN-08) ────────────────────────────────────────────────────
+
+  describe('findRoles', () => {
+    it('should list the roles of the tenant with their user count', async () => {
+      prisma.role.findMany.mockResolvedValue([
+        {
+          id: 'role-001',
+          name: 'owner',
+          description: 'Proprietário',
+          _count: { users: 1 },
+        },
+      ]);
+
+      const result = await service.findRoles(TENANT_A);
+
+      expect(result).toEqual([
+        {
+          id: 'role-001',
+          name: 'owner',
+          label: 'Proprietário',
+          description: 'Proprietário',
+          userCount: 1,
+        },
+      ]);
+    });
+
+    it('should scope the query by tenant', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+
+      await service.findRoles(TENANT_A);
+
+      expect(prisma.role.findMany.mock.calls[0][0].where).toEqual({
+        tenantId: TENANT_A,
+      });
+    });
+
+    it('should not leak the permission rows of each role', async () => {
+      prisma.role.findMany.mockResolvedValue([
+        { id: 'r', name: 'seller', description: null, _count: { users: 0 } },
+      ]);
+
+      const result = await service.findRoles(TENANT_A);
+
+      expect(result[0]).not.toHaveProperty('permissions');
+      // A role with no description still renders a readable label.
+      expect(result[0].label).toBe('Vendedor');
     });
   });
 });

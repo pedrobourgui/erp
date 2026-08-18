@@ -2,17 +2,21 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, MovementType, MovementReason } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import { toDateRange } from '../../common/utils/date-range.util';
 import {
   CreateMovementDto,
   TransferStockDto,
+  AdjustStockDto,
   InventoryQueryDto,
   MovementQueryDto,
   CreateWarehouseDto,
+  UpdateWarehouseDto,
   AlertQueryDto,
 } from './dto/inventory.dto';
 import {
@@ -53,15 +57,29 @@ export class InventoryService {
           name: true,
           code: true,
           address: true,
+          city: true,
+          state: true,
+          zipCode: true,
           isDefault: true,
+          // AE-12d: a tela precisa distinguir um depósito desativado de um
+          // ativo — sem isto o card de um depósito inativo é idêntico.
+          isActive: true,
           createdAt: true,
           updatedAt: true,
+          // AE-12b: o card mostra "12 produtos"; sem isto exibia " produtos".
+          _count: { select: { inventoryItems: true } },
         },
       }),
       this.prisma.warehouse.count({ where }),
     ]);
 
-    return buildPaginatedResponse(data, total, { page, limit, sortOrder: 'desc' });
+    // O card lê `productCount`; `_count.inventoryItems` é detalhe do Prisma.
+    const rows = data.map(({ _count, ...warehouse }) => ({
+      ...warehouse,
+      productCount: _count?.inventoryItems ?? 0,
+    }));
+
+    return buildPaginatedResponse(rows, total, { page, limit, sortOrder: 'desc' });
   }
 
   /**
@@ -71,31 +89,49 @@ export class InventoryService {
     // Auto-generate code from name if not provided
     const code = dto.code || dto.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '').slice(0, 50);
 
-    // Compose full address from parts if city/state/zipCode provided
-    let address = dto.address || '';
-    if (dto.city || dto.state || dto.zipCode) {
-      const parts = [address, dto.city, dto.state].filter(Boolean);
-      address = parts.join(', ');
-      if (dto.zipCode) address += ` - CEP: ${dto.zipCode}`;
-    }
+    // AE-12b: cidade, UF e CEP são campos próprios. Concatená-los dentro de
+    // `address` destruía a estrutura na gravação — e o card do depósito, que
+    // lê `city` e `state`, exibia ", -" para sempre.
 
-    const warehouse = await this.prisma.warehouse.create({
+    // AE-12c: `isDefault` era gravado sem rebaixar o anterior, e a tela chegou
+    // a exibir **três** depósitos "Padrão" — deixando ambíguo qual deles a
+    // venda e o balcão usam. Rebaixar e criar na mesma transação, senão uma
+    // falha no meio deixa o tenant sem padrão nenhum.
+    const isDefault = dto.isDefault ?? false;
+
+    const warehouse = await this.prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.warehouse.updateMany({
+          where: { tenantId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      return tx.warehouse.create({
       data: {
         tenantId,
         name: dto.name,
         code,
-        address: address || null,
-        isDefault: dto.isDefault ?? false,
+        address: dto.address || null,
+        city: dto.city || null,
+        state: dto.state || null,
+        zipCode: dto.zipCode || null,
+        isDefault,
       },
       select: {
         id: true,
         name: true,
         code: true,
         address: true,
+        city: true,
+        state: true,
+        zipCode: true,
         isDefault: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true,
       },
+      });
     });
 
     this.logger.log(
@@ -103,6 +139,150 @@ export class InventoryService {
     );
 
     return warehouse;
+  }
+
+  /**
+   * Update a warehouse (AE-12d).
+   *
+   * The cards had no edit at all: a warehouse created with a typo in the name
+   * or the wrong CEP could only be worked around by creating another one.
+   */
+  async updateWarehouse(
+    tenantId: string,
+    id: string,
+    dto: UpdateWarehouseDto,
+  ) {
+    const existing = await this.prisma.warehouse.findFirst({
+      where: { id, tenantId },
+      select: { id: true, isDefault: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Depósito não encontrado');
+    }
+
+    // Un-ticking the default would leave the tenant with none, and the sale
+    // picks the default warehouse — refuse instead of silently breaking it.
+    if (existing.isDefault && dto.isDefault === false) {
+      throw new BadRequestException(
+        'Para trocar o depósito padrão, marque outro depósito como padrão.',
+      );
+    }
+
+    if (dto.isActive === false && existing.isDefault) {
+      throw new BadRequestException(
+        'O depósito padrão não pode ser desativado. Defina outro como padrão antes.',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // AE-12c: demote the previous default in the same transaction, or the
+      // screen shows two "Padrão" and the sale picks one at random.
+      if (dto.isDefault === true && !existing.isDefault) {
+        await tx.warehouse.updateMany({
+          where: { tenantId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      return tx.warehouse.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.code !== undefined && { code: dto.code }),
+          ...(dto.address !== undefined && { address: dto.address || null }),
+          ...(dto.city !== undefined && { city: dto.city || null }),
+          ...(dto.state !== undefined && { state: dto.state?.toUpperCase() || null }),
+          ...(dto.zipCode !== undefined && { zipCode: dto.zipCode || null }),
+          ...(dto.isDefault === true && { isDefault: true }),
+          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          isDefault: true,
+          isActive: true,
+          updatedAt: true,
+        },
+      });
+    });
+  }
+
+  /**
+   * Remove a warehouse (AE-12d).
+   *
+   * Same shape as deleting a product with stock (AE-02): the balance goes in
+   * the message, because "não foi possível excluir" forces the operator to go
+   * hunting for which of the six warehouses still holds something.
+   *
+   * A warehouse with history is **deactivated**, never deleted — the movements
+   * that point at it are the audit trail of every entry and exit it ever saw.
+   */
+  async removeWarehouse(tenantId: string, id: string) {
+    const warehouse = await this.prisma.warehouse.findFirst({
+      where: { id, tenantId },
+      select: { id: true, name: true, isDefault: true },
+    });
+    if (!warehouse) {
+      throw new NotFoundException('Depósito não encontrado');
+    }
+
+    if (warehouse.isDefault) {
+      throw new BadRequestException(
+        `"${warehouse.name}" é o depósito padrão. Defina outro como padrão antes de excluí-lo.`,
+      );
+    }
+
+    const [stock, movementCount] = await Promise.all([
+      this.prisma.inventoryItem.aggregate({
+        where: { tenantId, warehouseId: id },
+        _sum: { quantity: true },
+      }),
+      this.prisma.inventoryMovement.count({
+        where: {
+          tenantId,
+          OR: [{ fromWarehouseId: id }, { toWarehouseId: id }],
+        },
+      }),
+    ]);
+
+    const balance = stock._sum.quantity ?? 0;
+    if (balance > 0) {
+      throw new ConflictException(
+        `"${warehouse.name}" ainda tem ${balance} un. em estoque. Transfira ou ajuste o saldo antes de excluí-lo.`,
+      );
+    }
+
+    if (movementCount > 0) {
+      await this.prisma.warehouse.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      this.logger.log(`Warehouse deactivated: ${id} for tenant ${tenantId}`);
+      return {
+        success: true,
+        deactivated: true,
+        message: `"${warehouse.name}" foi desativado. O histórico de movimentações foi preservado.`,
+      };
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Zero-quantity rows may still exist for products that passed through.
+      await tx.inventoryItem.deleteMany({ where: { tenantId, warehouseId: id } });
+      await tx.stockAlert.deleteMany({ where: { tenantId, warehouseId: id } });
+      await tx.warehouse.delete({ where: { id } });
+    });
+
+    this.logger.log(`Warehouse removed: ${id} for tenant ${tenantId}`);
+    return {
+      success: true,
+      deactivated: false,
+      message: `"${warehouse.name}" foi excluído com sucesso.`,
+    };
   }
 
   /**
@@ -159,7 +339,7 @@ export class InventoryService {
       select: { id: true, sku: true, name: true },
     });
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Produto não encontrado');
     }
 
     const totalCost = dto.unitCost
@@ -190,7 +370,7 @@ export class InventoryService {
       // Update inventory based on movement type
       if (dto.type === 'ENTRY' || dto.type === 'RETURN' || dto.type === 'PRODUCTION') {
         if (!dto.toWarehouseId) {
-          throw new BadRequestException('toWarehouseId is required for entry/return/production movements');
+          throw new BadRequestException('Informe o depósito de destino para movimentações de entrada, devolução ou produção');
         }
         await this.upsertInventoryItem(
           tx,
@@ -199,10 +379,11 @@ export class InventoryService {
           dto.variantId ?? null,
           dto.toWarehouseId,
           dto.quantity,
+          dto.unitCost,
         );
       } else if (dto.type === 'EXIT') {
         if (!dto.fromWarehouseId) {
-          throw new BadRequestException('fromWarehouseId is required for exit movements');
+          throw new BadRequestException('Informe o depósito de origem para movimentações de saída');
         }
         await this.upsertInventoryItem(
           tx,
@@ -216,7 +397,7 @@ export class InventoryService {
         // Adjustment can be positive or negative; use toWarehouseId or fromWarehouseId
         const warehouseId = dto.toWarehouseId || dto.fromWarehouseId;
         if (!warehouseId) {
-          throw new BadRequestException('A warehouse ID is required for adjustments');
+          throw new BadRequestException('Informe o depósito para registrar o ajuste');
         }
         // For adjustments, positive quantity = add, we decide based on which warehouse is given
         const delta = dto.toWarehouseId ? dto.quantity : -dto.quantity;
@@ -227,6 +408,7 @@ export class InventoryService {
           dto.variantId ?? null,
           warehouseId,
           delta,
+          dto.unitCost,
         );
       }
       // TRANSFER is handled via transferStock method
@@ -272,11 +454,9 @@ export class InventoryService {
         { toWarehouseId: warehouseId },
       ];
     }
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) (where.createdAt as any).gte = new Date(dateFrom);
-      if (dateTo) (where.createdAt as any).lte = new Date(dateTo);
-    }
+    // Same civil-day range as the other filters (FN-01 family).
+    const createdAt = toDateRange(dateFrom, dateTo);
+    if (createdAt) where.createdAt = createdAt;
 
     const orderBy = sortBy
       ? { [sortBy]: sortOrder }
@@ -343,7 +523,7 @@ export class InventoryService {
     tenantId: string,
     query: AlertQueryDto,
   ): Promise<PaginatedResponse<any>> {
-    const { page = 1, limit = 20, status } = query;
+    const { page = 1, limit = 20, status, warehouseId, productId } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.StockAlertWhereInput = { tenantId };
@@ -351,6 +531,13 @@ export class InventoryService {
       where.isResolved = false;
     } else if (status === 'RESOLVED') {
       where.isResolved = true;
+    }
+    // FT-10: "o que está faltando no Depósito Central?" é a pergunta da tela.
+    if (warehouseId) {
+      where.warehouseId = warehouseId;
+    }
+    if (productId) {
+      where.productId = productId;
     }
 
     const [data, total] = await Promise.all([
@@ -407,7 +594,7 @@ export class InventoryService {
 
     if (!item) {
       throw new NotFoundException(
-        `Inventory item with id ${itemId} not found for tenant ${tenantId}`,
+        `Item de estoque ${itemId} não encontrado`,
       );
     }
 
@@ -432,7 +619,7 @@ export class InventoryService {
    */
   async transferStock(tenantId: string, userId: string, dto: TransferStockDto) {
     if (dto.fromWarehouseId === dto.toWarehouseId) {
-      throw new BadRequestException('Source and destination warehouses must be different');
+      throw new BadRequestException('O depósito de origem e o de destino devem ser diferentes');
     }
 
     // Validate product
@@ -441,7 +628,7 @@ export class InventoryService {
       select: { id: true, sku: true },
     });
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Produto não encontrado');
     }
 
     // Validate source warehouse has enough stock
@@ -456,8 +643,13 @@ export class InventoryService {
 
     if (!sourceItem || sourceItem.available < dto.quantity) {
       const available = sourceItem?.available ?? 0;
+      const source = await this.prisma.warehouse.findFirst({
+        where: { id: dto.fromWarehouseId, tenantId },
+        select: { name: true },
+      });
+      const where = source ? ` no depósito ${source.name}` : ' no depósito de origem';
       throw new BadRequestException(
-        `Insufficient stock in source warehouse. Available: ${available}, Requested: ${dto.quantity}`,
+        `Estoque insuficiente${where}: disponível ${available}, transferência solicitada ${dto.quantity}.`,
       );
     }
 
@@ -510,6 +702,99 @@ export class InventoryService {
     await this.checkAndUpdateAlerts(tenantId, dto.productId, dto.variantId ?? null, dto.toWarehouseId);
 
     return movement;
+  }
+
+  /**
+   * Stock adjustment from a physical count (AE-25).
+   *
+   * `countedQuantity` is the balance the operator counted, not a difference.
+   * The delta is derived from the balance read **inside** the transaction, so a
+   * sale that lands between opening the screen and saving is not overwritten —
+   * a client-computed delta would apply on top of the newer number and silently
+   * lose that sale (the VD-21 lesson, on the inventory side).
+   */
+  async adjustStock(tenantId: string, userId: string, dto: AdjustStockDto) {
+    const [product, warehouse] = await Promise.all([
+      this.prisma.product.findFirst({
+        where: { id: dto.productId, tenantId, deletedAt: null },
+        select: { id: true, sku: true, name: true },
+      }),
+      this.prisma.warehouse.findFirst({
+        where: { id: dto.warehouseId, tenantId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    if (!product) throw new NotFoundException('Produto não encontrado');
+    if (!warehouse) throw new NotFoundException('Depósito não encontrado');
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const item = await tx.inventoryItem.findFirst({
+        where: {
+          tenantId,
+          productId: dto.productId,
+          variantId: dto.variantId ?? null,
+          warehouseId: dto.warehouseId,
+        },
+        select: { quantity: true },
+      });
+
+      const previousQuantity = item?.quantity ?? 0;
+      const delta = dto.countedQuantity - previousQuantity;
+
+      if (delta === 0) {
+        throw new BadRequestException(
+          `O saldo de ${product.name} (${product.sku}) no depósito ${warehouse.name} já é ${previousQuantity}. Nenhum ajuste a registrar.`,
+        );
+      }
+
+      await this.upsertInventoryItem(
+        tx,
+        tenantId,
+        dto.productId,
+        dto.variantId ?? null,
+        dto.warehouseId,
+        delta,
+      );
+
+      // The movement stores the magnitude; the direction is the warehouse
+      // field that is filled, which is the convention `findMovements` reads.
+      const movement = await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId: dto.productId,
+          variantId: dto.variantId,
+          type: 'ADJUSTMENT',
+          reason: dto.reason as MovementReason,
+          quantity: Math.abs(delta),
+          ...(delta > 0
+            ? { toWarehouseId: dto.warehouseId }
+            : { fromWarehouseId: dto.warehouseId }),
+          notes: dto.notes,
+          userId,
+        },
+      });
+
+      this.logger.log(
+        `Stock adjustment: ${product.sku} at ${warehouse.name} ${previousQuantity} -> ${dto.countedQuantity} (tenant: ${tenantId}, user: ${userId})`,
+      );
+
+      return { movement, previousQuantity, delta };
+    });
+
+    await this.checkAndUpdateAlerts(
+      tenantId,
+      dto.productId,
+      dto.variantId ?? null,
+      dto.warehouseId,
+    );
+
+    return {
+      ...result.movement,
+      previousQuantity: result.previousQuantity,
+      newQuantity: dto.countedQuantity,
+      delta: result.delta,
+    };
   }
 
   /**
@@ -766,6 +1051,87 @@ export class InventoryService {
   /**
    * Upsert inventory item: create if not exists, update quantity if exists.
    */
+  /**
+   * Custo médio ponderado do saldo do depósito.
+   *
+   * `costAverage` existia no schema e era exibido na tela do produto, mas
+   * nenhum caminho de escrita o atualizava: a coluna "Custo Médio" mostrava
+   * R$ 0,00 para todo produto, sempre — margem e CMV nasciam zerados.
+   *
+   * Só **entrada** reprecifica o saldo; saída consome ao custo que já estava
+   * lá. Sem estoque anterior o custo é o da entrada, que também cobre a
+   * divisão por zero de um item zerado recebendo entrada sem custo.
+   *
+   * Trabalha em `Decimal` porque a coluna guarda 4 casas — arredondar para 2
+   * a cada entrada faria o custo derivar a cada compra.
+   */
+  private weightedAverageCost(args: {
+    currentQuantity: number;
+    currentAverage: Prisma.Decimal | number | null;
+    inboundQuantity: number;
+    inboundUnitCost: number;
+  }): Prisma.Decimal {
+    const inboundCost = new Prisma.Decimal(args.inboundUnitCost);
+    const previousQty = Math.max(args.currentQuantity, 0);
+    const newQty = previousQty + args.inboundQuantity;
+
+    if (newQty <= 0) {return inboundCost;}
+    if (previousQty <= 0) {return inboundCost;}
+
+    const previousAvg = new Prisma.Decimal(args.currentAverage ?? 0);
+    return previousAvg
+      .mul(previousQty)
+      .add(inboundCost.mul(args.inboundQuantity))
+      .div(newQty);
+  }
+
+  /**
+   * AE-12a: em pt-BR e **acionável** — dizer "Current: 19" obriga o operador a
+   * adivinhar de qual depósito é esse 19.
+   */
+  private async insufficientStockError(
+    tx: Prisma.TransactionClient,
+    args: {
+      productId: string;
+      warehouseId: string;
+      available: number;
+      requested: number;
+    },
+  ): Promise<BadRequestException> {
+    const [product, warehouse] = await Promise.all([
+      tx.product.findUnique({
+        where: { id: args.productId },
+        select: { name: true, sku: true },
+      }),
+      tx.warehouse.findUnique({
+        where: { id: args.warehouseId },
+        select: { name: true },
+      }),
+    ]);
+    const where = warehouse ? ` no depósito ${warehouse.name}` : '';
+    const what = product ? `de ${product.name} (${product.sku})` : '';
+    return new BadRequestException(
+      `Estoque insuficiente ${what}${where}: disponível ${args.available}, saída solicitada ${args.requested}.`.replace(
+        /\s+/g,
+        ' ',
+      ),
+    );
+  }
+
+  /** Custo da entrada: o informado, ou o de cadastro do produto. */
+  private async resolveEntryCost(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    unitCost?: number,
+  ): Promise<number> {
+    if (unitCost !== undefined && unitCost !== null) {return unitCost;}
+    const product = await tx.product.findUnique({
+      where: { id: productId },
+      select: { costPrice: true },
+    });
+    return Number(product?.costPrice ?? 0);
+  }
+
   private async upsertInventoryItem(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -773,6 +1139,11 @@ export class InventoryService {
     variantId: string | null,
     warehouseId: string,
     delta: number,
+    /**
+     * Custo unitário da entrada. Ausente, cai no `costPrice` do produto — é
+     * melhor um custo de cadastro do que a coluna zerada para sempre.
+     */
+    unitCost?: number,
   ): Promise<void> {
     const existing = await tx.inventoryItem.findFirst({
       where: {
@@ -785,9 +1156,12 @@ export class InventoryService {
     if (existing) {
       const newQuantity = existing.quantity + delta;
       if (newQuantity < 0) {
-        throw new BadRequestException(
-          `Insufficient stock. Current: ${existing.quantity}, Change: ${delta}`,
-        );
+        throw await this.insufficientStockError(tx, {
+          productId,
+          warehouseId,
+          available: existing.quantity,
+          requested: Math.abs(delta),
+        });
       }
       const newAvailable = existing.available + delta;
 
@@ -796,11 +1170,32 @@ export class InventoryService {
         data: {
           quantity: Math.max(newQuantity, 0),
           available: Math.max(newAvailable, 0),
+          ...(delta > 0
+            ? {
+                costAverage: this.weightedAverageCost({
+                  currentQuantity: existing.quantity,
+                  currentAverage: existing.costAverage,
+                  inboundQuantity: delta,
+                  inboundUnitCost: await this.resolveEntryCost(
+                    tx,
+                    productId,
+                    unitCost,
+                  ),
+                }),
+              }
+            : {}),
         },
       });
     } else {
       if (delta < 0) {
-        throw new BadRequestException('Cannot create inventory item with negative quantity');
+        const warehouse = await tx.warehouse.findUnique({
+          where: { id: warehouseId },
+          select: { name: true },
+        });
+        const where = warehouse ? ` no depósito ${warehouse.name}` : '';
+        throw new BadRequestException(
+          `Este produto ainda não tem estoque${where}, então não é possível registrar uma saída.`,
+        );
       }
 
       // The item is created lazily on the first movement, so it inherits the
@@ -808,7 +1203,7 @@ export class InventoryService {
       // minimum keeps it — this only seeds the initial value.
       const product = await tx.product.findUnique({
         where: { id: productId },
-        select: { defaultMinStock: true },
+        select: { defaultMinStock: true, costPrice: true },
       });
 
       await tx.inventoryItem.create({
@@ -821,6 +1216,10 @@ export class InventoryService {
           available: delta,
           reserved: 0,
           minStock: product?.defaultMinStock ?? 0,
+          // Primeira entrada: o custo do saldo é o custo dela.
+          costAverage: new Prisma.Decimal(
+            unitCost ?? Number(product?.costPrice ?? 0),
+          ),
         },
       });
     }

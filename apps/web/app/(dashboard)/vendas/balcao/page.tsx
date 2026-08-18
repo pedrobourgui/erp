@@ -1,36 +1,66 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import type { PaginatedResponse } from "@erp/shared-types";
+import {
+  calculateItemTotal,
+  calculateOrderTotals,
+  maxItemDiscount,
+} from "@erp/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MoneyInput } from "@/components/forms/money-input";
-import { SearchableSelect } from "@/components/forms/searchable-select";
-import { PaymentSelector } from "@/components/forms/payment-selector";
-import { useCreateOrder } from "@/hooks/use-orders";
-import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, cn } from "@/lib/utils";
-import api, { getApiErrorMessage } from "@/lib/api";
 import {
   ArrowLeft,
   Save,
   Loader2,
   Trash2,
-  Search,
-  Package,
   AlertTriangle,
   CheckCircle2,
   ShoppingCart,
   Minus,
   Plus,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { z } from "zod";
+
+import { MoneyInput } from "@/components/forms/money-input";
+import { PaymentSelector } from "@/components/forms/payment-selector";
+import {
+  SearchableSelect,
+  SearchableSelectBase,
+} from "@/components/forms/searchable-select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
-import type { PaginatedResponse } from "@erp/shared-types";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
+import { useInvalidSubmit } from "@/hooks/use-invalid-submit";
+import { useCreateOrder } from "@/hooks/use-orders";
+import api, { getApiErrorMessage } from "@/lib/api";
+import { scheduleScrollToFirstError } from "@/lib/form-errors";
+import { settlePayments } from "@/lib/payment-settlement";
+import {
+  fetchAvailableStock,
+  refreshCartStock,
+} from "@/lib/stock-snapshot";
+import { formatCurrency, cn } from "@/lib/utils";
+
+
+
+/**
+ * Quantos produtos a lista traz de uma vez — o mesmo do seletor de clientes
+ * (`lib/entity-search.ts`).
+ */
+const PRODUCT_PAGE_SIZE = 20;
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -56,37 +86,64 @@ interface ProductResult {
 // ─── Validation schema ─────────────────────────────────────────────────
 
 const coerceNumber = (val: unknown) => {
-  if (val === "" || val === null || val === undefined) return 0;
+  if (val === "" || val === null || val === undefined) {
+    return 0;
+  }
   const n = Number(val);
   return Number.isNaN(n) ? 0 : n;
 };
 
-const counterSaleItemSchema = z.object({
-  productId: z.string().min(1, "Selecione um produto"),
-  productName: z.string(),
-  sku: z.string(),
-  availableStock: z.number(),
-  quantity: z.preprocess(
-    coerceNumber,
-    z.number().min(1, "Quantidade minima e 1")
-  ),
-  unitPrice: z.preprocess(
-    coerceNumber,
-    z.number().min(0.01, "Preco unitario e obrigatorio")
-  ),
-  discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-});
+const counterSaleItemSchema = z
+  .object({
+    productId: z.string().min(1, "Selecione um produto"),
+    productName: z.string(),
+    sku: z.string(),
+    availableStock: z.number(),
+    quantity: z.preprocess(
+      coerceNumber,
+      z
+        .number()
+        .int("A quantidade deve ser um número inteiro")
+        .min(1, "A quantidade mínima é 1")
+    ),
+    unitPrice: z.preprocess(
+      coerceNumber,
+      z.number().min(0.01, "Informe o preço unitário")
+    ),
+    discount: z.preprocess(
+      coerceNumber,
+      z.number().min(0, "O desconto não pode ser negativo").default(0)
+    ),
+  })
+  .superRefine((item, ctx) => {
+    // VD-10: a discount above the line made the cart show a negative subtotal
+    // and the API then refused the sale for disagreeing with it.
+    const max = maxItemDiscount({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+    });
+    if (Number(item.discount) > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["discount"],
+        message: `O desconto não pode passar de ${formatCurrency(max)}`,
+      });
+    }
+  });
 
 const orderPaymentSchema = z
   .object({
     paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
     paymentConditionId: z.string().optional(),
     financialAccountId: z.string().optional(),
-    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
+    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatório")),
     installments: z.number().optional(),
     authorizationCode: z.string().optional(),
-    // Set by PaymentLine from the selected method; drives the conditional rule below.
+    // Both set by PaymentLine from the selected method: the schema has no
+    // access to the method list. `requiresAuthorization` drives the rule below;
+    // `methodType` tells cash apart, the only kind that accepts change (VD-08).
     requiresAuthorization: z.boolean().optional(),
+    methodType: z.string().optional(),
   })
   .superRefine((payment, ctx) => {
     if (payment.requiresAuthorization && !payment.authorizationCode?.trim()) {
@@ -97,6 +154,36 @@ const orderPaymentSchema = z
       });
     }
   });
+
+/** Item and order totals of the cart, with the API's own arithmetic. */
+function counterSaleTotals(data: {
+  items: { quantity: unknown; unitPrice: unknown; discount?: unknown }[];
+  discount?: unknown;
+}) {
+  return calculateOrderTotals({
+    items: data.items.map((item) => ({
+      quantity: coerceNumber(item.quantity) as number,
+      unitPrice: coerceNumber(item.unitPrice) as number,
+      discount: coerceNumber(item.discount) as number,
+    })),
+    discount: coerceNumber(data.discount) as number,
+  });
+}
+
+/** How much of each payment is charged to the sale, and how much is change. */
+function counterSaleSettlement(data: {
+  items: { quantity: unknown; unitPrice: unknown; discount?: unknown }[];
+  discount?: unknown;
+  payments: { amount: unknown; methodType?: string }[];
+}) {
+  return settlePayments(
+    data.payments.map((p) => ({
+      amount: coerceNumber(p.amount) as number,
+      isCash: p.methodType === "CASH",
+    })),
+    counterSaleTotals(data).total
+  );
+}
 
 const counterSaleSchema = z
   .object({
@@ -109,22 +196,19 @@ const counterSaleSchema = z
     notes: z.string().max(1000).optional(),
   })
   .refine(
-    (data) => {
-      const paymentTotal = data.payments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0
-      );
-      const orderTotal =
-        data.items.reduce((sum, item) => {
-          const qty = Number(item.quantity) || 0;
-          const price = Number(item.unitPrice) || 0;
-          const disc = Number(item.discount) || 0;
-          return sum + (qty * price - disc);
-        }, 0) - (Number(data.discount) || 0);
-      return Math.abs(paymentTotal - orderTotal) < 0.01;
-    },
+    (data) => (Number(data.discount) || 0) <= counterSaleTotals(data).subtotal,
     {
-      message: "A soma dos pagamentos deve ser igual ao total do pedido",
+      message: "O desconto não pode ser maior que o total dos itens",
+      path: ["discount"],
+    }
+  )
+  .refine(
+    // VD-08: cash above the total is change, not an error. The settlement says
+    // whether the sale is covered; the excess never reaches the API.
+    (data) => counterSaleSettlement(data).isSettled,
+    {
+      message:
+        "Os pagamentos devem cobrir o total do pedido (somente dinheiro aceita valor acima).",
       path: ["payments"],
     }
   );
@@ -165,19 +249,46 @@ export default function CounterSalePage() {
   const createOrder = useCreateOrder();
   const { addToast } = useToast();
 
-  // A counter sale can only be finalized while a cash register is open
-  const { data: openSessions } = useCashRegisterSessions({ status: "OPEN", limit: 1 });
-  const hasOpenCashRegister = (openSessions?.data?.length ?? 0) > 0;
+  // A counter sale can only be finalized while a cash register is open.
+  // VD-07/AE-28: a failed query is not the same as "no open register" — the
+  // seller used to get a 403 here and read a warning telling them to open a
+  // cash register they had, in a screen they cannot reach.
+  const {
+    data: openSessions,
+    isLoading: sessionsLoading,
+    error: sessionsError,
+  } = useCashRegisterSessions({ status: "OPEN", limit: 20 });
+  const sessionsUnavailable = !!sessionsError;
+  const sessions = openSessions?.data ?? [];
+  const hasOpenCashRegister = sessions.length > 0;
+  // FN-05: com dois PDVs abertos a venda precisa dizer em qual foi feita.
+  // Com um só, não faz sentido perguntar.
+  const [sessionId, setSessionId] = useState<string>("");
+  const needsSessionChoice = sessions.length > 1;
+  const selectedSessionId = needsSessionChoice
+    ? sessionId
+    : sessions[0]?.id ?? "";
+  const showNoCashRegisterWarning =
+    !sessionsLoading && !sessionsUnavailable && !hasOpenCashRegister;
+  /**
+   * When the check itself failed we let the sale through: the API validates the
+   * open session anyway and refuses with a real message. Blocking on a question
+   * we could not ask is what left the seller staring at a dead button (VD-07).
+   */
+  const cashRegisterBlocksSale = !sessionsUnavailable && !hasOpenCashRegister;
 
   // An immediate payment without a linked account is refused by the API (SCRUM-30)
   const [hasMissingAccount, setHasMissingAccount] = useState(false);
 
   // Product search state
-  const [productSearch, setProductSearch] = useState("");
-  const [productResults, setProductResults] = useState<ProductResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Os produtos já vistos pelo seletor, por id.
+   *
+   * A opção carrega só rótulo e descrição; somar o item ao pedido precisa do
+   * preço e do saldo. Guardar o que a API acabou de devolver evita uma segunda
+   * requisição para o mesmo dado.
+   */
+  const productsById = React.useRef(new Map<string, ProductResult>());
 
   const {
     register,
@@ -207,15 +318,23 @@ export default function CounterSalePage() {
 
   // ─── Computed totals ───────────────────────────────────────────────
 
-  const calcItemTotal = (item: CounterSaleFormValues["items"][number]) => {
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.unitPrice) || 0;
-    const disc = Number(item.discount) || 0;
-    return qty * price - disc;
-  };
+  // VD-10: the same functions the API uses, so the screen can never show a
+  // total the backend will refuse.
+  const calcItemTotal = (item: CounterSaleFormValues["items"][number]) =>
+    calculateItemTotal({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      discount: Number(item.discount) || 0,
+    });
 
-  const subtotal = items.reduce((sum, item) => sum + calcItemTotal(item), 0);
-  const total = subtotal - (Number(orderDiscount) || 0);
+  const { subtotal, total } = calculateOrderTotals({
+    items: items.map((item) => ({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      discount: Number(item.discount) || 0,
+    })),
+    discount: Number(orderDiscount) || 0,
+  });
 
   // ─── Customer loader ──────────────────────────────────────────────
 
@@ -231,37 +350,119 @@ export default function CounterSalePage() {
     }));
   }, []);
 
-  // ─── Product search ───────────────────────────────────────────────
+  // ─── Product picker ───────────────────────────────────────────────
 
-  const searchProducts = useCallback(async (query: string) => {
-    setIsSearching(true);
-    setHasSearched(true);
-    try {
-      const { data } = await api.get<PaginatedResponse<ProductResult>>(
-        "/products",
-        { params: { search: query, limit: 10, status: "ACTIVE" } }
-      );
-      setProductResults(data.data ?? []);
-    } catch {
-      setProductResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+  /**
+   * Carrega os produtos do seletor — sem texto, os primeiros disponíveis.
+   *
+   * O `SearchableSelectBase` chama isto ao abrir e a cada 300ms de digitação,
+   * igual ao seletor de clientes logo acima.
+   */
+  const loadProducts = useCallback(async (query: string) => {
+    const { data } = await api.get<PaginatedResponse<ProductResult>>(
+      "/products",
+      {
+        params: {
+          // Sem texto, a busca não é enviada: `search=""` seria uma comparação
+          // contra vazio em vez de "traga os primeiros".
+          search: query.trim() || undefined,
+          limit: PRODUCT_PAGE_SIZE,
+          status: "ACTIVE",
+        },
+      }
+    );
+
+    const produtos = data.data ?? [];
+    produtos.forEach((produto) => productsById.current.set(produto.id, produto));
+
+    return produtos.map((produto) => {
+      const disponivel = produto.inventory?.totalAvailable ?? 0;
+      return {
+        value: produto.id,
+        label: produto.name,
+        // O saldo entra aqui porque é o que decide a escolha — no balcão, com
+        // o cliente esperando, descobrir a falta ao finalizar é tarde.
+        description: `${produto.sku} · ${formatCurrency(Number(produto.salePrice))} · ${
+          disponivel > 0 ? `${disponivel} un.` : "sem estoque"
+        }`,
+      };
+    });
   }, []);
 
-  const handleProductSearch = useCallback(
-    (value: string) => {
-      setProductSearch(value);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (!value.trim()) {
-        setProductResults([]);
-        setHasSearched(false);
+  // ─── Atalhos e foco (VD-18) ──────────────────────────────────────
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const productFieldRef = useRef<HTMLDivElement>(null);
+  const customerFieldRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Abre o seletor de produtos e deixa o cursor no campo de busca.
+   *
+   * Clicar no gatilho em vez de focar um input: o seletor foca o próprio campo
+   * ao abrir. Se já estiver aberto, o clique fecharia — daí a checagem.
+   */
+  const focusSearch = useCallback(() => {
+    const campo = productFieldRef.current?.querySelector("input");
+    if (campo) {
+      campo.focus();
+      campo.select();
+      return;
+    }
+    productFieldRef.current?.querySelector("button")?.click();
+  }, []);
+
+  /**
+   * VD-18: o PDV abre pronto para o primeiro bipe.
+   *
+   * A busca era um `<input autoFocus>` sempre à vista; agora ela mora dentro do
+   * seletor, então abrir o seletor é o que devolve esse ganho. Sem isto, a
+   * primeira leitura de cada venda exigiria um F2 ou um clique — e o QA mediu
+   * exatamente esse custo por venda.
+   */
+  useEffect(() => {
+    focusSearch();
+  }, [focusSearch]);
+
+  /**
+   * FN-13: "Finalizar Venda" fica no painel fixo à direita, sempre visível; o
+   * campo Cliente rola junto com o carrinho. Sem isto, vender sem cliente não
+   * produzia toast, requisição nem erro na tela — o botão parecia quebrado.
+   */
+  const onInvalid = useInvalidSubmit(() => {
+    scheduleScrollToFirstError(() => formRef.current);
+  });
+
+  /**
+   * F2 busca produto, F4 cliente, F9 finaliza, ESC limpa a busca.
+   * O operador de balcão trabalha com as duas mãos no teclado — obrigar o
+   * mouse a cada item é o que o QA mediu como custo por venda.
+   */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        focusSearch();
         return;
       }
-      debounceRef.current = setTimeout(() => searchProducts(value), 300);
-    },
-    [searchProducts]
-  );
+      if (e.key === "F4") {
+        e.preventDefault();
+        customerFieldRef.current?.querySelector("button")?.click();
+        return;
+      }
+      if (e.key === "F9") {
+        e.preventDefault();
+        // Passa pelo submit do form para não pular as validações do zod.
+        formRef.current?.requestSubmit();
+        return;
+      }
+      // O ESC é tratado dentro do seletor, que fecha a lista e limpa a busca.
+      // Cancelar a venda inteira por ESC seria destrutivo demais para uma tecla
+      // que se aperta sem pensar.
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusSearch]);
 
   // ─── Add product ─────────────────────────────────────────────────
 
@@ -274,6 +475,8 @@ export default function CounterSalePage() {
       if (existingIndex >= 0) {
         const current = items[existingIndex];
         setValue(`items.${existingIndex}.quantity`, current.quantity + 1);
+        // VD-18: o mesmo produto lido duas vezes no leitor soma quantidade. O
+        // seletor já limpa a busca e devolve o foco (`keepOpenOnSelect`).
         return;
       }
       append({
@@ -285,20 +488,61 @@ export default function CounterSalePage() {
         unitPrice: Number(product.salePrice),
         discount: 0,
       });
-      setProductSearch("");
-      setProductResults([]);
-      setHasSearched(false);
     },
     [items, append, setValue]
+  );
+
+  /**
+   * O seletor devolve um id; o carrinho precisa do produto.
+   *
+   * Com `keepOpenOnSelect`, a lista continua aberta e o campo volta limpo e
+   * focado — o próximo bipe cai onde deve, sem clique nenhum no meio.
+   */
+  const handlePickProduct = useCallback(
+    (productId: string) => {
+      const product = productsById.current.get(productId);
+      if (product) {
+        addProductToOrder(product);
+      }
+    },
+    [addProductToOrder]
   );
 
   // ─── Submit ───────────────────────────────────────────────────────
 
   const onSubmit = async (data: CounterSaleFormValues) => {
-    if (!hasOpenCashRegister) {
+    if (cashRegisterBlocksSale) {
       addToast("Abra o caixa para registrar vendas no balcão.", "error");
       return;
     }
+    if (needsSessionChoice && !sessionId) {
+      addToast("Selecione em qual caixa a venda será registrada.", "error");
+      return;
+    }
+    // VD-21: the availableStock in the cart is a snapshot from the product
+    // search. Confirm it against the server before charging the customer.
+    const stock = await refreshCartStock(
+      data.items.map((item) => ({
+        productId: item.productId,
+        quantity: Number(item.quantity) || 0,
+        productName: item.productName,
+      }))
+    );
+    stock.available.forEach((available, index) => {
+      if (available !== null) {
+        setValue(`items.${index}.availableStock`, available);
+      }
+    });
+    if (stock.insufficient.length > 0) {
+      const [first] = stock.insufficient;
+      addToast(
+        `Estoque insuficiente de ${first.productName}: ${first.available} un. disponíveis para ${first.quantity} solicitadas.`,
+        "error"
+      );
+      return;
+    }
+
+    const settlement = counterSaleSettlement(data);
     try {
       const result = await createOrder.mutateAsync({
         customerId: data.customerId || undefined,
@@ -309,18 +553,27 @@ export default function CounterSalePage() {
           unitPrice: item.unitPrice,
           discount: item.discount,
         })),
-        payments: data.payments.map((p) => ({
+        // VD-08: send what is charged to the sale, not what was handed over —
+        // the change is not revenue and must not become a receivable.
+        payments: data.payments.map((p, index) => ({
           paymentMethodId: p.paymentMethodId,
           paymentConditionId: p.paymentConditionId || undefined,
           financialAccountId: p.financialAccountId || undefined,
-          amount: p.amount,
+          amount: settlement.applied[index],
           installments: p.installments || undefined,
           authorizationCode: p.authorizationCode || undefined,
         })),
         shippingCost: 0,
+        discount: Number(data.discount) || 0,
         notes: data.notes || undefined,
+        cashRegisterSessionId: selectedSessionId || undefined,
       });
-      addToast("Venda no balcao finalizada com sucesso!", "success");
+      addToast(
+        settlement.change > 0
+          ? `Venda finalizada. Troco: ${formatCurrency(settlement.change)}`
+          : "Venda no balcão finalizada com sucesso!",
+        "success"
+      );
       router.push(`/vendas/pedidos/${result.data.id}`);
     } catch (err) {
       addToast(
@@ -348,15 +601,17 @@ export default function CounterSalePage() {
         </Tooltip>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Venda no Balcao
+            Venda no Balcão
           </h1>
           <p className="text-muted-foreground">
-            Venda direta - o pedido sera finalizado automaticamente
+            Venda direta - o pedido será finalizado automaticamente
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit((data) => onSubmit(data))}>
+      <form ref={formRef} onSubmit={handleSubmit((data) => onSubmit(data), onInvalid)}
+        noValidate
+      >
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-2">
@@ -366,130 +621,50 @@ export default function CounterSalePage() {
                 <CardTitle className="text-lg">Cliente</CardTitle>
               </CardHeader>
               <CardContent>
-                <SearchableSelect
-                  name="customerId"
-                  control={control}
-                  loadOptions={loadCustomers}
-                  placeholder="Buscar cliente por nome ou documento..."
-                  error={errors.customerId?.message}
-                />
+                {/* VD-18: F4 abre este seletor. O SearchableSelect não
+                    encaminha ref, então o atalho alcança o gatilho pelo
+                    wrapper — menos invasivo que mudar o componente. */}
+                <div ref={customerFieldRef}>
+                  <SearchableSelect
+                    name="customerId"
+                    control={control}
+                    loadOptions={loadCustomers}
+                    placeholder="Buscar cliente por nome ou documento..."
+                    error={errors.customerId?.message}
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            {/* Product search */}
+            {/* Product picker */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Adicionar Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={productSearch}
-                    onChange={(e) => handleProductSearch(e.target.value)}
-                    placeholder="Buscar produto por nome, SKU ou codigo de barras..."
-                    className="pl-10"
-                    autoFocus
-                  />
-                  {isSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                </div>
+              <CardContent>
+                {/*
+                  O mesmo seletor do cliente, logo acima — mas o balcão tem uma
+                  exigência que as outras telas não têm: o leitor de código de
+                  barras digita e termina com Enter, e o operador trabalha com
+                  as duas mãos no teclado. Daí as duas opções abaixo, sem as
+                  quais o dropdown custaria um clique por item bipado.
 
-                {/* Search results */}
-                {(productResults.length > 0 || (hasSearched && !isSearching)) && (
-                  <div className="rounded-lg border">
-                    {productResults.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                        Nenhum produto encontrado para &quot;{productSearch}&quot;
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="border-b bg-muted/50">
-                            <tr>
-                              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                Produto
-                              </th>
-                              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                SKU
-                              </th>
-                              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
-                                Preco
-                              </th>
-                              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
-                                Estoque
-                              </th>
-                              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {productResults.map((product) => {
-                              const available =
-                                product.inventory?.totalAvailable ?? 0;
-                              const alreadyAdded = items.some(
-                                (i) => i.productId === product.id
-                              );
-                              return (
-                                <tr
-                                  key={product.id}
-                                  className={cn(
-                                    "border-b last:border-0 transition-colors",
-                                    alreadyAdded
-                                      ? "bg-primary/5"
-                                      : "hover:bg-muted/30"
-                                  )}
-                                >
-                                  <td className="px-4 py-2.5">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-                                        <Package className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <span className="font-medium">
-                                        {product.name}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                                    {product.sku}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right font-medium">
-                                    {formatCurrency(Number(product.salePrice))}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-center">
-                                    <StockIndicator available={available} />
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right">
-                                    {alreadyAdded ? (
-                                      <span className="text-xs font-medium text-primary">
-                                        Adicionado
-                                      </span>
-                                    ) : (
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1.5 text-xs"
-                                        disabled={available <= 0}
-                                        onClick={() =>
-                                          addProductToOrder(product)
-                                        }
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                        Adicionar
-                                      </Button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  VD-18: o F2 alcança o gatilho pelo wrapper, como o F4 já faz
+                  com o cliente — o `SearchableSelect` não encaminha ref.
+                */}
+                <div ref={productFieldRef}>
+                  <SearchableSelectBase
+                    // Escolher aqui é uma ação — some para o carrinho e o campo
+                    // fica pronto para o próximo item.
+                    value=""
+                    onChange={handlePickProduct}
+                    loadOptions={loadProducts}
+                    selectFirstOnEnter
+                    keepOpenOnSelect
+                    placeholder="Buscar produto por nome, SKU ou código de barras..."
+                    emptyMessage="Nenhum produto encontrado"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -531,7 +706,7 @@ export default function CounterSalePage() {
                             Qtd
                           </th>
                           <th className="w-36 px-4 py-2.5 text-right font-medium text-muted-foreground">
-                            Preco Unit.
+                            Preço Unit.
                           </th>
                           <th className="w-36 px-4 py-2.5 text-right font-medium text-muted-foreground">
                             Desconto
@@ -549,6 +724,13 @@ export default function CounterSalePage() {
                           const stock = Number(item?.availableStock) || 0;
                           const itemTotal = item ? calcItemTotal(item) : 0;
                           const overStock = qty > stock;
+                          const itemErrors = errors.items?.[index];
+                          // VD-21: the field is registered here so its
+                          // onBlur can also refresh the stock snapshot below.
+                          const quantityField = register(
+                            `items.${index}.quantity`,
+                            { valueAsNumber: true }
+                          );
 
                           return (
                             <tr
@@ -559,12 +741,16 @@ export default function CounterSalePage() {
                               )}
                             >
                               <td className="px-4 py-3">
-                                <p className="font-medium">
-                                  {item?.productName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {item?.sku}
-                                </p>
+                                <TruncatedText
+                                  as="p"
+                                  text={item?.productName}
+                                  className="max-w-[24ch] font-medium"
+                                />
+                                <TruncatedText
+                                  as="p"
+                                  text={item?.sku}
+                                  className="max-w-[24ch] text-xs text-muted-foreground"
+                                />
                               </td>
 
                               <td className="px-4 py-3 text-center">
@@ -591,9 +777,19 @@ export default function CounterSalePage() {
                                   <Input
                                     type="number"
                                     min={1}
-                                    {...register(`items.${index}.quantity`, {
-                                      valueAsNumber: true,
-                                    })}
+                                    {...quantityField}
+                                    onBlur={async (event) => {
+                                      await quantityField.onBlur(event);
+                                      const fresh = await fetchAvailableStock(
+                                        item.productId
+                                      );
+                                      if (fresh !== null) {
+                                        setValue(
+                                          `items.${index}.availableStock`,
+                                          fresh
+                                        );
+                                      }
+                                    }}
                                     className={cn(
                                       "h-7 w-14 text-center text-sm",
                                       overStock &&
@@ -615,11 +811,14 @@ export default function CounterSalePage() {
                                     <Plus className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                {overStock && (
-                                  <p className="mt-1 text-center text-[10px] text-red-600">
+                                {/* VD-12: quantity 0 or negative used to block
+                                    the submit with no message at all. */}
+                                {itemErrors?.quantity ? <p className="mt-1 text-center text-[10px] text-destructive">
+                                    {itemErrors.quantity.message}
+                                  </p> : null}
+                                {overStock && !itemErrors?.quantity ? <p className="mt-1 text-center text-[10px] text-red-600">
                                     Excede estoque!
-                                  </p>
-                                )}
+                                  </p> : null}
                               </td>
 
                               <td className="px-4 py-3">
@@ -634,6 +833,9 @@ export default function CounterSalePage() {
                                   name={`items.${index}.discount`}
                                   control={control}
                                 />
+                                {itemErrors?.discount ? <p className="mt-1 text-[10px] text-destructive">
+                                    {itemErrors.discount.message}
+                                  </p> : null}
                               </td>
 
                               <td className="px-4 py-3 text-right font-semibold">
@@ -676,11 +878,9 @@ export default function CounterSalePage() {
                   </div>
                 )}
 
-                {errors.items?.message && (
-                  <p className="mt-2 text-xs text-destructive">
+                {errors.items?.message ? <p className="mt-2 text-xs text-destructive">
                     {errors.items.message}
-                  </p>
-                )}
+                  </p> : null}
               </CardContent>
             </Card>
 
@@ -703,7 +903,7 @@ export default function CounterSalePage() {
             {/* Discount & Notes */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Desconto e Observacoes</CardTitle>
+                <CardTitle className="text-lg">Desconto e Observações</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -713,12 +913,12 @@ export default function CounterSalePage() {
                     label="Desconto Geral"
                   />
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Observacoes</label>
+                    <label className="text-sm font-medium">Observações</label>
                     <textarea
                       {...register("notes")}
                       rows={3}
                       maxLength={1000}
-                      placeholder="Observacoes internas sobre a venda..."
+                      placeholder="Observações internas sobre a venda..."
                       className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
@@ -760,9 +960,30 @@ export default function CounterSalePage() {
                   </div>
                 </div>
 
+                {/* FN-05: escolha do caixa quando há mais de um aberto */}
+                {needsSessionChoice ? <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Caixa
+                    </label>
+                    <Select value={sessionId} onValueChange={setSessionId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o caixa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sessions.map((session) => (
+                          <SelectItem key={session.id} value={session.id}>
+                            {session.cashRegister?.name ?? "Caixa"}
+                            {session.operator?.name
+                              ? ` · ${session.operator.name}`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div> : null}
+
                 {/* Cash register closed warning */}
-                {!hasOpenCashRegister && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                {showNoCashRegisterWarning ? <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                       <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -770,12 +991,21 @@ export default function CounterSalePage() {
                         para registrar vendas no balcão.
                       </p>
                     </div>
-                  </div>
-                )}
+                  </div> : null}
+
+                {/* Could not check the cash register — say so instead of lying */}
+                {sessionsUnavailable ? <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Não foi possível consultar a situação do caixa. Fale com o
+                        administrador se a venda não for concluída.
+                      </p>
+                    </div>
+                  </div> : null}
 
                 {/* Payment method without a linked account (SCRUM-30) */}
-                {hasMissingAccount && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                {hasMissingAccount ? <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                       <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -784,12 +1014,10 @@ export default function CounterSalePage() {
                         Pagamento para registrar a venda.
                       </p>
                     </div>
-                  </div>
-                )}
+                  </div> : null}
 
                 {/* Stock warnings */}
-                {hasStockIssues && (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
+                {hasStockIssues ? <div className="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
                       <p className="text-xs text-red-700 dark:text-red-400">
@@ -797,8 +1025,7 @@ export default function CounterSalePage() {
                         quantidades para finalizar a venda.
                       </p>
                     </div>
-                  </div>
-                )}
+                  </div> : null}
 
                 <div className="space-y-2 border-t pt-4">
                   <Button
@@ -808,7 +1035,8 @@ export default function CounterSalePage() {
                       createOrder.isPending ||
                       hasStockIssues ||
                       items.length === 0 ||
-                      !hasOpenCashRegister ||
+                      cashRegisterBlocksSale ||
+                      (needsSessionChoice && !sessionId) ||
                       hasMissingAccount
                     }
                   >
@@ -828,6 +1056,26 @@ export default function CounterSalePage() {
                     Cancelar
                   </Button>
                 </div>
+
+                {/* VD-18: atalho que ninguém sabe que existe não economiza
+                    tempo nenhum. Escondido no mobile, onde não há teclado. */}
+                <dl className="mt-4 hidden gap-x-3 gap-y-1 border-t pt-3 text-[11px] text-muted-foreground sm:grid sm:grid-cols-[auto_1fr]">
+                  {[
+                    ["F2", "Buscar produto"],
+                    ["F4", "Selecionar cliente"],
+                    ["F9", "Finalizar venda"],
+                    ["Esc", "Limpar busca"],
+                  ].map(([key, description]) => (
+                    <React.Fragment key={key}>
+                      <dt>
+                        <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                          {key}
+                        </kbd>
+                      </dt>
+                      <dd>{description}</dd>
+                    </React.Fragment>
+                  ))}
+                </dl>
               </CardContent>
             </Card>
           </div>

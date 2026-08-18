@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma/prisma.service';
+import { civilDaysFrom } from '../../../common/utils/date-range.util';
 import { ExchangeOrderItemDto } from '../dto/exchange-order-item.dto';
+import { assertOrderMutable } from '../order-status.rules';
 
 type Tx = Prisma.TransactionClient;
 
@@ -34,7 +36,9 @@ export class ExchangeOrderItemUseCase {
       where: { id: orderId, tenantId, deletedAt: null },
       include: { items: true },
     });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException('Pedido não encontrado');
+
+    assertOrderMutable(order, 'trocar itens do pedido');
 
     const oldItem = order.items.find((i) => i.id === dto.orderItemId);
     if (!oldItem) {
@@ -274,7 +278,7 @@ export class ExchangeOrderItemUseCase {
           description: `Diferença de troca - ${order.orderNumber}`,
           amount: difference,
           status: 'PENDING',
-          dueDate: new Date(),
+          dueDate: civilDaysFrom(new Date(), 0),
           metadata: { exchange: true, orderItemId },
         },
         select: { id: true },
@@ -287,7 +291,7 @@ export class ExchangeOrderItemUseCase {
           description: `Devolução de troca - ${order.orderNumber}`,
           amount: Math.abs(difference),
           status: 'PENDING',
-          dueDate: new Date(),
+          dueDate: civilDaysFrom(new Date(), 0),
           metadata: { exchange: true, orderItemId },
         },
         select: { id: true },

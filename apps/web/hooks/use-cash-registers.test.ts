@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -13,9 +13,11 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import api from '@/lib/api';
+
 import {
   useCashRegisterSession,
   useCashRegisterSessions,
+  useCloseCashRegister,
   cashRegisterKeys,
 } from './use-cash-registers';
 
@@ -126,5 +128,29 @@ describe('useCashRegisterSessions', () => {
         limit: 5,
       },
     });
+  });
+});
+
+// ─── FN-11: fechar o caixa tem que atualizar o histórico de sessões ──────
+
+describe('cash register mutations invalidate the session history', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('invalidates the whole cash-registers prefix when a session closes', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { success: true, data: {} } });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useCloseCashRegister(), { wrapper });
+    await result.current.mutateAsync({ id: 'reg-1', closingBalance: 100 });
+
+    // Invalidating only `lists()` left `sessionList(params)` untouched: the
+    // operator closed the register and the table still read "Aberto".
+    expect(spy).toHaveBeenCalledWith({ queryKey: cashRegisterKeys.all });
   });
 });

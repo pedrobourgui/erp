@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { requiresLinkedAccount, hasMissingAccount } from './payment-line';
+
 import type { PaymentMethod } from '@/hooks/use-payment-methods';
+
+import { requiresLinkedAccount, hasMissingAccount } from './payment-line';
 
 function makeMethod(overrides: Partial<PaymentMethod> = {}): PaymentMethod {
   return {

@@ -1,6 +1,7 @@
-import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -34,11 +35,16 @@ const buttonVariants = cva(
         success: "",
       },
 
+      // Alvo de toque: mobile-first ganha o alvo maior, desktop mantém a
+      // densidade. A auditoria mediu 36px na maioria dos controles e 32×32 nos
+      // botões de ícone em 390px — abaixo dos ~44px que um dedo acerta sem
+      // mirar, e o controle mais tocado do sistema (a quantidade no PDV) era
+      // justamente um dos menores.
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-lg px-3 text-[13px]",
-        lg: "h-11 rounded-lg px-8",
-        icon: "h-10 w-10",
+        default: "h-11 px-4 py-2 md:h-10",
+        sm: "h-10 rounded-lg px-3 text-[13px] md:h-9",
+        lg: "h-12 rounded-lg px-8 md:h-11",
+        icon: "h-11 w-11 md:h-10 md:w-10",
       },
     },
     defaultVariants: {

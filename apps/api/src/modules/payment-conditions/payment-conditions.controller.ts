@@ -31,7 +31,7 @@ export class PaymentConditionsController {
   ) {}
 
   @Get()
-  @RequirePermissions('financial:read')
+  @RequirePermissions('payment-conditions:read')
   @ApiOperation({ summary: 'List payment conditions with pagination and filters' })
   async findAll(
     @CurrentTenant() tenantId: string,
@@ -41,7 +41,7 @@ export class PaymentConditionsController {
   }
 
   @Get(':id')
-  @RequirePermissions('financial:read')
+  @RequirePermissions('payment-conditions:read')
   @ApiOperation({ summary: 'Get a payment condition by ID' })
   async findOne(
     @CurrentTenant() tenantId: string,

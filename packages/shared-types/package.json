@@ -2,10 +2,11 @@
   "name": "@erp/shared-types",
   "version": "1.0.0",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

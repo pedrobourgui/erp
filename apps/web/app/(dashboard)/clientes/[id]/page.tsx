@@ -1,32 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useCustomer, useDeleteCustomer } from "@/hooks/use-customers";
-import { useOrders, type OrderListItem } from "@/hooks/use-orders";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { maskDocument, maskPhone, maskCEP } from "@/lib/masks";
 import {
   ArrowLeft,
   Mail,
   Phone,
-  MapPin,
   ShoppingCart,
   DollarSign,
   Loader2,
+  Pencil,
   Trash2,
-  Edit,
   User,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+
+import { Can } from "@/components/auth/can";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { useCustomer, useDeleteCustomer } from "@/hooks/use-customers";
+import { useOrders, type OrderListItem } from "@/hooks/use-orders";
+import { maskDocument, maskPhone } from "@/lib/masks";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
+import {
+  formatCurrency,
+  formatDateTime,
+  cn,
+} from "@/lib/utils";
+
+import { AddressesTab } from "./_components/addresses-tab";
+
+
 
 // ─── Tabs ───────────────────────────────────────────────────────────────
 
@@ -49,6 +59,10 @@ export default function CustomerDetailPage() {
   const deleteCustomer = useDeleteCustomer();
   const [activeTab, setActiveTab] = useState<TabId>("info");
   const [showDelete, setShowDelete] = useState(false);
+  // AE-09: este `useToast()` ficava depois dos dois returns abaixo. Enquanto
+  // carregava, ele não rodava; quando o cliente chegava, rodava — e o React
+  // acusava "change in the order of Hooks called by CustomerDetailPage".
+  const { addToast } = useToast();
 
   const customer = customerResp?.data;
 
@@ -69,42 +83,62 @@ export default function CustomerDetailPage() {
     );
   }
 
-  const { addToast } = useToast();
-
   const handleDelete = async () => {
     try {
       await deleteCustomer.mutateAsync(customerId);
       addToast("Cliente excluído com sucesso!", "success");
       router.push("/clientes");
-    } catch {
-      addToast("Erro ao excluir cliente. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao excluir cliente. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <Tooltip content="Voltar">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Tooltip>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">{customer.name}</h1>
-              <Badge variant="outline">{customer.documentType === "CPF" ? "Pessoa Física" : "Pessoa Jurídica"}</Badge>
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <TruncatedText
+                as="h1"
+                text={customer.name}
+                className="text-3xl font-bold tracking-tight"
+              />
+              <Badge variant="outline" className="shrink-0">{customer.documentType === "CPF" ? "Pessoa Física" : "Pessoa Jurídica"}</Badge>
             </div>
             <p className="text-muted-foreground font-mono">
               {customer.documentType ? maskDocument(customer.document, customer.documentType) : customer.document}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Excluir
-          </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* AE-06: o ícone `Edit` estava importado e nunca usado, e
+              `/clientes/[id]/edit` era 404 — o CRUD não tinha o "U". */}
+          <Can permission="customers:update" mode="disable">
+            <Button variant="secondary" size="sm" asChild>
+              <Link href={`/clientes/${customerId}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </Link>
+            </Button>
+          </Can>
+          <Can permission="customers:delete">
+            <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -133,7 +167,9 @@ export default function CustomerDetailPage() {
       </div>
 
       {activeTab === "info" && <InfoTab customer={customer} />}
-      {activeTab === "addresses" && <AddressesTab addresses={customer.addresses ?? []} />}
+      {activeTab === "addresses" && (
+        <AddressesTab customerId={customerId} addresses={customer.addresses ?? []} />
+      )}
       {activeTab === "orders" && <OrdersTab customerId={customerId} />}
 
       <ConfirmDialog
@@ -177,55 +213,20 @@ function InfoTab({ customer }: { customer: { email: string; phone: string; creat
         <CardTitle className="text-lg">Informações de Contato</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Mail className="h-5 w-5 text-muted-foreground" />
-          <span>{customer.email}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <Mail className="h-5 w-5 shrink-0 text-muted-foreground" />
+          {/* Um e-mail é uma palavra só: não quebra em 390px e sai do cartão. */}
+          <TruncatedText text={customer.email} />
         </div>
-        <div className="flex items-center gap-3">
-          <Phone className="h-5 w-5 text-muted-foreground" />
-          <span>{maskPhone(customer.phone)}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <Phone className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <TruncatedText text={maskPhone(customer.phone)} />
         </div>
         <div className="text-sm text-muted-foreground">
           Cliente desde {formatDateTime(customer.createdAt)}
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// ─── Addresses tab ──────────────────────────────────────────────────────
-
-function AddressesTab({ addresses }: { addresses: { label: string; street: string; number: string; complement?: string; neighborhood: string; city: string; state: string; zipCode: string; isDefault: boolean }[] }) {
-  if (addresses.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Nenhum endereço cadastrado
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {addresses.map((addr, idx) => (
-        <Card key={idx}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{addr.label}</span>
-              {addr.isDefault && <Badge variant="success" className="text-xs">Padrão</Badge>}
-            </div>
-            <div className="text-sm text-muted-foreground space-y-0.5">
-              <p>{addr.street}, {addr.number}{addr.complement ? ` - ${addr.complement}` : ""}</p>
-              <p>{addr.neighborhood}</p>
-              <p>{addr.city} - {addr.state}</p>
-              <p>CEP: {maskCEP(addr.zipCode)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
   );
 }
 

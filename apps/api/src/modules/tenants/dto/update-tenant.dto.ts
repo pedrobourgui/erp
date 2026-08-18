@@ -2,7 +2,7 @@ import {
   IsString,
   IsOptional,
   IsEmail,
-  IsEnum,
+  IsIn,
   MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -75,6 +75,6 @@ export class UpdateTenantDto {
 
   @ApiPropertyOptional({ enum: ['SIMPLES_NACIONAL', 'LUCRO_PRESUMIDO', 'LUCRO_REAL', 'MEI'] })
   @IsOptional()
-  @IsEnum(['SIMPLES_NACIONAL', 'LUCRO_PRESUMIDO', 'LUCRO_REAL', 'MEI'])
+  @IsIn(['SIMPLES_NACIONAL', 'LUCRO_PRESUMIDO', 'LUCRO_REAL', 'MEI'])
   taxRegime?: string;
 }

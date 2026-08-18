@@ -1,39 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  DataTable,
-  type ColumnDef,
-  type SortState,
-} from "@/components/tables/data-table";
-import {
-  useOrders,
-  useUpdateOrderStatus,
-  type OrderListItem,
-} from "@/hooks/use-orders";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+import type { OrderStatus, OrderOrigin } from "@erp/shared-types";
 import {
   Eye,
-  CheckCircle2,
-  Truck,
-  XCircle,
-  SlidersHorizontal,
-  X,
   Store,
   Globe,
   ShoppingBag,
   Smartphone,
   Plus,
 } from "lucide-react";
-import type { OrderStatus, OrderOrigin } from "@erp/shared-types";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useCallback, useState } from "react";
+
+import { SearchableSelectBase } from "@/components/forms/searchable-select";
+import { ListPageHeader } from "@/components/layouts/list-page-header";
+import { StatusActions } from "@/components/orders/status-actions";
+import {
+  DataTable,
+  type ColumnDef,
+  type SortState,
+} from "@/components/tables/data-table";
+import { DateRangeFilter } from "@/components/tables/date-range-filter";
+import { FilterField, FilterPanel } from "@/components/tables/filter-panel";
+import { ListSearch } from "@/components/tables/list-search";
+import { Button } from "@/components/ui/button";
+import { Money } from "@/components/ui/money";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useFilters } from "@/hooks/use-filters";
+import { useOrders, type OrderListItem } from "@/hooks/use-orders";
+import { searchCustomers } from "@/lib/entity-search";
+import { formatDateTime, isInvertedRange } from "@/lib/utils";
 
 // ─── Origin icons ───────────────────────────────────────────────────────
 
@@ -68,6 +73,7 @@ const originLabels: Record<string, string> = {
 const columns: ColumnDef<OrderListItem>[] = [
   {
     id: "orderNumber",
+    role: "primary",
     header: "Pedido",
     accessor: "orderNumber",
     sortable: true,
@@ -82,15 +88,18 @@ const columns: ColumnDef<OrderListItem>[] = [
   },
   {
     id: "customerName",
+    role: "secondary",
+    maxCh: 26,
     header: "Cliente",
     accessor: "customerName",
     sortable: true,
     cell: (row) => (
-      <span>{row.customerName ?? (row as any).customer?.name ?? "-"}</span>
+      <span>{row.customerName ?? row.customer?.name ?? "-"}</span>
     ),
   },
   {
     id: "createdAt",
+    role: "meta",
     header: "Data",
     accessor: "createdAt",
     sortable: true,
@@ -102,42 +111,47 @@ const columns: ColumnDef<OrderListItem>[] = [
   },
   {
     id: "origin",
+    role: "meta",
     header: "Origem",
     accessor: "origin",
     cell: (row) => (
       <div className="flex items-center gap-2">
         {originIcons[row.origin] ?? null}
         <span className="text-sm">{originLabels[row.origin] ?? row.origin}</span>
-        {row.marketplace && (
-          <span className="text-xs text-muted-foreground">
+        {row.marketplace ? <span className="text-xs text-muted-foreground">
             ({row.marketplace})
-          </span>
-        )}
+          </span> : null}
       </div>
     ),
   },
   {
     id: "status",
+    role: "status",
     header: "Status",
     accessor: "status",
     cell: (row) => <StatusBadge status={row.status} />,
   },
   {
     id: "totalAmount",
+    role: "value",
     header: "Total",
     accessor: "totalAmount",
     sortable: true,
     cell: (row) => (
-      <span className="font-medium">{formatCurrency(row.totalAmount)}</span>
+      <Money value={row.totalAmount} className="font-medium" />
     ),
     className: "text-right",
+    nowrap: true,
     headerClassName: "text-right",
   },
   {
     id: "actions",
+    role: "actions",
+      noTruncate: true,
     header: "Ações",
     cell: (row) => <QuickActions order={row} />,
     className: "text-right",
+    nowrap: true,
     headerClassName: "text-right",
   },
 ];
@@ -146,45 +160,6 @@ const columns: ColumnDef<OrderListItem>[] = [
 
 function QuickActions({ order }: { order: OrderListItem }) {
   const router = useRouter();
-  const updateStatus = useUpdateOrderStatus();
-  const { addToast } = useToast();
-  const [confirmAction, setConfirmAction] = useState<{
-    open: boolean;
-    status: OrderStatus;
-    title: string;
-    message: string;
-    destructive: boolean;
-  } | null>(null);
-
-  const actions: {
-    status: OrderStatus;
-    label: string;
-    icon: React.ReactNode;
-    show: boolean;
-    destructive?: boolean;
-  }[] = [
-    {
-      status: "CONFIRMED",
-      label: "Confirmar",
-      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-      show: order.status === "PENDING",
-    },
-    {
-      status: "SHIPPED",
-      label: "Enviar",
-      icon: <Truck className="h-3.5 w-3.5" />,
-      show: ["CONFIRMED", "PICKING"].includes(order.status),
-    },
-    {
-      status: "CANCELLED",
-      label: "Cancelar",
-      icon: <XCircle className="h-3.5 w-3.5" />,
-      show: ["PENDING", "CONFIRMED"].includes(order.status),
-      destructive: true,
-    },
-  ];
-
-  const visibleActions = actions.filter((a) => a.show);
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -192,58 +167,22 @@ function QuickActions({ order }: { order: OrderListItem }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10 md:h-8 md:w-8"
           onClick={() => router.push(`/vendas/pedidos/${order.id}`)}
         >
           <Eye className="h-4 w-4" />
         </Button>
       </Tooltip>
-      {visibleActions.map((action) => (
-        <Tooltip key={action.status} content={action.label}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() =>
-              setConfirmAction({
-                open: true,
-                status: action.status,
-                title: action.label + " Pedido",
-                message: `Deseja ${action.label.toLowerCase()} o pedido #${order.orderNumber}?`,
-                destructive: action.destructive ?? false,
-              })
-            }
-          >
-            {action.icon}
-          </Button>
-        </Tooltip>
-      ))}
-
-      {confirmAction && (
-        <ConfirmDialog
-          open={confirmAction.open}
-          onOpenChange={(open) =>
-            setConfirmAction(open ? confirmAction : null)
-          }
-          title={confirmAction.title}
-          message={confirmAction.message}
-          destructive={confirmAction.destructive}
-          loading={updateStatus.isPending}
-          onConfirm={async () => {
-            try {
-              await updateStatus.mutateAsync({
-                id: order.id,
-                status: confirmAction.status,
-              });
-              addToast(`Pedido #${order.orderNumber} atualizado com sucesso!`, "success");
-              setConfirmAction(null);
-            } catch {
-              addToast("Erro ao atualizar pedido. Tente novamente.", "error");
-              setConfirmAction(null);
-            }
-          }}
-        />
-      )}
+      {/* VD-02: the row used to offer "Enviar" for CONFIRMED and PICKING, both
+          rejected by the API. The available actions now come from the API. */}
+      <StatusActions
+        orderId={order.id}
+        orderNumber={order.orderNumber}
+        allowedTransitions={order.allowedTransitions}
+        origin={order.origin}
+        status={order.status}
+        size="icon"
+      />
     </div>
   );
 }
@@ -258,6 +197,7 @@ const statusOptions: { value: OrderStatus | ""; label: string }[] = [
   { value: "PACKED", label: "Embalado" },
   { value: "SHIPPED", label: "Enviado" },
   { value: "DELIVERED", label: "Entregue" },
+  { value: "COMPLETED", label: "Concluído" },
   { value: "CANCELLED", label: "Cancelado" },
   { value: "RETURNED", label: "Devolvido" },
 ];
@@ -281,50 +221,40 @@ const originOptions: { value: OrderOrigin | ""; label: string }[] = [
 export default function OrdersListPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState | null>(null);
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
-  const [originFilter, setOriginFilter] = useState<OrderOrigin | "">("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const resetPage = useCallback(() => setPage(1), []);
+  const filters = useFilters(
+    { search: "", status: "", origin: "", customerId: "", dateFrom: "", dateTo: "" },
+    resetPage
+  );
+  const { dateFrom, dateTo } = filters.values;
 
-  const { data, isLoading } = useOrders({
+  const { data, isLoading, error, refetch } = useOrders({
     page,
     limit,
-    search: search || undefined,
+    search: filters.values.search || undefined,
     sortBy: sort?.column,
     sortOrder: sort?.direction,
-    status: statusFilter || undefined,
-    origin: originFilter || undefined,
+    status: (filters.values.status || undefined) as OrderStatus | undefined,
+    origin: (filters.values.origin || undefined) as OrderOrigin | undefined,
+    // FT-04: a busca livre procura número do pedido e nome do cliente juntos,
+    // então "Silva" trazia pedidos de três clientes diferentes.
+    customerId: filters.values.customerId || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   });
 
   const orders = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
-
-  const hasFilters = statusFilter || originFilter || dateFrom || dateTo;
-
-  const clearFilters = () => {
-    setStatusFilter("");
-    setOriginFilter("");
-    setDateFrom("");
-    setDateTo("");
-    setPage(1);
-  };
+  const invertedRange = isInvertedRange(dateFrom, dateTo);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
-          <p className="text-muted-foreground">
-            Gerencie todos os pedidos de venda
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <ListPageHeader
+        title="Pedidos"
+        actions={
+          <>
           <Link href="/vendas/balcao">
             <Button variant="outline">
               <Store className="mr-2 h-4 w-4" />
@@ -337,106 +267,86 @@ export default function OrdersListPage() {
               Nova Venda
             </Button>
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Filters toggle */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={showFilters ? "secondary" : "outline"}
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <SlidersHorizontal className="mr-2 h-4 w-4" />
-          Filtros
-          {hasFilters && (
-            <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-              {[statusFilter, originFilter, dateFrom, dateTo].filter(Boolean).length}
-            </span>
-          )}
-        </Button>
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="mr-1 h-3 w-3" />
-            Limpar filtros
-          </Button>
-        )}
-      </div>
-
-      {/* Filters panel */}
-      {showFilters && (
-        <div className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-4">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Status
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as OrderStatus | "");
-                setPage(1);
-              }}
-              className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Origem
-            </label>
-            <select
-              value={originFilter}
-              onChange={(e) => {
-                setOriginFilter(e.target.value as OrderOrigin | "");
-                setPage(1);
-              }}
-              className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              {originOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Data Início
-            </label>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="h-9"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Data Fim
-            </label>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="h-9"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Table */}
       <DataTable<OrderListItem>
+        filters={
+          <FilterPanel
+            values={filters.values}
+            onClear={filters.clear}
+            search={
+              <ListSearch
+                value={filters.values.search}
+                onChange={(val) => filters.set("search", val)}
+                placeholder="Buscar por número ou cliente..."
+              />
+            }
+          >
+            {/*
+              O campo largo vem primeiro para o grid fechar as linhas: no fim
+              da lista ele não cabia no que sobrava e descia inteiro, deixando
+              um buraco no meio do painel.
+            */}
+            <FilterField label="Cliente" span={2}>
+              <SearchableSelectBase
+                value={filters.values.customerId}
+                onChange={(value) => filters.set("customerId", value)}
+                loadOptions={searchCustomers}
+                placeholder="Todos os clientes"
+              />
+            </FilterField>
+
+            <FilterField label="Status">
+              {/* FT-09: era um `<select>` nativo, destoando do resto do sistema e
+                  usando `""` como sentinela de "todos" em vez de `__all`. */}
+              <Select
+                value={filters.values.status || "__all"}
+                onValueChange={(v) => filters.set("status", v === "__all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value || "__all"} value={opt.value || "__all"}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <FilterField label="Origem">
+              <Select
+                value={filters.values.origin || "__all"}
+                onValueChange={(v) => filters.set("origin", v === "__all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas as origens" />
+                </SelectTrigger>
+                <SelectContent>
+                  {originOptions.map((opt) => (
+                    <SelectItem key={opt.value || "__all"} value={opt.value || "__all"}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onFromChange={(value) => filters.set("dateFrom", value)}
+              onToChange={(value) => filters.set("dateTo", value)}
+              inverted={invertedRange}
+            />
+          </FilterPanel>
+        }
         columns={columns}
         data={orders}
         pagination={{ page, limit, total }}
@@ -447,14 +357,10 @@ export default function OrdersListPage() {
         }}
         sort={sort}
         onSortChange={setSort}
-        searchValue={search}
-        onSearchChange={(val) => {
-          setSearch(val);
-          setPage(1);
-        }}
-        searchPlaceholder="Buscar por número ou cliente..."
         exportCsv
         isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
       />
     </div>
   );

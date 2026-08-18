@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+
 import { KPICard } from './kpi-card';
 
 // Mock recharts to avoid issues with ResponsiveContainer in jsdom
@@ -130,6 +131,27 @@ describe('KPICard', () => {
     );
 
     expect(screen.getByTestId('custom-icon')).toBeInTheDocument();
+  });
+
+  it('should fill the height of its grid cell so sibling cards align', () => {
+    const { container } = render(<KPICard label="Revenue" value={50000} />);
+
+    const card = container.firstChild as HTMLElement;
+    expect(card.className).toContain('h-full');
+  });
+
+  it('should anchor the sparkline to the bottom of the card', () => {
+    // Cards with and without a sparkline share a row; the chart sits at the
+    // baseline so the numbers above it stay aligned across the row.
+    render(
+      <KPICard
+        label="Revenue"
+        value={50000}
+        sparklineData={[100, 200, 300, 400]}
+      />
+    );
+
+    expect(screen.getByTestId('kpi-sparkline').className).toContain('mt-auto');
   });
 
   it('should accept additional className', () => {

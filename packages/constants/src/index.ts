@@ -2,17 +2,69 @@ import type { OrderStatus } from '@erp/shared-types';
 
 // ─── Order status transitions ──────────────────────────────────────────
 
+/**
+ * Single source of truth for the order state machine.
+ *
+ * It used to be written in three places (this file, `orders.service.ts` and the
+ * order detail page) with three different contents, which is how VD-02 was born:
+ * the UI offered `PICKING → SHIPPED` while the API only accepted
+ * `PICKING → PACKED`, so orders never reached `SHIPPED` and their stock stayed
+ * reserved forever. Import it — never retype it.
+ */
 export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   DRAFT: ['PENDING', 'CANCELLED'],
   PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['PICKING', 'CANCELLED'],
   PICKING: ['PACKED', 'CANCELLED'],
   PACKED: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED', 'RETURNED'],
+  SHIPPED: ['DELIVERED'],
   DELIVERED: ['COMPLETED', 'RETURNED'],
   COMPLETED: [],
   CANCELLED: [],
   RETURNED: [],
+};
+
+/** Every order status, in lifecycle order. Use it for enum validation and filters. */
+export const ORDER_STATUSES: OrderStatus[] = [
+  'DRAFT',
+  'PENDING',
+  'CONFIRMED',
+  'PICKING',
+  'PACKED',
+  'SHIPPED',
+  'DELIVERED',
+  'COMPLETED',
+  'CANCELLED',
+  'RETURNED',
+];
+
+/** Statuses from which no further transition is possible. */
+export const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
+  'COMPLETED',
+  'CANCELLED',
+  'RETURNED',
+];
+
+export function getAllowedTransitions(status: OrderStatus): OrderStatus[] {
+  return ORDER_STATUS_TRANSITIONS[status] ?? [];
+}
+
+export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return getAllowedTransitions(from).includes(to);
+}
+
+/** Portuguese labels for every order status, shared by API messages and UI. */
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  DRAFT: 'Rascunho',
+  PENDING: 'Pendente',
+  CONFIRMED: 'Confirmado',
+  PICKING: 'Separando',
+  PACKED: 'Embalado',
+  SHIPPED: 'Enviado',
+  DELIVERED: 'Entregue',
+  COMPLETED: 'Concluído',
+  CANCELLED: 'Cancelado',
+  RETURNED: 'Devolvido',
 };
 
 // ─── Marketplace rate limits ───────────────────────────────────────────
@@ -50,96 +102,13 @@ export const MARKETPLACE_RATE_LIMITS = {
   },
 } as const;
 
-// ─── Default permissions ───────────────────────────────────────────────
+// ─── Permissions and roles ─────────────────────────────────────────────
 
-export const DEFAULT_PERMISSIONS = [
-  // Products
-  'products:create',
-  'products:read',
-  'products:update',
-  'products:delete',
-  // Orders
-  'orders:create',
-  'orders:read',
-  'orders:update',
-  'orders:delete',
-  'orders:cancel',
-  // Customers
-  'customers:create',
-  'customers:read',
-  'customers:update',
-  'customers:delete',
-  // Inventory
-  'inventory:read',
-  'inventory:adjust',
-  'inventory:transfer',
-  // Marketplace
-  'marketplace:connect',
-  'marketplace:sync',
-  'marketplace:configure',
-  // Reports
-  'reports:sales',
-  'reports:inventory',
-  'reports:financial',
-  // Users & Roles
-  'users:create',
-  'users:read',
-  'users:update',
-  'users:delete',
-  'roles:create',
-  'roles:read',
-  'roles:update',
-  'roles:delete',
-  // Settings
-  'settings:read',
-  'settings:update',
-  // Warehouses
-  'warehouses:create',
-  'warehouses:read',
-  'warehouses:update',
-  'warehouses:delete',
-] as const;
+export * from './permissions';
 
-export type Permission = (typeof DEFAULT_PERMISSIONS)[number];
+// ─── Tenant plan and tax regime ────────────────────────────────────────
 
-// ─── System roles ──────────────────────────────────────────────────────
-
-export const SYSTEM_ROLES = {
-  admin: {
-    name: 'Administrator',
-    description: 'Full system access',
-    permissions: [...DEFAULT_PERMISSIONS],
-  },
-  manager: {
-    name: 'Manager',
-    description: 'Manage operations, no user/role management',
-    permissions: DEFAULT_PERMISSIONS.filter(
-      (p) => !p.startsWith('users:') && !p.startsWith('roles:') && p !== 'settings:update',
-    ),
-  },
-  operator: {
-    name: 'Operator',
-    description: 'Day-to-day operations',
-    permissions: [
-      'products:read',
-      'orders:create',
-      'orders:read',
-      'orders:update',
-      'customers:create',
-      'customers:read',
-      'customers:update',
-      'inventory:read',
-      'inventory:adjust',
-      'reports:sales',
-      'reports:inventory',
-    ],
-  },
-  viewer: {
-    name: 'Viewer',
-    description: 'Read-only access',
-    permissions: DEFAULT_PERMISSIONS.filter((p) => p.endsWith(':read')),
-  },
-} as const;
+export * from './tenant';
 
 // ─── Brazilian tax rates ───────────────────────────────────────────────
 

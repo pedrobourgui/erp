@@ -247,7 +247,10 @@ describe('AuthService', () => {
       });
     });
 
-    it('should store refresh token in Redis with 7-day TTL', async () => {
+    // AE-19: the refresh token lives in localStorage, so any XSS hands over the
+    // whole session. A 24-hour window is the cheap half of the mitigation; the
+    // httpOnly cookie migration is tracked in the ADR.
+    it('should store refresh token in Redis with a 24-hour TTL', async () => {
       jwtService.sign
         .mockReturnValueOnce('mock-access-token')
         .mockReturnValueOnce('mock-refresh-token');
@@ -255,8 +258,8 @@ describe('AuthService', () => {
       await service.login(userPayload);
 
       const expectedKey = `refresh_token:${userPayload.id}:mock-refresh-token`;
-      const sevenDaysInSeconds = 7 * 24 * 60 * 60;
-      expect(redis.set).toHaveBeenCalledWith(expectedKey, 'valid', sevenDaysInSeconds);
+      const oneDayInSeconds = 24 * 60 * 60;
+      expect(redis.set).toHaveBeenCalledWith(expectedKey, 'valid', oneDayInSeconds);
     });
 
     it('should include correct payload in access token JWT (sub, tenantId, roleId, email)', async () => {
@@ -372,11 +375,11 @@ describe('AuthService', () => {
         `refresh_token:${decoded.sub}:${oldRefreshToken}`,
       );
       // Should blacklist the old token
-      const sevenDaysInSeconds = 7 * 24 * 60 * 60;
+      const oneDayInSeconds = 24 * 60 * 60;
       expect(redis.set).toHaveBeenCalledWith(
         `blacklist:${oldRefreshToken}`,
         '1',
-        sevenDaysInSeconds,
+        oneDayInSeconds,
       );
     });
 
@@ -490,21 +493,21 @@ describe('AuthService', () => {
       expect(redis.set).toHaveBeenCalledWith(
         `blacklist:${token}`,
         '1',
-        7 * 24 * 60 * 60,
+        24 * 60 * 60,
       );
     });
 
-    it('should set TTL of 7 days on blacklisted token', async () => {
+    it('should set TTL of 24 hours on blacklisted token', async () => {
       const token = 'refresh-token-to-revoke';
       jwtService.verify.mockReturnValue({ sub: 'user-uuid-001' });
 
       await service.logout(token);
 
-      const sevenDaysInSeconds = 7 * 24 * 60 * 60;
+      const oneDayInSeconds = 24 * 60 * 60;
       expect(redis.set).toHaveBeenCalledWith(
         `blacklist:${token}`,
         '1',
-        sevenDaysInSeconds,
+        oneDayInSeconds,
       );
     });
 
@@ -530,7 +533,7 @@ describe('AuthService', () => {
       expect(redis.set).toHaveBeenCalledWith(
         `blacklist:${token}`,
         '1',
-        7 * 24 * 60 * 60,
+        24 * 60 * 60,
       );
       // Should NOT have attempted to delete refresh key since verify failed
       expect(redis.del).not.toHaveBeenCalled();

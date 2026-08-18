@@ -1,9 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
 import type { BrandRow } from "@/hooks/use-products";
 
 // ─── Schema ─────────────────────────────────────────────────────────
@@ -92,7 +93,9 @@ export function BrandFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Nome *</label>
             <Input
@@ -101,9 +104,7 @@ export function BrandFormDialog({
               maxLength={255}
               autoFocus
             />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
 
           <div className="space-y-1.5">
@@ -113,11 +114,9 @@ export function BrandFormDialog({
               placeholder="https://exemplo.com/logo.png"
               maxLength={500}
             />
-            {errors.logoUrl && (
-              <p className="text-xs text-destructive">
+            {errors.logoUrl ? <p className="text-xs text-destructive">
                 {errors.logoUrl.message}
-              </p>
-            )}
+              </p> : null}
             <p className="text-xs text-muted-foreground">
               URL da imagem do logotipo da marca (opcional).
             </p>
@@ -133,7 +132,7 @@ export function BrandFormDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isEdit ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>

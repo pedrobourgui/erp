@@ -1,36 +1,54 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import type { PaginatedResponse } from "@erp/shared-types";
+import {
+  calculateItemTotal,
+  calculateOrderTotals,
+  maxItemDiscount,
+} from "@erp/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MoneyInput } from "@/components/forms/money-input";
-import { SearchableSelect } from "@/components/forms/searchable-select";
-import { PaymentSelector } from "@/components/forms/payment-selector";
-import { useCreateOrder } from "@/hooks/use-orders";
-import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, cn } from "@/lib/utils";
-import api, { getApiErrorMessage } from "@/lib/api";
 import {
   ArrowLeft,
   Save,
   Loader2,
   Trash2,
   ShoppingCart,
-  Search,
-  Package,
   AlertTriangle,
   CheckCircle2,
   Minus,
   Plus,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useState, useCallback } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { z } from "zod";
+
+import { MoneyInput } from "@/components/forms/money-input";
+import { PaymentSelector } from "@/components/forms/payment-selector";
+import {
+  SearchableSelect,
+  SearchableSelectBase,
+} from "@/components/forms/searchable-select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
-import type { PaginatedResponse } from "@erp/shared-types";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { useCashRegisterSessions } from "@/hooks/use-cash-registers";
+import { useInvalidSubmit } from "@/hooks/use-invalid-submit";
+import { useCreateOrder } from "@/hooks/use-orders";
+import api, { getApiErrorMessage } from "@/lib/api";
+import { scheduleScrollToFirstError } from "@/lib/form-errors";
+import { settlePayments } from "@/lib/payment-settlement";
+import {
+  fetchAvailableStock,
+  refreshCartStock,
+} from "@/lib/stock-snapshot";
+import { formatCurrency, cn } from "@/lib/utils";
+
+
+
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -56,37 +74,71 @@ interface ProductResult {
 // ─── Validation schema ─────────────────────────────────────────────────
 
 const coerceNumber = (val: unknown) => {
-  if (val === "" || val === null || val === undefined) return 0;
+  if (val === "" || val === null || val === undefined) {
+    return 0;
+  }
   const n = Number(val);
   return Number.isNaN(n) ? 0 : n;
 };
 
-const orderItemSchema = z.object({
-  productId: z.string().min(1, "Selecione um produto"),
-  productName: z.string(),
-  sku: z.string(),
-  availableStock: z.number(),
-  quantity: z.preprocess(
-    coerceNumber,
-    z.number().min(1, "Quantidade minima e 1")
-  ),
-  unitPrice: z.preprocess(
-    coerceNumber,
-    z.number().min(0.01, "Preco unitario e obrigatorio")
-  ),
-  discount: z.preprocess(coerceNumber, z.number().min(0).default(0)),
-});
+/**
+ * Quantos produtos a lista traz de uma vez — o mesmo do seletor de clientes
+ * (`lib/entity-search.ts`). A lista existe para navegar, não só para confirmar
+ * um nome que já se sabe de cor.
+ */
+const PRODUCT_PAGE_SIZE = 20;
+
+const orderItemSchema = z
+  .object({
+    productId: z.string().min(1, "Selecione um produto"),
+    productName: z.string(),
+    sku: z.string(),
+    availableStock: z.number(),
+    quantity: z.preprocess(
+      coerceNumber,
+      z
+        .number()
+        .int("A quantidade deve ser um número inteiro")
+        .min(1, "A quantidade mínima é 1")
+    ),
+    unitPrice: z.preprocess(
+      coerceNumber,
+      z.number().min(0.01, "Informe o preço unitário")
+    ),
+    discount: z.preprocess(
+      coerceNumber,
+      z.number().min(0, "O desconto não pode ser negativo").default(0)
+    ),
+  })
+  .superRefine((item, ctx) => {
+    // VD-10: a discount above the line made the cart show a negative subtotal
+    // and the API then refused the order for disagreeing with it.
+    const max = maxItemDiscount({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+    });
+    if (Number(item.discount) > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["discount"],
+        message: `O desconto não pode passar de ${formatCurrency(max)}`,
+      });
+    }
+  });
 
 const orderPaymentSchema = z
   .object({
     paymentMethodId: z.string().min(1, "Selecione a forma de pagamento"),
     paymentConditionId: z.string().optional(),
     financialAccountId: z.string().optional(),
-    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatorio")),
+    amount: z.preprocess(coerceNumber, z.number().min(0.01, "Valor obrigatório")),
     installments: z.number().optional(),
     authorizationCode: z.string().optional(),
-    // Set by PaymentLine from the selected method; drives the conditional rule below.
+    // Both set by PaymentLine from the selected method: the schema has no
+    // access to the method list. `requiresAuthorization` drives the rule below;
+    // `methodType` tells cash apart, the only kind that accepts change (VD-08).
     requiresAuthorization: z.boolean().optional(),
+    methodType: z.string().optional(),
   })
   .superRefine((payment, ctx) => {
     if (payment.requiresAuthorization && !payment.authorizationCode?.trim()) {
@@ -97,6 +149,36 @@ const orderPaymentSchema = z
       });
     }
   });
+
+/** Totals of the cart, with the API's own arithmetic. */
+function newOrderTotals(data: {
+  items: { quantity: unknown; unitPrice: unknown; discount?: unknown }[];
+  shippingCost?: unknown;
+}) {
+  return calculateOrderTotals({
+    items: data.items.map((item) => ({
+      quantity: coerceNumber(item.quantity) as number,
+      unitPrice: coerceNumber(item.unitPrice) as number,
+      discount: coerceNumber(item.discount) as number,
+    })),
+    shippingCost: coerceNumber(data.shippingCost) as number,
+  });
+}
+
+/** How much of each payment is charged to the order, and how much is change. */
+function newOrderSettlement(data: {
+  items: { quantity: unknown; unitPrice: unknown; discount?: unknown }[];
+  shippingCost?: unknown;
+  payments: { amount: unknown; methodType?: string }[];
+}) {
+  return settlePayments(
+    data.payments.map((p) => ({
+      amount: coerceNumber(p.amount) as number,
+      isCash: p.methodType === "CASH",
+    })),
+    newOrderTotals(data).total
+  );
+}
 
 const newOrderSchema = z
   .object({
@@ -109,26 +191,11 @@ const newOrderSchema = z
     shippingCost: z.preprocess(coerceNumber, z.number().min(0).default(0)),
     notes: z.string().max(2000).optional(),
   })
-  .refine(
-    (data) => {
-      const paymentTotal = data.payments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0
-      );
-      const orderTotal =
-        data.items.reduce((sum, item) => {
-          const qty = Number(item.quantity) || 0;
-          const price = Number(item.unitPrice) || 0;
-          const disc = Number(item.discount) || 0;
-          return sum + (qty * price - disc);
-        }, 0) + (Number(data.shippingCost) || 0);
-      return Math.abs(paymentTotal - orderTotal) < 0.01;
-    },
-    {
-      message: "A soma dos pagamentos deve ser igual ao total do pedido",
-      path: ["payments"],
-    }
-  );
+  .refine((data) => newOrderSettlement(data).isSettled, {
+    message:
+      "Os pagamentos devem cobrir o total do pedido (somente dinheiro aceita valor acima).",
+    path: ["payments"],
+  });
 
 type NewOrderFormValues = z.infer<typeof newOrderSchema>;
 
@@ -165,6 +232,16 @@ export default function NewOrderPage() {
   const router = useRouter();
   const createOrder = useCreateOrder();
   const { addToast } = useToast();
+  const formRef = React.useRef<HTMLFormElement>(null);
+
+  /**
+   * FN-13: sem isto, "Criar Pedido" com um campo recusado pelo zod não
+   * emitia requisição nem mensagem — a tela ficava parada e o usuário
+   * concluía que o botão estava quebrado.
+   */
+  const onInvalid = useInvalidSubmit(() => {
+    scheduleScrollToFirstError(() => formRef.current);
+  });
 
   // A sale by order can only be registered while a cash register is open
   const { data: openSessions } = useCashRegisterSessions({ status: "OPEN", limit: 1 });
@@ -174,11 +251,14 @@ export default function NewOrderPage() {
   const [hasMissingAccount, setHasMissingAccount] = useState(false);
 
   // Product search state
-  const [productSearch, setProductSearch] = useState("");
-  const [productResults, setProductResults] = useState<ProductResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Os produtos já vistos pelo seletor, por id.
+   *
+   * A opção do dropdown carrega só rótulo e descrição; somar o item ao pedido
+   * precisa do preço e do saldo. Guardar o que a API acabou de devolver evita
+   * uma segunda requisição para o mesmo dado.
+   */
+  const productsById = React.useRef(new Map<string, ProductResult>());
 
   const {
     register,
@@ -209,15 +289,23 @@ export default function NewOrderPage() {
 
   // ─── Computed totals ───────────────────────────────────────────────
 
-  const calcItemTotal = (item: NewOrderFormValues["items"][number]) => {
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.unitPrice) || 0;
-    const disc = Number(item.discount) || 0;
-    return qty * price - disc;
-  };
+  // VD-10: the same functions the API uses, so the screen can never show a
+  // total the backend will refuse.
+  const calcItemTotal = (item: NewOrderFormValues["items"][number]) =>
+    calculateItemTotal({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      discount: Number(item.discount) || 0,
+    });
 
-  const subtotal = items.reduce((sum, item) => sum + calcItemTotal(item), 0);
-  const total = subtotal + (Number(shippingCost) || 0);
+  const { subtotal, total } = calculateOrderTotals({
+    items: items.map((item) => ({
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      discount: Number(item.discount) || 0,
+    })),
+    shippingCost: Number(shippingCost) || 0,
+  });
 
   // ─── Customer loader ──────────────────────────────────────────────
 
@@ -233,37 +321,49 @@ export default function NewOrderPage() {
     }));
   }, []);
 
-  // ─── Product search ───────────────────────────────────────────────
+  // ─── Product picker ───────────────────────────────────────────────
 
-  const searchProducts = useCallback(async (query: string) => {
-    setIsSearching(true);
-    setHasSearched(true);
-    try {
-      const { data } = await api.get<PaginatedResponse<ProductResult>>(
-        "/products",
-        { params: { search: query, limit: 10, status: "ACTIVE" } }
-      );
-      setProductResults(data.data ?? []);
-    } catch {
-      setProductResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  const handleProductSearch = useCallback(
-    (value: string) => {
-      setProductSearch(value);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (!value.trim()) {
-        setProductResults([]);
-        setHasSearched(false);
-        return;
+  /**
+   * Carrega os produtos do seletor — sem texto, os primeiros disponíveis.
+   *
+   * O `SearchableSelectBase` chama isto ao abrir e a cada 300ms de digitação,
+   * que é exatamente o comportamento do seletor de clientes logo acima.
+   *
+   * O que a API devolve é guardado inteiro num mapa: a opção só carrega
+   * rótulo e descrição, e para somar o item ao pedido são precisos o preço e o
+   * saldo. Buscar o produto de novo pelo id seria uma segunda ida ao servidor
+   * para um dado que acabou de chegar.
+   */
+  const loadProducts = useCallback(async (query: string) => {
+    const { data } = await api.get<PaginatedResponse<ProductResult>>(
+      "/products",
+      {
+        params: {
+          // Sem texto, a busca não é enviada: `search=""` seria uma comparação
+          // contra vazio em vez de "traga os primeiros".
+          search: query.trim() || undefined,
+          limit: PRODUCT_PAGE_SIZE,
+          status: "ACTIVE",
+        },
       }
-      debounceRef.current = setTimeout(() => searchProducts(value), 300);
-    },
-    [searchProducts]
-  );
+    );
+
+    const produtos = data.data ?? [];
+    produtos.forEach((produto) => productsById.current.set(produto.id, produto));
+
+    return produtos.map((produto) => {
+      const disponivel = produto.inventory?.totalAvailable ?? 0;
+      return {
+        value: produto.id,
+        label: produto.name,
+        // O saldo entra aqui porque é o que decide a escolha: sem ele, vender
+        // um item sem estoque só é descoberto ao tentar salvar.
+        description: `${produto.sku} · ${formatCurrency(Number(produto.salePrice))} · ${
+          disponivel > 0 ? `${disponivel} un.` : "sem estoque"
+        }`,
+      };
+    });
+  }, []);
 
   // ─── Add / update product ─────────────────────────────────────────
 
@@ -287,12 +387,24 @@ export default function NewOrderPage() {
         unitPrice: Number(product.salePrice),
         discount: 0,
       });
-      // Clear search after adding
-      setProductSearch("");
-      setProductResults([]);
-      setHasSearched(false);
     },
     [items, append, setValue]
+  );
+
+  /**
+   * O que o seletor devolve é um id; o pedido precisa do produto.
+   *
+   * Escolher aqui não guarda seleção nenhuma — some para "Itens do Pedido" e o
+   * campo volta ao estado inicial, pronto para o próximo item.
+   */
+  const handlePickProduct = useCallback(
+    (productId: string) => {
+      const product = productsById.current.get(productId);
+      if (product) {
+        addProductToOrder(product);
+      }
+    },
+    [addProductToOrder]
   );
 
   // ─── Submit ───────────────────────────────────────────────────────
@@ -302,6 +414,30 @@ export default function NewOrderPage() {
       addToast("Abra o caixa para registrar a venda por pedido.", "error");
       return;
     }
+    // VD-21: the availableStock in the cart is a snapshot from the product
+    // search. Confirm it against the server before creating the order.
+    const stock = await refreshCartStock(
+      data.items.map((item) => ({
+        productId: item.productId,
+        quantity: Number(item.quantity) || 0,
+        productName: item.productName,
+      }))
+    );
+    stock.available.forEach((available, index) => {
+      if (available !== null) {
+        setValue(`items.${index}.availableStock`, available);
+      }
+    });
+    if (stock.insufficient.length > 0) {
+      const [first] = stock.insufficient;
+      addToast(
+        `Estoque insuficiente de ${first.productName}: ${first.available} un. disponíveis para ${first.quantity} solicitadas.`,
+        "error"
+      );
+      return;
+    }
+
+    const settlement = newOrderSettlement(data);
     try {
       const result = await createOrder.mutateAsync({
         customerId: data.customerId,
@@ -312,11 +448,13 @@ export default function NewOrderPage() {
           unitPrice: item.unitPrice,
           discount: item.discount,
         })),
-        payments: data.payments.map((p) => ({
+        // VD-08: send what is charged to the order, not what was handed over —
+        // the change is not revenue and must not become a receivable.
+        payments: data.payments.map((p, index) => ({
           paymentMethodId: p.paymentMethodId,
           paymentConditionId: p.paymentConditionId || undefined,
           financialAccountId: p.financialAccountId || undefined,
-          amount: p.amount,
+          amount: settlement.applied[index],
           installments: p.installments || undefined,
           authorizationCode: p.authorizationCode || undefined,
         })),
@@ -324,7 +462,12 @@ export default function NewOrderPage() {
         shippingCost: data.shippingCost,
         notes: data.notes || undefined,
       });
-      addToast("Pedido criado com sucesso!", "success");
+      addToast(
+        settlement.change > 0
+          ? `Pedido criado. Troco: ${formatCurrency(settlement.change)}`
+          : "Pedido criado com sucesso!",
+        "success"
+      );
       router.push(`/vendas/pedidos/${result.data.id}`);
     } catch (err) {
       addToast(
@@ -351,7 +494,9 @@ export default function NewOrderPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit((data) => onSubmit(data))}>
+      <form ref={formRef} onSubmit={handleSubmit((data) => onSubmit(data), onInvalid)}
+        noValidate
+      >
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-2">
@@ -371,119 +516,30 @@ export default function NewOrderPage() {
               </CardContent>
             </Card>
 
-            {/* Product search */}
+            {/* Product picker */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Adicionar Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Search bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={productSearch}
-                    onChange={(e) => handleProductSearch(e.target.value)}
-                    placeholder="Buscar produto por nome, SKU ou codigo de barras..."
-                    className="pl-10"
-                  />
-                  {isSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-
-                {/* Search results table */}
-                {(productResults.length > 0 || (hasSearched && !isSearching)) && (
-                  <div className="rounded-lg border">
-                    {productResults.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                        Nenhum produto encontrado para &quot;{productSearch}&quot;
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="border-b bg-muted/50">
-                            <tr>
-                              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                Produto
-                              </th>
-                              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                SKU
-                              </th>
-                              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
-                                Preco
-                              </th>
-                              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
-                                Estoque
-                              </th>
-                              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {productResults.map((product) => {
-                              const available =
-                                product.inventory?.totalAvailable ?? 0;
-                              const alreadyAdded = items.some(
-                                (i) => i.productId === product.id
-                              );
-                              return (
-                                <tr
-                                  key={product.id}
-                                  className={cn(
-                                    "border-b last:border-0 transition-colors",
-                                    alreadyAdded
-                                      ? "bg-primary/5"
-                                      : "hover:bg-muted/30"
-                                  )}
-                                >
-                                  <td className="px-4 py-2.5">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-                                        <Package className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <span className="font-medium">
-                                        {product.name}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                                    {product.sku}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right font-medium">
-                                    {formatCurrency(Number(product.salePrice))}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-center">
-                                    <StockIndicator available={available} />
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right">
-                                    {alreadyAdded ? (
-                                      <span className="text-xs font-medium text-primary">
-                                        Adicionado
-                                      </span>
-                                    ) : (
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1.5 text-xs"
-                                        onClick={() =>
-                                          addProductToOrder(product)
-                                        }
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                        Adicionar
-                                      </Button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
+              <CardContent>
+                {/*
+                  O mesmo seletor do cliente, logo acima: abre já com os
+                  primeiros produtos listados e filtra conforme se digita.
+                  Antes era uma busca própria que só mostrava algo depois de
+                  digitar, e cujos resultados abriam uma tabela dentro do
+                  formulário — dois comportamentos para o mesmo gesto, e o
+                  carrinho empurrado para fora da tela.
+                */}
+                <SearchableSelectBase
+                  // Nunca guarda seleção: escolher aqui é uma ação (somar um
+                  // item ao pedido), não um valor do formulário. O que foi
+                  // escolhido aparece em "Itens do Pedido", não no campo.
+                  value=""
+                  onChange={handlePickProduct}
+                  loadOptions={loadProducts}
+                  placeholder="Buscar produto por nome, SKU ou código de barras..."
+                  emptyMessage="Nenhum produto encontrado"
+                />
               </CardContent>
             </Card>
 
@@ -525,7 +581,7 @@ export default function NewOrderPage() {
                             Qtd
                           </th>
                           <th className="w-36 px-4 py-2.5 text-right font-medium text-muted-foreground">
-                            Preco Unit.
+                            Preço Unit.
                           </th>
                           <th className="w-36 px-4 py-2.5 text-right font-medium text-muted-foreground">
                             Desconto
@@ -542,7 +598,17 @@ export default function NewOrderPage() {
                           const qty = Number(item?.quantity) || 0;
                           const stock = Number(item?.availableStock) || 0;
                           const itemTotal = item ? calcItemTotal(item) : 0;
-                          const overStock = qty > stock && stock > 0;
+                          // VD-20: the old `&& stock > 0` silenced the warning
+                          // for products with zero stock — exactly the case
+                          // that needs it. Same rule as the PDV.
+                          const overStock = qty > stock;
+                          const itemErrors = errors.items?.[index];
+                          // VD-21: the field is registered here so its
+                          // onBlur can also refresh the stock snapshot below.
+                          const quantityField = register(
+                            `items.${index}.quantity`,
+                            { valueAsNumber: true }
+                          );
 
                           return (
                             <tr
@@ -554,12 +620,16 @@ export default function NewOrderPage() {
                             >
                               {/* Product */}
                               <td className="px-4 py-3">
-                                <p className="font-medium">
-                                  {item?.productName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {item?.sku}
-                                </p>
+                                <TruncatedText
+                                  as="p"
+                                  text={item?.productName}
+                                  className="max-w-[24ch] font-medium"
+                                />
+                                <TruncatedText
+                                  as="p"
+                                  text={item?.sku}
+                                  className="max-w-[24ch] text-xs text-muted-foreground"
+                                />
                               </td>
 
                               {/* Stock */}
@@ -588,9 +658,19 @@ export default function NewOrderPage() {
                                   <Input
                                     type="number"
                                     min={1}
-                                    {...register(`items.${index}.quantity`, {
-                                      valueAsNumber: true,
-                                    })}
+                                    {...quantityField}
+                                    onBlur={async (event) => {
+                                      await quantityField.onBlur(event);
+                                      const fresh = await fetchAvailableStock(
+                                        item.productId
+                                      );
+                                      if (fresh !== null) {
+                                        setValue(
+                                          `items.${index}.availableStock`,
+                                          fresh
+                                        );
+                                      }
+                                    }}
                                     className={cn(
                                       "h-7 w-14 text-center text-sm",
                                       overStock &&
@@ -612,11 +692,14 @@ export default function NewOrderPage() {
                                     <Plus className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                {overStock && (
-                                  <p className="mt-1 text-center text-[10px] text-amber-600">
+                                {/* VD-12: quantity 0 or negative used to block
+                                    the submit with no message at all. */}
+                                {itemErrors?.quantity ? <p className="mt-1 text-center text-[10px] text-destructive">
+                                    {itemErrors.quantity.message}
+                                  </p> : null}
+                                {overStock && !itemErrors?.quantity ? <p className="mt-1 text-center text-[10px] text-amber-600">
                                     Excede estoque
-                                  </p>
-                                )}
+                                  </p> : null}
                               </td>
 
                               {/* Unit price */}
@@ -633,6 +716,9 @@ export default function NewOrderPage() {
                                   name={`items.${index}.discount`}
                                   control={control}
                                 />
+                                {itemErrors?.discount ? <p className="mt-1 text-[10px] text-destructive">
+                                    {itemErrors.discount.message}
+                                  </p> : null}
                               </td>
 
                               {/* Total */}
@@ -677,11 +763,9 @@ export default function NewOrderPage() {
                   </div>
                 )}
 
-                {errors.items?.message && (
-                  <p className="mt-2 text-xs text-destructive">
+                {errors.items?.message ? <p className="mt-2 text-xs text-destructive">
                     {errors.items.message}
-                  </p>
-                )}
+                  </p> : null}
               </CardContent>
             </Card>
 
@@ -704,13 +788,13 @@ export default function NewOrderPage() {
             {/* Shipping & Notes */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Envio e Observacoes</CardTitle>
+                <CardTitle className="text-lg">Envio e Observações</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">
-                      Metodo de Envio
+                      Método de Envio
                     </label>
                     <Input
                       {...register("shippingMethod")}
@@ -725,12 +809,12 @@ export default function NewOrderPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Observacoes</label>
+                  <label className="text-sm font-medium">Observações</label>
                   <textarea
                     {...register("notes")}
                     rows={3}
                     maxLength={2000}
-                    placeholder="Observacoes internas sobre o pedido..."
+                    placeholder="Observações internas sobre o pedido..."
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
@@ -779,8 +863,7 @@ export default function NewOrderPage() {
                 )}
 
                 {/* Payment method without a linked account (SCRUM-30) */}
-                {hasMissingAccount && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                {hasMissingAccount ? <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                       <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -789,8 +872,7 @@ export default function NewOrderPage() {
                         Pagamento para registrar a venda.
                       </p>
                     </div>
-                  </div>
-                )}
+                  </div> : null}
 
                 {/* Stock warnings */}
                 {items.some(

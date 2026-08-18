@@ -1,13 +1,5 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
-import { Bell, Search, LogOut, User, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/stores/auth.store";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,11 +8,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
+import { Bell, Search, LogOut, User, Moon, Sun, Menu } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import React, { useEffect, useState } from "react";
 
-export function Header() {
+import { CommandPalette } from "@/components/layouts/command-palette";
+import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useAuthStore } from "@/stores/auth.store";
+
+
+interface HeaderProps {
+  /** Abre o drawer da sidebar — só aparece abaixo de `lg` (AE-07). */
+  onOpenMenu?: () => void;
+}
+
+export function Header({ onOpenMenu }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // AE-18: Ctrl/Cmd+K abre a busca de qualquer tela.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -28,15 +48,35 @@ export function Header() {
   };
 
   return (
-    <header className="relative z-50 flex h-16 items-center justify-between border-b border-border/60 bg-card/80 backdrop-blur-sm px-6 transition-colors duration-200">
-      <div className="flex items-center gap-4">
-        <div className="relative w-72">
+    <>
+    <header className="relative z-30 flex h-16 items-center justify-between gap-2 border-b border-border/60 bg-card/80 px-4 backdrop-blur-sm transition-colors duration-200 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {/* AE-07: abaixo de `lg` a sidebar é drawer e precisa deste botão. */}
+        <Tooltip content="Abrir menu">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 lg:hidden"
+            onClick={onOpenMenu}
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </Tooltip>
+        {/* AE-18: era um input inerte — aceitava digitação e não fazia nada.
+            Agora é o gatilho da busca global (Ctrl/Cmd+K). */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label="Buscar"
+          className="relative hidden h-9 w-72 max-w-full items-center gap-2 rounded-lg border border-transparent bg-muted/50 pl-9 pr-3 text-left text-sm text-muted-foreground/70 transition-all duration-200 hover:bg-muted/70 sm:flex"
+        >
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
-          <Input
-            placeholder="Buscar..."
-            className="h-9 pl-9 bg-muted/50 border-transparent hover:bg-muted/70 focus-visible:bg-background focus-visible:border-border transition-all duration-200 text-sm"
-          />
-        </div>
+          <span className="flex-1 truncate">Buscar...</span>
+          <kbd className="hidden rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] md:inline">
+            Ctrl K
+          </kbd>
+        </button>
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -117,5 +157,8 @@ export function Header() {
         </DropdownMenu>
       </div>
     </header>
+
+    <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }

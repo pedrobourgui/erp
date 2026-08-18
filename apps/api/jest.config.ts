@@ -13,6 +13,11 @@ const config: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Workspace packages ship raw TypeScript; point jest at the source so
+    // ts-jest transforms it instead of choking on ESM inside node_modules.
+    '^@erp/constants$': '<rootDir>/../../../packages/constants/src/index.ts',
+    '^@erp/shared-types$': '<rootDir>/../../../packages/shared-types/src/index.ts',
+    '^@erp/validators$': '<rootDir>/../../../packages/validators/src/index.ts',
   },
 };
 

@@ -17,6 +17,8 @@ import {
   CreateCustomerDto,
   UpdateCustomerDto,
   CustomerQueryDto,
+  CreateCustomerAddressDto,
+  UpdateCustomerAddressDto,
 } from './dto/customer.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -84,5 +86,61 @@ export class CustomersController {
     @Param('id') id: string,
   ) {
     return this.customersService.remove(tenantId, id);
+  }
+
+  // ─── Addresses (AE-16) ──────────────────────────────────────────────────
+
+  @Get(':id/addresses')
+  @RequirePermissions('customers:read')
+  @ApiOperation({ summary: 'List the addresses of a customer' })
+  async findAddresses(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    const addresses = await this.customersService.findAddresses(tenantId, id);
+    return { success: true, data: addresses };
+  }
+
+  @Post(':id/addresses')
+  @RequirePermissions('customers:update')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add an address to a customer' })
+  async createAddress(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateCustomerAddressDto,
+  ) {
+    const address = await this.customersService.createAddress(tenantId, id, dto);
+    return { success: true, data: address };
+  }
+
+  @Patch(':id/addresses/:addressId')
+  @RequirePermissions('customers:update')
+  @ApiOperation({ summary: 'Update an address of a customer' })
+  async updateAddress(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Param('addressId') addressId: string,
+    @Body() dto: UpdateCustomerAddressDto,
+  ) {
+    const address = await this.customersService.updateAddress(
+      tenantId,
+      id,
+      addressId,
+      dto,
+    );
+    return { success: true, data: address };
+  }
+
+  @Delete(':id/addresses/:addressId')
+  @RequirePermissions('customers:update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove an address of a customer' })
+  async removeAddress(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Param('addressId') addressId: string,
+  ) {
+    return this.customersService.removeAddress(tenantId, id, addressId);
   }
 }

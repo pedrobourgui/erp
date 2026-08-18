@@ -1,17 +1,19 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/api";
 import { useUpdateProfile } from "@/hooks/use-profile";
+import { getApiErrorMessage } from "@/lib/api";
 import { maskPhone } from "@/lib/masks";
-import { Loader2 } from "lucide-react";
+
 
 const profileSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(255),
@@ -69,21 +71,19 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
         <CardTitle>Dados cadastrais</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="space-y-1">
             <label className="text-sm font-medium">Nome *</label>
             <Input {...register("name")} maxLength={255} />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">E-mail *</label>
               <Input type="email" {...register("email")} maxLength={255} />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
-              )}
+              {errors.email ? <p className="text-xs text-destructive">{errors.email.message}</p> : null}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Telefone</label>
@@ -101,9 +101,7 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={updateProfile.isPending}>
-              {updateProfile.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {updateProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Salvar alterações
             </Button>
           </div>

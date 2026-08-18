@@ -4,7 +4,7 @@ import {
   IsOptional,
   IsNumber,
   IsBoolean,
-  IsEnum,
+  IsIn,
   Min,
   Max,
   MaxLength,
@@ -21,7 +21,7 @@ export class CreatePaymentMethodDto {
   @ApiProperty({
     enum: ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'],
   })
-  @IsEnum(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
+  @IsIn(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
   type: string;
 
   @ApiPropertyOptional()
@@ -69,7 +69,7 @@ export class UpdatePaymentMethodDto {
     enum: ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'],
   })
   @IsOptional()
-  @IsEnum(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
+  @IsIn(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
   type?: string;
 
   @ApiPropertyOptional()
@@ -131,7 +131,7 @@ export class PaymentMethodQueryDto {
     enum: ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'],
   })
   @IsOptional()
-  @IsEnum(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
+  @IsIn(['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'BANK_TRANSFER', 'CHECK', 'STORE_CREDIT', 'OTHER'])
   type?: string;
 
   @ApiPropertyOptional()

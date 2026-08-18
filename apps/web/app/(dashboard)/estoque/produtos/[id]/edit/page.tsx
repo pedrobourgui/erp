@@ -1,20 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import {
+  isValidNCM,
+  isValidCEST,
+  isValidGTIN,
+  isValidCFOP,
+  FISCAL_MESSAGES,
+} from "@erp/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { MoneyInput } from "@/components/forms/money-input";
 import { SearchableSelect } from "@/components/forms/searchable-select";
-import { useProduct, useUpdateProduct, useCategories, useBrands } from "@/hooks/use-products";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useInvalidSubmit } from "@/hooks/use-invalid-submit";
+import { useProduct, useUpdateProduct, useCategories, useBrands } from "@/hooks/use-products";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
+import { cn } from "@/lib/utils";
 
 // ─── Schema ─────────────────────────────────────────────────────────────
 
@@ -47,9 +57,28 @@ const productSchema = z.object({
       .int("Estoque mínimo deve ser um número inteiro")
       .min(0, "Estoque mínimo não pode ser negativo"),
   ),
-  ncm: z.string().max(10, "NCM deve ter no máximo 10 caracteres").optional(),
-  cest: z.string().max(9, "CEST deve ter no máximo 9 caracteres").optional(),
-  ean: z.string().max(14, "EAN deve ter no máximo 14 caracteres").optional(),
+  // AE-08: a edição valida igual ao cadastro — senão basta editar o produto
+  // para colocar `ncm: 'ABCDEFG'` de volta no banco.
+  ncm: z
+    .string()
+    .max(10, "NCM deve ter no máximo 10 caracteres")
+    .optional()
+    .refine((v) => !v || isValidNCM(v), FISCAL_MESSAGES.ncm),
+  cest: z
+    .string()
+    .max(9, "CEST deve ter no máximo 9 caracteres")
+    .optional()
+    .refine((v) => !v || isValidCEST(v), FISCAL_MESSAGES.cest),
+  ean: z
+    .string()
+    .max(18, "EAN deve ter no máximo 18 caracteres")
+    .optional()
+    .refine((v) => !v || isValidGTIN(v), FISCAL_MESSAGES.ean),
+  cfop: z
+    .string()
+    .max(4, "CFOP tem 4 dígitos")
+    .optional()
+    .refine((v) => !v || isValidCFOP(v), FISCAL_MESSAGES.cfop),
   weight: optionalNumber,
   height: optionalNumber,
   width: optionalNumber,
@@ -109,7 +138,7 @@ export default function EditProductPage() {
       name: "", sku: "", description: "", category: "", brand: "",
       costPrice: 0, markup: 0, salePrice: 0, promoPrice: 0,
       defaultMinStock: 0,
-      ncm: "", cest: "", ean: "",
+      ncm: "", cest: "", ean: "", cfop: "",
       weight: 0, height: 0, width: 0, length: 0,
     },
   });
@@ -130,6 +159,7 @@ export default function EditProductPage() {
         ncm: product.ncm ?? "",
         cest: product.cest ?? "",
         ean: product.ean ?? "",
+        cfop: product.cfop ?? "",
         weight: product.weight ?? 0,
         height: product.height ?? 0,
         width: product.width ?? 0,
@@ -162,6 +192,7 @@ export default function EditProductPage() {
         promoPrice: data.promoPrice,
         markup: data.markup,
         ncm: data.ncm,
+        cfop: data.cfop,
         cest: data.cest,
         ean: data.ean,
         weight: data.weight,
@@ -172,10 +203,19 @@ export default function EditProductPage() {
       });
       addToast("Produto atualizado com sucesso!", "success");
       router.push(`/estoque/produtos/${productId}`);
-    } catch {
-      addToast("Erro ao atualizar produto. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao atualizar produto. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
+
+  // FN-13: nenhum submit pode morrer em silêncio.
+  const onInvalid = useInvalidSubmit();
 
   const fieldError = (field: keyof ProductFormValues) =>
     errors[field]?.message as string | undefined;
@@ -211,7 +251,9 @@ export default function EditProductPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)}
+        noValidate
+      >
         <div className="mb-6 flex gap-1 overflow-x-auto border-b">
           {tabs.map((tab) => (
             <button

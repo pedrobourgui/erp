@@ -1,12 +1,13 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { MoneyInput } from "@/components/forms/money-input";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -22,22 +24,24 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import {
   useCreateCashRegister,
   useOpenCashRegister,
   useCloseCashRegister,
   useCashSupply,
   useCashWithdraw,
+  type CashRegister,
 } from "@/hooks/use-cash-registers";
 import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
-import { useToast } from "@/components/ui/toast";
-import { Loader2 } from "lucide-react";
-import type { CashRegister } from "@/hooks/use-cash-registers";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
 
 // ─── Coerce helper ─────────────────────────────────────────────────────
 
 const coerceNumber = (val: unknown) => {
-  if (val === "" || val === null || val === undefined) return 0;
+  if (val === "" || val === null || val === undefined) {
+    return 0;
+  }
   const n = Number(val);
   return Number.isNaN(n) ? 0 : n;
 };
@@ -71,7 +75,7 @@ export function CreateCashRegisterDialog({
     });
 
   React.useEffect(() => {
-    if (open) reset();
+    if (open) {reset();}
   }, [open, reset]);
 
   const onSubmit = async (data: CreateFormValues) => {
@@ -79,8 +83,14 @@ export function CreateCashRegisterDialog({
       await mutation.mutateAsync(data);
       addToast("Caixa criado com sucesso!", "success");
       onOpenChange(false);
-    } catch {
-      addToast("Erro ao criar caixa. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao criar caixa. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
@@ -91,11 +101,13 @@ export function CreateCashRegisterDialog({
           <DialogTitle>Novo Caixa</DialogTitle>
           <DialogDescription>Cadastre um novo caixa no sistema.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="space-y-1">
             <label className="text-sm font-medium">Nome *</label>
             <Input {...register("name")} placeholder="Ex: Caixa 01" maxLength={100} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium">Conta Financeira *</label>
@@ -117,14 +129,12 @@ export function CreateCashRegisterDialog({
                 </Select>
               )}
             />
-            {errors.financialAccountId && (
-              <p className="text-xs text-destructive">{errors.financialAccountId.message}</p>
-            )}
+            {errors.financialAccountId ? <p className="text-xs text-destructive">{errors.financialAccountId.message}</p> : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="cancel" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Criar
             </Button>
           </DialogFooter>
@@ -158,17 +168,25 @@ export function OpenSessionDialog({
   });
 
   React.useEffect(() => {
-    if (reg) reset({ openingBalance: 0 });
+    if (reg) {reset({ openingBalance: 0 });}
   }, [reg, reset]);
 
   const onSubmit = async (data: OpenFormValues) => {
-    if (!reg) return;
+    if (!reg) {
+      return;
+    }
     try {
       await mutation.mutateAsync({ id: reg.id, openingBalance: data.openingBalance });
       addToast("Caixa aberto com sucesso!", "success");
       onClose();
-    } catch {
-      addToast("Erro ao abrir caixa. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao abrir caixa. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
@@ -179,12 +197,14 @@ export function OpenSessionDialog({
           <DialogTitle>Abrir Caixa - {reg?.name}</DialogTitle>
           <DialogDescription>Informe o saldo de abertura.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <MoneyInput name="openingBalance" control={control} label="Saldo de Abertura" />
           <DialogFooter>
             <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Abrir
             </Button>
           </DialogFooter>
@@ -220,11 +240,13 @@ export function CloseSessionDialog({
     });
 
   React.useEffect(() => {
-    if (reg) reset({ closingBalance: 0, notes: "" });
+    if (reg) {reset({ closingBalance: 0, notes: "" });}
   }, [reg, reset]);
 
   const onSubmit = async (data: CloseFormValues) => {
-    if (!reg) return;
+    if (!reg) {
+      return;
+    }
     try {
       await mutation.mutateAsync({
         id: reg.id,
@@ -233,8 +255,14 @@ export function CloseSessionDialog({
       });
       addToast("Caixa fechado com sucesso!", "success");
       onClose();
-    } catch {
-      addToast("Erro ao fechar caixa. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao fechar caixa. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
@@ -245,7 +273,9 @@ export function CloseSessionDialog({
           <DialogTitle>Fechar Caixa - {reg?.name}</DialogTitle>
           <DialogDescription>Informe o saldo contado e observações.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <MoneyInput name="closingBalance" control={control} label="Saldo Contado" />
           <div className="space-y-1">
             <label className="text-sm font-medium">Observações</label>
@@ -259,8 +289,8 @@ export function CloseSessionDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" variant="destructive" disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Fechar Caixa
             </Button>
           </DialogFooter>
@@ -302,17 +332,25 @@ export function MovementDialog({
     });
 
   React.useEffect(() => {
-    if (reg) reset({ amount: 0, reason: "" });
+    if (reg) {reset({ amount: 0, reason: "" });}
   }, [reg, reset]);
 
   const onSubmit = async (data: MovementFormValues) => {
-    if (!reg) return;
+    if (!reg) {
+      return;
+    }
     try {
       await mutation.mutateAsync({ id: reg.id, ...data });
       addToast(`${title} realizado com sucesso!`, "success");
       onClose();
-    } catch {
-      addToast(`Erro ao realizar ${title.toLowerCase()}. Tente novamente.`, "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          `Erro ao realizar ${title.toLowerCase()}. Tente novamente.`
+        ),
+        "error"
+      );
     }
   };
 
@@ -327,17 +365,19 @@ export function MovementDialog({
               : "Retire dinheiro do caixa."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <MoneyInput name="amount" control={control} label="Valor" />
           <div className="space-y-1">
             <label className="text-sm font-medium">Motivo *</label>
             <Input {...formRegister("reason")} placeholder="Motivo da movimentação" maxLength={255} />
-            {errors.reason && <p className="text-xs text-destructive">{errors.reason.message}</p>}
+            {errors.reason ? <p className="text-xs text-destructive">{errors.reason.message}</p> : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="cancel" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Confirmar
             </Button>
           </DialogFooter>

@@ -5,6 +5,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsStrongPassword } from '../../../common/validators/is-strong-password.validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@empresa.com', description: 'Email do usuário' })
@@ -15,6 +16,8 @@ export class LoginDto {
   @ApiProperty({ example: 'S3cur3P@ss', description: 'Senha do usuário' })
   @IsString({ message: 'Senha deve ser uma string' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
+  // Login **não** endurece: quem cadastrou senha sob a política antiga
+  // continua entrando. A política nova vale onde a senha é definida.
   @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
   password: string;
 }
@@ -42,7 +45,9 @@ export class ResetPasswordDto {
   @ApiProperty({ example: 'NovaSenha@123', description: 'Nova senha' })
   @IsString({ message: 'Senha deve ser uma string' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  // FN-25: 6 caracteres sem complexidade protegendo o faturamento da
+  // empresa inteira. A política vem de @erp/validators, a mesma do front.
+  @IsStrongPassword()
   password: string;
 }
 
@@ -60,6 +65,8 @@ export class AcceptInviteDto {
   @ApiProperty({ example: 'MinhaSenha@123', description: 'Senha do usuário' })
   @IsString({ message: 'Senha deve ser uma string' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  // FN-25: 6 caracteres sem complexidade protegendo o faturamento da
+  // empresa inteira. A política vem de @erp/validators, a mesma do front.
+  @IsStrongPassword(['email', 'name'])
   password: string;
 }

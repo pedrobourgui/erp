@@ -1,0 +1,30 @@
+{
+  "/financeiro/contas": [
+    {
+      "sig": "BUTTON|inline-flex items-center justify-center whitespace-nowrap ro|lucide lucide-pencil h-3.5 w-3.5|M21.174 6.812a1 1 0 0 0-",
+      "selectorIndex": 22,
+      "ariaLabel": null,
+      "title": null,
+      "srOnly": null,
+      "radixTooltipTrigger": false,
+      "w": 32,
+      "h": 32,
+      "area": "tabela",
+      "tipText": null
+    }
+  ],
+  "/configuracoes/condicoes-pagamento": [
+    {
+      "sig": "BUTTON|inline-flex items-center justify-center whitespace-nowrap ro|lucide lucide-trash2 h-3.5 w-3.5|M3 6h18",
+      "selectorIndex": 21,
+      "ariaLabel": null,
+      "title": null,
+      "srOnly": null,
+      "radixTooltipTrigger": false,
+      "w": 32,
+      "h": 32,
+      "area": "tabela",
+      "tipText": null
+    }
+  ]
+}

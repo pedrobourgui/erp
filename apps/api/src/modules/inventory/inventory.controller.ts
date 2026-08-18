@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -15,9 +16,11 @@ import { InventoryService } from './inventory.service';
 import {
   CreateMovementDto,
   TransferStockDto,
+  AdjustStockDto,
   InventoryQueryDto,
   MovementQueryDto,
   CreateWarehouseDto,
+  UpdateWarehouseDto,
   AlertQueryDto,
   UpdateMinStockDto,
 } from './dto/inventory.dto';
@@ -95,6 +98,29 @@ export class InventoryController {
     return { success: true, data: warehouse };
   }
 
+  @Patch('warehouses/:id')
+  @RequirePermissions('inventory:update')
+  @ApiOperation({ summary: 'Update a warehouse' })
+  async updateWarehouse(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateWarehouseDto,
+  ) {
+    const warehouse = await this.inventoryService.updateWarehouse(tenantId, id, dto);
+    return { success: true, data: warehouse };
+  }
+
+  @Delete('warehouses/:id')
+  @RequirePermissions('inventory:delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove or deactivate a warehouse' })
+  async removeWarehouse(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.inventoryService.removeWarehouse(tenantId, id);
+  }
+
   @Patch('items/:id/min-stock')
   @RequirePermissions('inventory:update')
   @ApiOperation({ summary: 'Set minimum-stock threshold for an inventory item' })
@@ -117,8 +143,11 @@ export class InventoryController {
     return this.inventoryService.getLowStockAlerts(tenantId, query);
   }
 
+  // AE-25: a transfer moves stock between warehouses and an adjustment
+  // rewrites a balance with no document behind it — neither is a plain entry,
+  // so both have their own grant instead of riding on `inventory:create`.
   @Post('transfer')
-  @RequirePermissions('inventory:create')
+  @RequirePermissions('inventory:transfer')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Transfer stock between warehouses' })
   async transferStock(
@@ -127,6 +156,23 @@ export class InventoryController {
     @Body() dto: TransferStockDto,
   ) {
     const movement = await this.inventoryService.transferStock(
+      tenantId,
+      userId,
+      dto,
+    );
+    return { success: true, data: movement };
+  }
+
+  @Post('adjustment')
+  @RequirePermissions('inventory:adjust')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Adjust a stock balance to a counted quantity' })
+  async adjustStock(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: AdjustStockDto,
+  ) {
+    const movement = await this.inventoryService.adjustStock(
       tenantId,
       userId,
       dto,

@@ -220,6 +220,128 @@ describe('OrderEventsHandler', () => {
   });
 
   // ─── handleOrderConfirmed ─────────────────────────────────────────────
+  // ─── FN-15: o dinheiro da venda de balcão cai no caixa da venda ─────────
+
+  describe('cash on a counter sale lands in the drawer that took it (FN-15)', () => {
+    // A conciliação de um dia inteiro achou isto: a venda em dinheiro creditava
+    // a conta *do método de pagamento* enquanto a sessão de caixa creditava a
+    // conta *do caixa*. Com as duas diferentes, a conta do caixa fechava sem a
+    // venda e a do método fechava com dinheiro que nunca esteve lá.
+    const cashPayment = {
+      id: 'op-cash-1',
+      amount: 100,
+      installments: 1,
+      financialAccountId: null,
+      paymentMethodId: 'pm-1',
+      paymentMethod: { name: 'Dinheiro', type: 'CASH', defaultAccountId: 'acc-method' },
+    };
+
+    beforeEach(() => {
+      prisma.notification.create.mockResolvedValue({});
+      prisma._tx.financialAccount.update.mockResolvedValue({ balance: 100 });
+      prisma.order.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        tenantId: TENANT_ID,
+        orderNumber: 'PED-000001',
+        origin: 'BALCAO',
+        cashRegisterSession: {
+          cashRegister: { financialAccountId: 'acc-drawer' },
+        },
+      });
+      prisma.orderPayment.findMany.mockResolvedValue([cashPayment]);
+    });
+
+    it('credits the cash register account, not the payment method default', async () => {
+      await handler.handleOrderCounterSale(
+        new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 100, ITEMS),
+      );
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-drawer' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+    });
+
+    it('falls back to the method account when the sale has no session', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        tenantId: TENANT_ID,
+        orderNumber: 'PED-000001',
+        origin: 'MANUAL',
+        cashRegisterSession: null,
+      });
+
+      await handler.handleOrderCreated(
+        new OrderCreatedEvent(ORDER_ID, TENANT_ID, USER_ID, ITEMS),
+      );
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-method' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+    });
+
+    it('leaves a PIX payment on the method account — it never touches the drawer', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          ...cashPayment,
+          paymentMethod: { name: 'PIX', type: 'PIX', defaultAccountId: 'acc-method' },
+        },
+      ]);
+
+      await handler.handleOrderCounterSale(
+        new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 100, ITEMS),
+      );
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-method' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+    });
+
+    it('keeps cash in the drawer even when the payment carries another account', async () => {
+      // `financialAccountId` no pagamento é hoje uma cópia do padrão do método,
+      // não uma escolha do operador — e dinheiro vivo não vai para outro lugar
+      // que não a gaveta onde foi recebido.
+      prisma.orderPayment.findMany.mockResolvedValue([
+        { ...cashPayment, financialAccountId: 'acc-method' },
+      ]);
+
+      await handler.handleOrderCounterSale(
+        new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 100, ITEMS),
+      );
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-drawer' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+    });
+
+    it('respects the account chosen on a PIX payment', async () => {
+      prisma.orderPayment.findMany.mockResolvedValue([
+        {
+          ...cashPayment,
+          financialAccountId: 'acc-explicit',
+          paymentMethod: { name: 'PIX', type: 'PIX', defaultAccountId: 'acc-method' },
+        },
+      ]);
+
+      await handler.handleOrderCounterSale(
+        new OrderCounterSaleEvent(ORDER_ID, TENANT_ID, USER_ID, 100, ITEMS),
+      );
+
+      expect(prisma._tx.financialAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-explicit' },
+        data: { balance: { increment: 100 } },
+        select: { balance: true },
+      });
+    });
+  });
+
   describe('handleOrderConfirmed', () => {
     const confirmedItems = [
       { productId: 'prod-001', variantId: null, quantity: 2 },
@@ -321,6 +443,67 @@ describe('OrderEventsHandler', () => {
 
       const data = prisma.accountsReceivable.create.mock.calls[0][0].data;
       expect(data.status).toBe('PENDING');
+    });
+
+    // VD-05: "3x sem juros" generated one receivable for the full amount
+    // because the PDV always sent installments: 1.
+    describe('installments (VD-05)', () => {
+      const in3x = {
+        id: 'op-3',
+        amount: 189.8,
+        installments: 3,
+        financialAccountId: null,
+        paymentMethodId: 'pm-3',
+        paymentMethod: { id: 'pm-3', name: 'Cartão de Crédito', type: 'CREDIT_CARD' },
+        paymentCondition: {
+          id: 'pc-3',
+          daysBetweenInstallments: 30,
+          entryPercentage: 0,
+          type: 'INSTALLMENT',
+        },
+      };
+
+      beforeEach(() => {
+        prisma.orderPayment.findMany.mockResolvedValue([in3x]);
+      });
+
+      it('should create one receivable per installment', async () => {
+        await handler.handleOrderConfirmed(
+          new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 189.8, confirmedItems),
+        );
+
+        expect(prisma.accountsReceivable.create).toHaveBeenCalledTimes(3);
+      });
+
+      it('should split the amount without losing or inventing cents', async () => {
+        await handler.handleOrderConfirmed(
+          new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 189.8, confirmedItems),
+        );
+
+        const amounts = prisma.accountsReceivable.create.mock.calls.map(
+          (call: [{ data: { amount: number } }]) => call[0].data.amount,
+        );
+        expect(amounts).toEqual([63.27, 63.27, 63.26]);
+        expect(Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100).toBe(189.8);
+      });
+
+      it('should number the installments and space the due dates by 30 days', async () => {
+        await handler.handleOrderConfirmed(
+          new OrderConfirmedEvent(ORDER_ID, TENANT_ID, USER_ID, 189.8, confirmedItems),
+        );
+
+        const rows = prisma.accountsReceivable.create.mock.calls.map(
+          (call: [{ data: Record<string, unknown> }]) => call[0].data,
+        );
+        expect(rows.map((r) => r.installment)).toEqual([1, 2, 3]);
+        expect(rows.every((r) => r.totalInstallments === 3)).toBe(true);
+        expect(rows[0].description).toContain('(1/3)');
+
+        const days = (a: Date, b: Date) =>
+          Math.round((a.getTime() - b.getTime()) / (24 * 60 * 60 * 1000));
+        expect(days(rows[1].dueDate as Date, rows[0].dueDate as Date)).toBe(30);
+        expect(days(rows[2].dueDate as Date, rows[1].dueDate as Date)).toBe(30);
+      });
     });
 
     it('should skip receivable creation when order is not found', async () => {

@@ -71,6 +71,10 @@ function createMockPrisma() {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    user: { count: jest.fn() },
+    product: { count: jest.fn() },
+    order: { count: jest.fn() },
+    warehouse: { count: jest.fn() },
     $transaction: jest.fn((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx)),
     _tx: mockTx,
   };
@@ -396,6 +400,119 @@ describe('TenantsService', () => {
       const userCreateData = tx.user.create.mock.calls[0][0].data;
       expect(userCreateData.password).toBe('$2b$12$hashedPasswordValue');
       expect(userCreateData.password).not.toBe('S3cur3P@ss');
+    });
+  });
+
+  // ─── update: document normalization (AE-15) ───────────────────────────────
+
+  describe('update: document', () => {
+    beforeEach(() => {
+      prisma.tenant.findUnique.mockResolvedValue(makeTenant());
+      prisma.tenant.findFirst.mockResolvedValue(null);
+      prisma.tenant.update.mockResolvedValue(makeTenant());
+    });
+
+    it('should store the CNPJ with digits only', async () => {
+      await service.update(TENANT_ID, {
+        document: '12.345.678/0001-90',
+      } as UpdateTenantDto);
+
+      expect(prisma.tenant.update.mock.calls[0][0].data.document).toBe(
+        '12345678000190',
+      );
+    });
+
+    it('should look duplicates up by the normalized document', async () => {
+      // The same CNPJ in another formatting must be found — comparing the raw
+      // string is what let two rows hold one company (AE-15).
+      await service.update(TENANT_ID, {
+        document: '12.345.678/0001-90',
+      } as UpdateTenantDto);
+
+      expect(prisma.tenant.findFirst.mock.calls[0][0].where.document).toBe(
+        '12345678000190',
+      );
+    });
+
+    it('should reject a document already used by another tenant', async () => {
+      prisma.tenant.findFirst.mockResolvedValue(makeTenant({ id: OTHER_TENANT_ID }));
+
+      await expect(
+        service.update(TENANT_ID, { document: '12345678000190' } as UpdateTenantDto),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should not touch the document when it is not in the payload', async () => {
+      await service.update(TENANT_ID, { name: 'Nome Novo' } as UpdateTenantDto);
+
+      expect(prisma.tenant.update.mock.calls[0][0].data).not.toHaveProperty(
+        'document',
+      );
+      expect(prisma.tenant.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── getUsage (FN-08) ─────────────────────────────────────────────────────
+
+  describe('getUsage', () => {
+    beforeEach(() => {
+      prisma.tenant.findUnique.mockResolvedValue(makeTenant());
+      prisma.user.count.mockResolvedValue(3);
+      prisma.product.count.mockResolvedValue(245);
+      prisma.order.count.mockResolvedValue(12);
+      prisma.warehouse.count.mockResolvedValue(2);
+    });
+
+    it('should return the plan and the real limits stored on the tenant', async () => {
+      const result = await service.getUsage(TENANT_ID);
+
+      expect(result.plan).toBe('PRO');
+      expect(result.limits).toEqual([
+        { key: 'users', label: 'Usuários', current: 3, max: 10 },
+        { key: 'products', label: 'Produtos', current: 245, max: 1000 },
+        { key: 'orders', label: 'Pedidos / mês', current: 12, max: 5000 },
+        { key: 'warehouses', label: 'Depósitos', current: 2, max: 3 },
+      ]);
+    });
+
+    it('should scope every count by tenant', async () => {
+      await service.getUsage(TENANT_ID);
+
+      for (const counter of [
+        prisma.user.count,
+        prisma.product.count,
+        prisma.order.count,
+        prisma.warehouse.count,
+      ]) {
+        const where = counter.mock.calls[0][0].where;
+        expect(where.tenantId).toBe(TENANT_ID);
+      }
+    });
+
+    it('should count orders from the first day of the civil month in the tenant timezone', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-03T02:30:00.000Z'));
+
+      await service.getUsage(TENANT_ID);
+
+      // 03/08 02:30 UTC is still 02/08 in BRT — the window must open on
+      // 01/08 00:00 BRT (03:00 UTC), never on 01/08 00:00 UTC.
+      const where = prisma.order.count.mock.calls[0][0].where;
+      expect(where.createdAt.gte.toISOString()).toBe('2026-08-01T03:00:00.000Z');
+
+      jest.useRealTimers();
+    });
+
+    it('should not count cancelled orders against the monthly limit', async () => {
+      await service.getUsage(TENANT_ID);
+
+      const where = prisma.order.count.mock.calls[0][0].where;
+      expect(where.status.notIn).toContain('CANCELLED');
+    });
+
+    it('should throw NotFoundException for an unknown tenant', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(null);
+
+      await expect(service.getUsage(TENANT_ID)).rejects.toThrow(NotFoundException);
     });
   });
 });

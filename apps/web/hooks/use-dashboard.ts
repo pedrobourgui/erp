@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
 import type { ApiResponse } from "@erp/shared-types";
+import { useQuery } from "@tanstack/react-query";
+
+import api from "@/lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -13,8 +14,10 @@ export interface DashboardKpi {
 export interface DashboardKPI {
   todaySales: DashboardKpi;
   avgTicket: DashboardKpi;
-  receivablesOpen: DashboardKpi;
-  payablesOpen: DashboardKpi;
+  /** Absent for users without `financial:read` — the API omits it (AE-27). */
+  receivablesOpen?: DashboardKpi;
+  /** Absent for users without `financial:read` — the API omits it (AE-27). */
+  payablesOpen?: DashboardKpi;
   lowStockAlerts: DashboardKpi;
 }
 

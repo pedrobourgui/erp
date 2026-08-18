@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Loader2, Upload, User as UserIcon } from "lucide-react";
 import Image from "next/image";
+import { useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { useUploadAvatar } from "@/hooks/use-profile";
-import { Loader2, Upload, User as UserIcon } from "lucide-react";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
 
 type AvatarUploaderProps = {
   name: string;
@@ -29,7 +31,9 @@ export function AvatarUploader({ name, avatarUrl }: AvatarUploaderProps) {
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       addToast("O avatar deve ser uma imagem.", "error");
@@ -46,7 +50,10 @@ export function AvatarUploader({ name, avatarUrl }: AvatarUploaderProps) {
       addToast("Avatar atualizado com sucesso!", "success");
     } catch (error) {
       addToast(
-        error instanceof Error ? error.message : "Erro ao enviar o avatar.",
+        getMutationErrorMessage(
+          error,
+          error instanceof Error ? error.message : "Erro ao enviar o avatar."
+        ),
         "error"
       );
     }
@@ -70,7 +77,7 @@ export function AvatarUploader({ name, avatarUrl }: AvatarUploaderProps) {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
-              {initials || <UserIcon className="h-8 w-8" />}
+              {initials || <UserIcon className="h-10 w-10 md:h-8 md:w-8" />}
             </div>
           )}
         </div>

@@ -1,9 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
   ShoppingCart,
   Package,
@@ -13,102 +9,85 @@ import {
   ChevronDown,
   LayoutDashboard,
   Users,
-  ArrowLeftRight,
-  Warehouse,
-  AlertTriangle,
-  ShoppingBag,
   BoxIcon,
   Landmark,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import React, { useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { usePermissions } from "@/hooks/use-permissions";
+import { NAV_ITEMS, filterNavItems, type NavItem } from "@/lib/nav-items";
+import { cn } from "@/lib/utils";
 
-// ─── Types ──────────────────────────────────────────────────────────────
+// ─── Icons ──────────────────────────────────────────────────────────────
 
-interface NavChild {
-  title: string;
-  href: string;
-}
-
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ElementType;
-  children?: NavChild[];
-}
-
-// ─── Navigation config ──────────────────────────────────────────────────
-
-const navItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Estoque",
-    href: "/estoque",
-    icon: Package,
-    children: [
-      { title: "Produtos", href: "/estoque/produtos" },
-      { title: "Categorias", href: "/estoque/categorias" },
-      { title: "Marcas", href: "/estoque/marcas" },
-      { title: "Movimentações", href: "/estoque/movimentacoes" },
-      { title: "Depósitos", href: "/estoque/depositos" },
-      { title: "Alertas", href: "/estoque/alertas" },
-    ],
-  },
-  {
-    title: "Vendas",
-    href: "/vendas",
-    icon: ShoppingCart,
-    children: [
-      { title: "Pedidos", href: "/vendas/pedidos" },
-      { title: "Nova Venda", href: "/vendas/pedidos/novo" },
-      { title: "Venda Balcão", href: "/vendas/balcao" },
-    ],
-  },
-  {
-    title: "Clientes",
-    href: "/clientes",
-    icon: Users,
-  },
-  {
-    title: "Financeiro",
-    href: "/financeiro",
-    icon: Landmark,
-    children: [
-      { title: "Contas", href: "/financeiro/contas" },
-      { title: "Despesas e Receitas", href: "/financeiro/lancamentos" },
-      { title: "Caixas", href: "/financeiro/caixa" },
-    ],
-  },
-  {
-    title: "Configurações",
-    href: "/configuracoes",
-    icon: Settings,
-    children: [
-      { title: "Geral", href: "/configuracoes" },
-      { title: "Cond. Pagamento", href: "/configuracoes/condicoes-pagamento" },
-      { title: "Métodos Pagamento", href: "/configuracoes/metodos-pagamento" },
-    ],
-  },
-];
+/** Resolves the icon name declared in `lib/nav-items.ts`. */
+const NAV_ICONS: Record<string, React.ElementType> = {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Landmark,
+  Settings,
+};
 
 // ─── Sidebar ────────────────────────────────────────────────────────────
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Drawer aberto (só abaixo de `lg`, onde a sidebar não cabe). */
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const { can, isLoaded } = usePermissions();
+
+  // AE-27: an item the user cannot open never reaches the menu. While the
+  // permissions load the menu stays empty — items appearing and then vanishing
+  // reads as a glitch.
+  const navItems = useMemo(
+    () => (isLoaded ? filterNavItems(NAV_ITEMS, can) : []),
+    [can, isLoaded]
+  );
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    navItems.forEach((item) => {
+    NAV_ITEMS.forEach((item) => {
       if (item.children && item.href !== "/" && pathname.startsWith(item.href)) {
         initial.add(item.href);
       }
     });
     return initial;
   });
+
+  // AE-07: navegar fecha o drawer — senão o menu cobre a tela recém-aberta.
+  React.useEffect(() => {
+    onMobileOpenChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // ESC fecha, e o body para de rolar enquanto o drawer está aberto.
+  React.useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onMobileOpenChange?.(false);
+      }
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen, onMobileOpenChange]);
 
   const toggleGroup = (href: string) => {
     setOpenGroups((prev) => {
@@ -123,12 +102,28 @@ export function Sidebar() {
   };
 
   return (
-    <aside
-      className={cn(
-        "grain-texture relative flex h-screen flex-col bg-sidebar-bg transition-all duration-300 ease-in-out",
-        collapsed ? "w-[72px]" : "w-[264px]"
-      )}
-    >
+    <>
+      {/* Overlay do drawer — só existe abaixo de `lg` */}
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => onMobileOpenChange?.(false)}
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          "grain-texture flex h-screen flex-col bg-sidebar-bg transition-transform duration-300 ease-in-out",
+          // Abaixo de `lg` é drawer: fora da tela até ser aberto.
+          "fixed inset-y-0 left-0 z-50 w-[264px]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          // A partir de `lg` volta a ser coluna fixa do layout.
+          "lg:relative lg:translate-x-0",
+          collapsed ? "lg:w-[72px]" : "lg:w-[264px]"
+        )}
+      >
       {/* Logo area */}
       <div className="relative z-10 flex h-16 items-center border-b border-white/[0.06] px-4">
         {!collapsed && (
@@ -139,13 +134,11 @@ export function Sidebar() {
             <span className="text-[15px] font-bold text-white/90 font-heading tracking-tight">ERP System</span>
           </Link>
         )}
-        {collapsed && (
-          <div className="flex w-full justify-center">
+        {collapsed ? <div className="flex w-full justify-center">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent shadow-lg shadow-accent/20">
               <span className="text-sm font-bold text-white font-heading">E</span>
             </div>
-          </div>
-        )}
+          </div> : null}
       </div>
 
       {/* Navigation */}
@@ -167,8 +160,11 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute -right-3 top-20 z-20 h-6 w-6 rounded-full border border-border bg-card shadow-soft hover:bg-accent hover:text-white hover:border-accent transition-all duration-200"
+          className="absolute -right-3 top-20 z-20 hidden h-6 w-6 rounded-full border border-border bg-card shadow-soft transition-all duration-200 hover:border-accent hover:bg-accent hover:text-white lg:flex"
           onClick={() => setCollapsed(!collapsed)}
+          // Botão só de ícone: sem isto um leitor de tela anuncia "button" e
+          // nada mais. O texto do tooltip só existe ao passar o mouse.
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
         >
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </Button>
@@ -182,13 +178,12 @@ export function Sidebar() {
             <span className="text-[11px] text-sidebar-fg/60">Sistema ativo</span>
           </div>
         )}
-        {collapsed && (
-          <div className="flex justify-center">
+        {collapsed ? <div className="flex justify-center">
             <div className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
-          </div>
-        )}
+          </div> : null}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -209,6 +204,7 @@ function NavItemComponent({
 }) {
   const hasChildren = item.children && item.children.length > 0;
   const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+  const Icon = NAV_ICONS[item.icon] ?? BoxIcon;
 
   if (hasChildren && !collapsed) {
     return (
@@ -223,12 +219,11 @@ function NavItemComponent({
               : "text-sidebar-fg hover:bg-white/[0.04] hover:text-white/90"
           )}
         >
-          <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors duration-200", isActive && "text-accent")} />
+          <Icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors duration-200", isActive && "text-accent")} />
           <span className="flex-1 truncate text-left">{item.title}</span>
           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")} />
         </button>
-        {isOpen && (
-          <div className="ml-[30px] mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
+        {isOpen ? <div className="ml-[30px] mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
             {item.children?.map((child) => {
               const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
               return (
@@ -246,8 +241,7 @@ function NavItemComponent({
                 </Link>
               );
             })}
-          </div>
-        )}
+          </div> : null}
       </div>
     );
   }
@@ -264,7 +258,7 @@ function NavItemComponent({
       )}
       title={collapsed ? item.title : undefined}
     >
-      <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors duration-200", isActive && "text-accent")} />
+      <Icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors duration-200", isActive && "text-accent")} />
       {!collapsed && <span className="truncate">{item.title}</span>}
     </Link>
   );

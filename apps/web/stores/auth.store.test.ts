@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import api from '@/lib/api';
+
 import { useAuthStore } from './auth.store';
 
 vi.mock('@/lib/api', () => {
@@ -10,7 +13,6 @@ vi.mock('@/lib/api', () => {
   };
 });
 
-import api from '@/lib/api';
 
 const mockedApi = vi.mocked(api);
 
@@ -20,6 +22,7 @@ describe('useAuthStore', () => {
     useAuthStore.setState({
       user: null,
       token: null,
+      permissions: null,
       isAuthenticated: false,
       isLoading: false,
     });
@@ -92,6 +95,108 @@ describe('useAuthStore', () => {
 
       expect(useAuthStore.getState().isLoading).toBe(false);
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    });
+  });
+
+  // ─── Permissions (lote 4) ────────────────────────────────────────────────
+
+  describe('permissions', () => {
+    const profileWithRole = {
+      id: '1',
+      name: 'Ana',
+      email: 'ana@test.com',
+      tenantId: 't1',
+      role: {
+        id: 'role-1',
+        name: 'seller',
+        permissions: [
+          { permission: { resource: 'orders', action: 'create' } },
+          { permission: { resource: 'cash-registers', action: 'read-session' } },
+        ],
+      },
+    };
+
+    it('starts as null — "not loaded yet" is not the same as "has none"', () => {
+      expect(useAuthStore.getState().permissions).toBeNull();
+    });
+
+    it('fetches /auth/me after login, because the login payload has no permissions', async () => {
+      mockedApi.post.mockResolvedValueOnce({
+        data: {
+          data: {
+            user: { id: '1', name: 'Ana', email: 'ana@test.com', role: { id: 'role-1', name: 'seller' }, tenantId: 't1' },
+            accessToken: 'access-123',
+            refreshToken: 'refresh-123',
+          },
+        },
+      });
+      mockedApi.get.mockResolvedValueOnce({ data: { data: profileWithRole } });
+
+      await useAuthStore.getState().login('ana@test.com', 'password');
+
+      expect(mockedApi.get).toHaveBeenCalledWith('/auth/me');
+      expect(useAuthStore.getState().permissions).toEqual([
+        'orders:create',
+        'cash-registers:read-session',
+      ]);
+      expect(useAuthStore.getState().roleName).toBe('seller');
+    });
+
+    it('keeps the session usable when /auth/me fails right after login', async () => {
+      mockedApi.post.mockResolvedValueOnce({
+        data: {
+          data: {
+            user: { id: '1', name: 'Ana', email: 'ana@test.com', role: 'seller', tenantId: 't1' },
+            accessToken: 'access-123',
+            refreshToken: 'refresh-123',
+          },
+        },
+      });
+      mockedApi.get.mockRejectedValueOnce(new Error('network'));
+
+      await useAuthStore.getState().login('ana@test.com', 'password');
+
+      // Authenticated, but permissions unknown — the UI must show a loading
+      // state, never "acesso negado" (a false denial is worse than a spinner).
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().permissions).toBeNull();
+    });
+
+    it('fills permissions on hydrate', async () => {
+      localStorage.setItem('erp_token', 'stored-token');
+      mockedApi.get.mockResolvedValueOnce({ data: { data: profileWithRole } });
+
+      useAuthStore.getState().hydrate();
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().permissions).toEqual([
+          'orders:create',
+          'cash-registers:read-session',
+        ]);
+      });
+      expect(useAuthStore.getState().roleName).toBe('seller');
+    });
+
+    it('reads an empty list when the role has no permissions attached', async () => {
+      localStorage.setItem('erp_token', 'stored-token');
+      mockedApi.get.mockResolvedValueOnce({
+        data: { data: { id: '1', name: 'A', email: 'a@b.com', tenantId: 't', role: { id: 'r', name: 'novo' } } },
+      });
+
+      useAuthStore.getState().hydrate();
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().permissions).toEqual([]);
+      });
+    });
+
+    it('clears permissions on logout', () => {
+      useAuthStore.setState({ permissions: ['orders:read'], roleName: 'seller' });
+
+      useAuthStore.getState().logout();
+
+      expect(useAuthStore.getState().permissions).toBeNull();
+      expect(useAuthStore.getState().roleName).toBeNull();
     });
   });
 

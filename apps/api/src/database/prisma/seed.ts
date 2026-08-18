@@ -1,134 +1,15 @@
 import { PrismaClient, AccountType, TaxRegime, ProductStatus, ProductType } from '@prisma/client';
+import { PERMISSION_DEFINITIONS, ROLE_DEFINITIONS } from '@erp/constants';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 // ---------------------------------------------------------------------------
-// Default permissions for the system
+// Permissions and roles come from @erp/constants — the single source of truth
+// shared with the API guards and the frontend gating (lote 4). Editing the
+// matrix here would recreate the divergence that made the constants package
+// describe permissions the database never had.
 // ---------------------------------------------------------------------------
-const DEFAULT_PERMISSIONS: { resource: string; action: string; description: string }[] = [
-  // Products
-  { resource: 'products', action: 'create', description: 'Criar produtos' },
-  { resource: 'products', action: 'read', description: 'Visualizar produtos' },
-  { resource: 'products', action: 'update', description: 'Editar produtos' },
-  { resource: 'products', action: 'delete', description: 'Excluir produtos' },
-  { resource: 'products', action: 'export', description: 'Exportar produtos' },
-  // Orders
-  { resource: 'orders', action: 'create', description: 'Criar pedidos' },
-  { resource: 'orders', action: 'read', description: 'Visualizar pedidos' },
-  { resource: 'orders', action: 'update', description: 'Editar pedidos' },
-  { resource: 'orders', action: 'delete', description: 'Cancelar pedidos' },
-  { resource: 'orders', action: 'export', description: 'Exportar pedidos' },
-  // Inventory
-  { resource: 'inventory', action: 'create', description: 'Criar movimentações de estoque' },
-  { resource: 'inventory', action: 'read', description: 'Visualizar estoque' },
-  { resource: 'inventory', action: 'update', description: 'Ajustar estoque' },
-  { resource: 'inventory', action: 'delete', description: 'Excluir movimentações' },
-  { resource: 'inventory', action: 'export', description: 'Exportar estoque' },
-  // Financial
-  { resource: 'financial', action: 'create', description: 'Criar lançamentos financeiros' },
-  { resource: 'financial', action: 'read', description: 'Visualizar financeiro' },
-  { resource: 'financial', action: 'update', description: 'Editar lançamentos financeiros' },
-  { resource: 'financial', action: 'delete', description: 'Excluir lançamentos financeiros' },
-  { resource: 'financial', action: 'export', description: 'Exportar financeiro' },
-  // Customers
-  { resource: 'customers', action: 'create', description: 'Criar clientes' },
-  { resource: 'customers', action: 'read', description: 'Visualizar clientes' },
-  { resource: 'customers', action: 'update', description: 'Editar clientes' },
-  { resource: 'customers', action: 'delete', description: 'Excluir clientes' },
-  { resource: 'customers', action: 'export', description: 'Exportar clientes' },
-  // Reports
-  { resource: 'reports', action: 'read', description: 'Visualizar relatórios' },
-  { resource: 'reports', action: 'export', description: 'Exportar relatórios' },
-  // Settings
-  { resource: 'settings', action: 'read', description: 'Visualizar configurações' },
-  { resource: 'settings', action: 'update', description: 'Editar configurações' },
-  // Users
-  { resource: 'users', action: 'create', description: 'Criar usuários' },
-  { resource: 'users', action: 'read', description: 'Visualizar usuários' },
-  { resource: 'users', action: 'update', description: 'Editar usuários' },
-  { resource: 'users', action: 'delete', description: 'Excluir usuários' },
-  // Fiscal
-  { resource: 'fiscal', action: 'create', description: 'Emitir notas fiscais' },
-  { resource: 'fiscal', action: 'read', description: 'Visualizar notas fiscais' },
-  { resource: 'fiscal', action: 'update', description: 'Editar notas fiscais' },
-  { resource: 'fiscal', action: 'delete', description: 'Cancelar notas fiscais' },
-  { resource: 'fiscal', action: 'export', description: 'Exportar notas fiscais' },
-  // Purchases
-  { resource: 'purchases', action: 'create', description: 'Criar ordens de compra' },
-  { resource: 'purchases', action: 'read', description: 'Visualizar compras' },
-  { resource: 'purchases', action: 'update', description: 'Editar compras' },
-  { resource: 'purchases', action: 'delete', description: 'Excluir compras' },
-  { resource: 'purchases', action: 'export', description: 'Exportar compras' },
-  // Marketplace
-  { resource: 'marketplace', action: 'create', description: 'Criar conexões de marketplace' },
-  { resource: 'marketplace', action: 'read', description: 'Visualizar marketplace' },
-  { resource: 'marketplace', action: 'update', description: 'Editar marketplace' },
-  { resource: 'marketplace', action: 'delete', description: 'Excluir conexões de marketplace' },
-];
-
-// ---------------------------------------------------------------------------
-// Role definitions – each role gets a subset of permissions
-// ---------------------------------------------------------------------------
-interface RoleDef {
-  name: string;
-  description: string;
-  filter: (p: { resource: string; action: string }) => boolean;
-}
-
-const ROLE_DEFINITIONS: RoleDef[] = [
-  {
-    name: 'owner',
-    description: 'Proprietário – acesso total ao sistema',
-    filter: () => true,
-  },
-  {
-    name: 'admin',
-    description: 'Administrador – acesso total ao sistema',
-    filter: () => true,
-  },
-  {
-    name: 'manager',
-    description: 'Gerente – acesso à maioria dos módulos',
-    filter: (p) => !['users', 'settings'].includes(p.resource) || p.action === 'read',
-  },
-  {
-    name: 'seller',
-    description: 'Vendedor – pedidos, produtos e clientes',
-    filter: (p) => {
-      if (['orders', 'customers'].includes(p.resource)) return ['create', 'read', 'update'].includes(p.action);
-      if (p.resource === 'products') return ['read'].includes(p.action);
-      if (p.resource === 'reports') return p.action === 'read';
-      return false;
-    },
-  },
-  {
-    name: 'warehouse',
-    description: 'Estoquista – gestão de estoque e produtos',
-    filter: (p) => {
-      if (p.resource === 'inventory') return true;
-      if (p.resource === 'products') return ['read', 'update'].includes(p.action);
-      if (p.resource === 'purchases') return ['read'].includes(p.action);
-      return false;
-    },
-  },
-  {
-    name: 'financial',
-    description: 'Financeiro – contas a pagar/receber, relatórios',
-    filter: (p) => {
-      if (p.resource === 'financial') return true;
-      if (p.resource === 'reports') return true;
-      if (p.resource === 'fiscal') return ['read', 'export'].includes(p.action);
-      if (['orders', 'customers', 'purchases'].includes(p.resource)) return p.action === 'read';
-      return false;
-    },
-  },
-  {
-    name: 'viewer',
-    description: 'Visualizador – somente leitura',
-    filter: (p) => p.action === 'read',
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Seed helpers
@@ -137,7 +18,7 @@ const ROLE_DEFINITIONS: RoleDef[] = [
 async function seedPermissions() {
   console.log('Seeding permissions...');
   const permissions = [];
-  for (const perm of DEFAULT_PERMISSIONS) {
+  for (const perm of PERMISSION_DEFINITIONS) {
     const created = await prisma.permission.upsert({
       where: { resource_action: { resource: perm.resource, action: perm.action } },
       update: { description: perm.description },
@@ -156,7 +37,11 @@ async function seedTenant() {
     create: {
       id: 'seed-tenant-001',
       name: 'Loja Exemplo Ltda',
-      document: '12.345.678/0001-90',
+      // AE-04/AE-15: digits only, and a CNPJ that passes its own check digit.
+      // `12345678000190` is a placeholder the system's validator rejects, so a
+      // freshly seeded base could not save the company form at all — every
+      // submit died on "CNPJ inválido" for data the seed itself wrote.
+      document: '11222333000181',
       email: 'contato@lojaexemplo.com.br',
       phone: '(11) 3456-7890',
       plan: 'STARTER',
@@ -204,7 +89,9 @@ async function seedRolesAndAssign(
     roleMap[def.name] = role.id;
 
     // Assign permissions
-    const matched = permissions.filter((p) => def.filter({ resource: p.resource, action: p.action }));
+    const matched = permissions.filter((p) =>
+      def.grants({ resource: p.resource, action: p.action }),
+    );
     for (const perm of matched) {
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
@@ -624,22 +511,33 @@ async function seedFinancialAccounts(tenantId: string) {
     { name: 'Banco do Brasil', type: 'CHECKING', code: 'BB', bankName: 'Banco do Brasil' },
     { name: 'Conta Digital', type: 'DIGITAL', code: 'DIG', bankName: 'Nubank' },
   ];
+  // Idempotente por (tenantId, name): `create().catch()` silencioso duplicava a
+  // base a cada `db:seed` — cinco "Caixa Principal", seis "Dinheiro" — e o PDV
+  // passava a oferecer o mesmo método várias vezes.
   for (const a of accounts) {
-    await prisma.financialAccount.create({
-      data: {
-        tenantId,
-        name: a.name,
-        type: a.type as any,
-        code: a.code,
-        bankName: a.bankName,
-        acceptsDirectSales: a.acceptsDirectSales ?? false,
-        isActive: true,
-      },
-    }).catch(() => {
-      // Ignore duplicates on re-seed
+    const existing = await prisma.financialAccount.findFirst({
+      where: { tenantId, name: a.name },
+      select: { id: true },
     });
+    const data = {
+      tenantId,
+      name: a.name,
+      type: a.type as any,
+      code: a.code,
+      bankName: a.bankName,
+      acceptsDirectSales: a.acceptsDirectSales ?? false,
+      isActive: true,
+    };
+    if (existing) {
+      await prisma.financialAccount.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.financialAccount.create({ data });
+    }
   }
 }
+
+/** Tipos liquidados na hora — a API exige conta vinculada neles (SCRUM-30). */
+const IMMEDIATE_METHOD_TYPES = ['CASH', 'PIX', 'DEBIT_CARD'];
 
 async function seedPaymentMethods(tenantId: string) {
   console.log('Seeding payment methods...');
@@ -651,21 +549,37 @@ async function seedPaymentMethods(tenantId: string) {
     { name: 'Boleto', type: 'BOLETO', fiscalCode: '15', requiresAuthorization: false, settlementDays: 3 },
     { name: 'Transferência Bancária', type: 'BANK_TRANSFER', fiscalCode: '03', requiresAuthorization: false, settlementDays: 1 },
   ];
+  // Métodos à vista precisam de conta financeira vinculada: sem ela a API recusa
+  // a venda (SCRUM-30) e o PDV fica travado numa base recém-semeada — o operador
+  // não tem como adivinhar que falta configurar isso. O seed já entrega ligado.
+  const cashAccount = await prisma.financialAccount.findFirst({
+    where: { tenantId, acceptsDirectSales: true },
+    select: { id: true },
+  });
+
   for (const m of methods) {
-    await prisma.paymentMethod.create({
-      data: {
-        tenantId,
-        name: m.name,
-        type: m.type as any,
-        fiscalCode: m.fiscalCode,
-        requiresAuthorization: m.requiresAuthorization,
-        feePercentage: m.feePercentage ?? 0,
-        settlementDays: m.settlementDays ?? 0,
-        isActive: true,
-      },
-    }).catch(() => {
-      // Ignore duplicates on re-seed
+    const existing = await prisma.paymentMethod.findFirst({
+      where: { tenantId, name: m.name },
+      select: { id: true },
     });
+    const data = {
+      tenantId,
+      name: m.name,
+      type: m.type as any,
+      fiscalCode: m.fiscalCode,
+      requiresAuthorization: m.requiresAuthorization,
+      feePercentage: m.feePercentage ?? 0,
+      settlementDays: m.settlementDays ?? 0,
+      defaultAccountId: IMMEDIATE_METHOD_TYPES.includes(m.type)
+        ? cashAccount?.id ?? null
+        : null,
+      isActive: true,
+    };
+    if (existing) {
+      await prisma.paymentMethod.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.paymentMethod.create({ data });
+    }
   }
 }
 

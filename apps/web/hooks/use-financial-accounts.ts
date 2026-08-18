@@ -1,10 +1,11 @@
+import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -116,6 +117,30 @@ export function useUpdateFinancialAccount() {
       const { data } = await api.patch<ApiResponse<FinancialAccount>>(
         `/financial-accounts/${id}`,
         payload
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: financialAccountKeys.lists(),
+      });
+    },
+  });
+}
+
+export interface DeleteFinancialAccountResult {
+  id: string;
+  deactivated: boolean;
+  message: string;
+}
+
+export function useDeleteFinancialAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.delete<ApiResponse<DeleteFinancialAccountResult>>(
+        `/financial-accounts/${id}`
       );
       return data;
     },

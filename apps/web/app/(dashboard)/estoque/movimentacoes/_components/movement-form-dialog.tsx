@@ -1,11 +1,8 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import type { PermissionName } from "@erp/constants";
+import React, { useEffect, useMemo, useState } from "react";
+
 import {
   Dialog,
   DialogContent,
@@ -13,75 +10,54 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { SearchableSelect } from "@/components/forms/searchable-select";
-import {
-  useCreateMovement,
-  useWarehouses,
-  type MovementType,
-  type MovementReason,
-  type CreateMovementPayload,
-} from "@/hooks/use-inventory";
-import api, { getApiErrorMessage } from "@/lib/api";
-import type { PaginatedResponse } from "@erp/shared-types";
-import { Loader2 } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { cn } from "@/lib/utils";
 
-// Only manual add/remove is exposed here (transfers/adjustments have their own flows)
-const MOVEMENT_TYPES: { value: "ENTRY" | "EXIT"; label: string }[] = [
-  { value: "ENTRY", label: "Entrada (adicionar)" },
-  { value: "EXIT", label: "Saída (remover)" },
+import { AdjustmentForm } from "./adjustment-form";
+import { EntryExitForm } from "./entry-exit-form";
+import { TransferForm } from "./transfer-form";
+
+type MovementMode = "ENTRY" | "EXIT" | "TRANSFER" | "ADJUSTMENT";
+
+/**
+ * AE-25: the dialog used to offer only Entrada and Saída, with a comment saying
+ * transfers and adjustments "have their own flows" — flows that existed nowhere
+ * in the frontend, while the backend supported both all along.
+ *
+ * A transfer and an adjustment are not plain entries, so each has its own
+ * permission: `inventory:transfer` and `inventory:adjust`.
+ */
+const MODES: {
+  value: MovementMode;
+  label: string;
+  description: string;
+  permission: PermissionName;
+}[] = [
+  {
+    value: "ENTRY",
+    label: "Entrada",
+    description: "Adicione produtos ao estoque de um depósito.",
+    permission: "inventory:create",
+  },
+  {
+    value: "EXIT",
+    label: "Saída",
+    description: "Remova produtos do estoque de um depósito.",
+    permission: "inventory:create",
+  },
+  {
+    value: "TRANSFER",
+    label: "Transferência",
+    description: "Mova produtos entre dois depósitos.",
+    permission: "inventory:transfer",
+  },
+  {
+    value: "ADJUSTMENT",
+    label: "Ajuste",
+    description: "Acerte o saldo do sistema com a quantidade contada.",
+    permission: "inventory:adjust",
+  },
 ];
-
-const REASONS_BY_TYPE: Record<"ENTRY" | "EXIT", { value: MovementReason; label: string }[]> = {
-  ENTRY: [
-    { value: "PURCHASE", label: "Compra" },
-    { value: "RETURN_CUSTOMER", label: "Devolução de cliente" },
-    { value: "PRODUCTION", label: "Produção" },
-    { value: "INITIAL", label: "Saldo inicial" },
-    { value: "COUNT", label: "Inventário/Contagem" },
-  ],
-  EXIT: [
-    { value: "SALE", label: "Venda" },
-    { value: "RETURN_SUPPLIER", label: "Devolução a fornecedor" },
-    { value: "DAMAGE", label: "Avaria" },
-    { value: "THEFT", label: "Furto/Perda" },
-    { value: "COUNT", label: "Inventário/Contagem" },
-  ],
-};
-
-const schema = z
-  .object({
-    type: z.enum(["ENTRY", "EXIT"]),
-    productId: z.string().min(1, "Selecione um produto"),
-    warehouseId: z.string().min(1, "Selecione um depósito"),
-    quantity: z.coerce
-      .number()
-      .int("Quantidade deve ser um número inteiro")
-      .min(1, "Quantidade deve ser ao menos 1")
-      .max(1_000_000, "Quantidade acima do limite permitido"),
-    reason: z.string().min(1, "Selecione um motivo"),
-    notes: z.string().max(500).optional(),
-  })
-  .superRefine((values, ctx) => {
-    // Reason must match the selected movement type (ENTRY vs EXIT reasons differ)
-    const allowed = REASONS_BY_TYPE[values.type].map((r) => r.value as string);
-    if (values.reason && !allowed.includes(values.reason)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["reason"],
-        message: "Motivo incompatível com o tipo de movimentação",
-      });
-    }
-  });
-
-type FormValues = z.infer<typeof schema>;
 
 interface MovementFormDialogProps {
   open: boolean;
@@ -89,159 +65,57 @@ interface MovementFormDialogProps {
 }
 
 export function MovementFormDialog({ open, onOpenChange }: MovementFormDialogProps) {
-  const { addToast } = useToast();
-  const createMovement = useCreateMovement();
-  const { data: warehousesResp } = useWarehouses();
+  const { can, isLoaded } = usePermissions();
 
-  const warehouses = warehousesResp?.data ?? [];
+  const availableModes = useMemo(() => MODES.filter((m) => can(m.permission)), [can]);
 
-  // Server-side product search so the picker isn't capped at the first 100 items
-  const loadProducts = useCallback(async (search: string) => {
-    const { data } = await api.get<
-      PaginatedResponse<{ id: string; name: string; sku: string }>
-    >("/products", { params: { search, limit: 20, status: "ACTIVE" } });
-    return (data.data ?? []).map((p) => ({
-      value: p.id,
-      label: p.name,
-      description: p.sku,
-    }));
-  }, []);
+  const [mode, setMode] = useState<MovementMode>("ENTRY");
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    control,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { type: "ENTRY", productId: "", warehouseId: "", quantity: 1, reason: "" },
-  });
-
-  const type = watch("type") as "ENTRY" | "EXIT";
-
-  const onSubmit = async (values: FormValues) => {
-    const payload: CreateMovementPayload = {
-      productId: values.productId,
-      type: values.type as MovementType,
-      reason: values.reason as MovementReason,
-      quantity: values.quantity,
-      notes: values.notes || undefined,
-      ...(values.type === "ENTRY"
-        ? { toWarehouseId: values.warehouseId }
-        : { fromWarehouseId: values.warehouseId }),
-    };
-
-    try {
-      await createMovement.mutateAsync(payload);
-      addToast("Movimentação registrada com sucesso!", "success");
-      reset();
-      onOpenChange(false);
-    } catch (err) {
-      addToast(
-        getApiErrorMessage(err) ??
-          "Erro ao registrar movimentação. Verifique o estoque e tente novamente.",
-        "error"
-      );
+  // Land on a tab the user can actually use — a warehouse operator without
+  // `inventory:adjust` must not open on a form that will 403 on submit.
+  useEffect(() => {
+    if (!isLoaded || availableModes.length === 0) {return;}
+    if (!availableModes.some((m) => m.value === mode)) {
+      setMode(availableModes[0].value);
     }
-  };
+  }, [isLoaded, availableModes, mode]);
+
+  const current = MODES.find((m) => m.value === mode) ?? MODES[0];
+  const close = () => onOpenChange(false);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] max-w-md flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Nova movimentação</DialogTitle>
-          <DialogDescription>
-            Adicione ou remova produtos do estoque de um depósito.
-          </DialogDescription>
+          <DialogDescription>{current.description}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Tipo</label>
-            <Select
-              value={type}
-              onValueChange={(v) => {
-                setValue("type", v as "ENTRY" | "EXIT", { shouldValidate: true });
-                setValue("reason", "", { shouldValidate: false });
-              }}
+        <div className="mb-2 flex shrink-0 gap-1 overflow-x-auto border-b">
+          {availableModes.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setMode(m.value)}
+              className={cn(
+                "whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                mode === m.value
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MOVEMENT_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {m.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Produto</label>
-            <SearchableSelect
-              name="productId"
-              control={control}
-              loadOptions={loadProducts}
-              placeholder="Selecione o produto"
-              error={errors.productId?.message}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Depósito</label>
-            <Select
-              value={watch("warehouseId")}
-              onValueChange={(v) => setValue("warehouseId", v, { shouldValidate: true })}
-            >
-              <SelectTrigger><SelectValue placeholder="Selecione o depósito" /></SelectTrigger>
-              <SelectContent>
-                {warehouses.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.warehouseId && <p className="text-xs text-destructive">{errors.warehouseId.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Quantidade</label>
-              <Input type="number" min={1} {...register("quantity")} />
-              {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Motivo</label>
-              <Select
-                value={watch("reason")}
-                onValueChange={(v) => setValue("reason", v, { shouldValidate: true })}
-              >
-                <SelectTrigger><SelectValue placeholder="Motivo" /></SelectTrigger>
-                <SelectContent>
-                  {REASONS_BY_TYPE[type].map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.reason && <p className="text-xs text-destructive">{errors.reason.message}</p>}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Observações</label>
-            <Input maxLength={500} {...register("notes")} placeholder="Opcional" />
-          </div>
-
-          <div className="flex justify-end gap-2 border-t pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={createMovement.isPending}>
-              {createMovement.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Registrar
-            </Button>
-          </div>
-        </form>
+        {/* Each mode gets a fresh form: `key` remounts it so a half-filled
+            transfer does not leak into an adjustment. */}
+        {mode === "ENTRY" || mode === "EXIT" ? (
+          <EntryExitForm key={mode} type={mode} onDone={close} />
+        ) : null}
+        {mode === "TRANSFER" ? <TransferForm key={mode} onDone={close} /> : null}
+        {mode === "ADJUSTMENT" ? <AdjustmentForm key={mode} onDone={close} /> : null}
       </DialogContent>
     </Dialog>
   );

@@ -1,9 +1,10 @@
 "use client";
 
+import { Upload, X, FileIcon, Loader2 } from "lucide-react";
 import React, { useState, useRef, useCallback } from "react";
-import { cn } from "@/lib/utils";
-import { Upload, X, FileIcon, ImageIcon, Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -41,8 +42,12 @@ function generateId(): string {
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -98,7 +103,9 @@ export function FileUpload({
         for (const uf of newFiles) {
           try {
             const idx = updated.findIndex((f) => f.id === uf.id);
-            if (idx === -1) continue;
+            if (idx === -1) {
+              continue;
+            }
             updated[idx] = { ...updated[idx], status: "uploading", progress: 50 };
             onChange?.([...updated]);
 
@@ -135,7 +142,7 @@ export function FileUpload({
   const removeFile = useCallback(
     (id: string) => {
       const file = value.find((f) => f.id === id);
-      if (file?.preview) URL.revokeObjectURL(file.preview);
+      if (file?.preview) {URL.revokeObjectURL(file.preview);}
       onChange?.(value.filter((f) => f.id !== id));
     },
     [value, onChange]
@@ -145,7 +152,9 @@ export function FileUpload({
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (disabled) return;
+      if (disabled) {
+        return;
+      }
       if (e.type === "dragenter" || e.type === "dragover") {
         setDragActive(true);
       } else if (e.type === "dragleave") {
@@ -160,7 +169,9 @@ export function FileUpload({
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
-      if (disabled) return;
+      if (disabled) {
+        return;
+      }
       if (e.dataTransfer.files.length > 0) {
         addFiles(e.dataTransfer.files);
       }
@@ -180,9 +191,7 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-3", className)}>
-      {label && (
-        <label className="text-sm font-medium leading-none">{label}</label>
-      )}
+      {label ? <label className="text-sm font-medium leading-none">{label}</label> : null}
 
       {/* Drop zone */}
       <div
@@ -219,7 +228,7 @@ export function FileUpload({
         />
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
       {/* File list */}
       {value.length > 0 && (
@@ -273,7 +282,7 @@ export function FileUpload({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-10 w-10 md:h-8 md:w-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile(file.id);

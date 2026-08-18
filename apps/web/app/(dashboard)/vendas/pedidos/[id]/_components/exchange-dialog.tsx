@@ -1,6 +1,9 @@
 "use client";
 
+import { Loader2, ArrowRightLeft } from "lucide-react";
 import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +12,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,10 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/api";
-import { useProducts, useProduct } from "@/hooks/use-products";
 import { useExchangeOrderItem, type OrderItem } from "@/hooks/use-orders";
-import { Loader2, ArrowRightLeft } from "lucide-react";
+import { useProducts, useProduct } from "@/hooks/use-products";
+import { getApiErrorMessage } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 
 type ExchangeDialogProps = {
   open: boolean;
@@ -75,11 +77,13 @@ export function ExchangeDialog({ open, onOpenChange, orderId, item }: ExchangeDi
         quantity,
       });
       const diff = result.data.difference;
+      // VD-19: `toFixed(2)` produz "R$ 11730.00" — ponto decimal e sem
+      // separador de milhar. Todo valor exibido passa por formatCurrency.
       const diffMsg =
         diff > 0
-          ? ` Diferença a cobrar: R$ ${diff.toFixed(2)}.`
+          ? ` Diferença a cobrar: ${formatCurrency(diff)}.`
           : diff < 0
-            ? ` Diferença a devolver: R$ ${Math.abs(diff).toFixed(2)}.`
+            ? ` Diferença a devolver: ${formatCurrency(Math.abs(diff))}.`
             : "";
       addToast(`Troca realizada com sucesso!${diffMsg}`, "success");
       onOpenChange(false);
@@ -157,7 +161,7 @@ export function ExchangeDialog({ open, onOpenChange, orderId, item }: ExchangeDi
             Cancelar
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={exchange.isPending || !productId}>
-            {exchange.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {exchange.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Confirmar troca
           </Button>
         </DialogFooter>

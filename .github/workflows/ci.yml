@@ -1,0 +1,199 @@
+name: CI
+
+# Lote 10: o ciclo de QA achou 78 bugs em 216 cenários manuais. Sem isto, o
+# próximo ciclo acha os mesmos. Este workflow é o que transforma os achados em
+# algo que falha **antes** do merge.
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ─── Barreiras baratas, primeiro ──────────────────────────────────────
+  static:
+    name: Lint, tipos e dívida
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # Os pacotes do workspace compilam para `dist/` e a API os consome em
+      # runtime — sem isto, `@erp/constants` resolve para uma build velha
+      # (foi assim que `getRoleLabel` "não era uma função").
+      - name: Build dos pacotes do workspace
+        run: npm run build --workspace=@erp/constants --workspace=@erp/shared-types --workspace=@erp/validators
+
+      # Só o web por enquanto: o lint da API tem ~2000 erros pré-existentes
+      # (`no-unsafe-*` dos tipos dinâmicos do Prisma, `import/order`, `curly`)
+      # que nunca foram aplicados — é o mesmo "o lint nunca rodou" que o lote 9
+      # achou no frontend. Ligar o portão sobre eles daria um build sempre
+      # vermelho, que é pior que nenhum portão. `npm run lint:ci --workspace=@erp/api`
+      # existe para medir o progresso quando esse passivo for atacado.
+      - name: Lint (web)
+        run: npm run lint:ci --workspace=@erp/web
+
+      - name: Verificação de dívida (TODO/MOCK_ em tela)
+        run: ./scripts/check-debt.sh
+
+  # ─── Testes unitários nos três fusos ──────────────────────────────────
+  unit:
+    name: Testes (${{ matrix.timezone }})
+    runs-on: ubuntu-latest
+    needs: static
+    strategy:
+      fail-fast: false
+      matrix:
+        # A família FN-01/FN-02/VD-09/TZ-01 só aparece quando o processo não
+        # está no fuso do tenant. UTC é o padrão de qualquer container.
+        timezone: [America/Sao_Paulo, UTC, Asia/Tokyo]
+    env:
+      TZ: ${{ matrix.timezone }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: erp
+          POSTGRES_USER: erp_user
+          POSTGRES_PASSWORD: erp_secret_2024
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U erp_user -d erp"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build dos pacotes do workspace
+        run: npm run build --workspace=@erp/constants --workspace=@erp/shared-types --workspace=@erp/validators
+
+      - name: Prisma client
+        run: npm run db:generate
+
+      - name: Testes da API
+        run: npm test --workspace=@erp/api
+
+      - name: Testes do web
+        run: npm run test:run --workspace=@erp/web
+
+  # ─── Jornadas ponta a ponta ───────────────────────────────────────────
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: static
+    env:
+      TZ: America/Sao_Paulo
+      DATABASE_URL: postgresql://erp_user:erp_secret_2024@localhost:5432/erp?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: ci-secret-nao-usar-em-producao
+      JWT_REFRESH_SECRET: ci-refresh-secret-nao-usar-em-producao
+      PORT: 3001
+      API_PREFIX: api
+      CORS_ORIGINS: http://localhost:3000
+      NODE_ENV: test
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: erp_minio
+      MINIO_SECRET_KEY: erp_minio_secret
+      MINIO_BUCKET: erp-files
+      MINIO_USE_SSL: 'false'
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      E2E_BASE_URL: http://localhost:3000
+      E2E_API_URL: http://localhost:3001/api/v1
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: erp
+          POSTGRES_USER: erp_user
+          POSTGRES_PASSWORD: erp_secret_2024
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U erp_user -d erp"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: erp_minio
+          MINIO_ROOT_PASSWORD: erp_minio_secret
+        ports: ['9000:9000']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build dos pacotes do workspace
+        run: npm run build --workspace=@erp/constants --workspace=@erp/shared-types --workspace=@erp/validators
+
+      # Massa determinística: banco novo a cada execução, nunca o que a
+      # execução anterior deixou (passo 5 do 10.3).
+      - name: Migrar e semear o banco
+        run: |
+          npm run db:generate
+          npm run db:migrate:prod --workspace=@erp/api
+          npm run db:seed --workspace=@erp/api
+
+      - name: Build da API e do web
+        run: |
+          npm run build --workspace=@erp/api
+          npm run build --workspace=@erp/web
+
+      - name: Instalar o Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Subir API e web
+        run: |
+          npm run start:prod --workspace=@erp/api &
+          npm run start --workspace=@erp/web &
+          npx wait-on http://localhost:3001/api/v1/health http://localhost:3000 --timeout 120000
+
+      - name: Jornadas E2E
+        run: npm run e2e --workspace=@erp/web
+
+      - name: Guardar o trace dos testes que falharam
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7

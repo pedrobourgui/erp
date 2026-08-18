@@ -1,0 +1,226 @@
+{
+  "/": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1080,
+    "maxSkeleton": 12,
+    "maxSpinner": 0
+  },
+  "/estoque": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 720,
+    "msAteEstabilizar": 1800,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/estoque/produtos": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 840,
+    "maxSkeleton": 140,
+    "maxSpinner": 0
+  },
+  "/estoque/categorias": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1560,
+    "maxSkeleton": 100,
+    "maxSpinner": 0
+  },
+  "/estoque/marcas": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 840,
+    "maxSkeleton": 80,
+    "maxSpinner": 0
+  },
+  "/estoque/movimentacoes": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1800,
+    "maxSkeleton": 140,
+    "maxSpinner": 0
+  },
+  "/estoque/depositos": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 840,
+    "maxSkeleton": 3,
+    "maxSpinner": 0
+  },
+  "/estoque/alertas": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1200,
+    "maxSkeleton": 100,
+    "maxSpinner": 0
+  },
+  "/estoque/produtos/novo": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1320,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/vendas": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 10800,
+    "msAteEstabilizar": 11880,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/vendas/pedidos": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1080,
+    "maxSkeleton": 140,
+    "maxSpinner": 0
+  },
+  "/vendas/pedidos/novo": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1200,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/vendas/balcao": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 2520,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/clientes": {
+    "kind": "skeleton",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 160,
+    "maxSpinner": 0
+  },
+  "/clientes/novo": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1320,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/financeiro": {
+    "kind": "nada",
+    "msComLoading": 0,
+    "msEmBranco": 10800,
+    "msAteEstabilizar": 11880,
+    "maxSkeleton": 0,
+    "maxSpinner": 0
+  },
+  "/financeiro/contas": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1800,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/financeiro/lancamentos": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1080,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/financeiro/caixa": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 2520,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/configuracoes": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 2160,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1560,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/configuracoes/metodos-pagamento": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/configuracoes/perfil": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/estoque/produtos/cmsdts5b7008814ifqqhsc72g": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1320,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/estoque/produtos/cmsdts5b7008814ifqqhsc72g/edit": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 5760,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k/edit": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  },
+  "/vendas/pedidos/cmsdru2s9006714if6ghytud0": {
+    "kind": "spinner",
+    "msComLoading": 120,
+    "msEmBranco": 0,
+    "msAteEstabilizar": 1440,
+    "maxSkeleton": 0,
+    "maxSpinner": 1
+  }
+}

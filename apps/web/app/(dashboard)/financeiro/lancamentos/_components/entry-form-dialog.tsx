@@ -1,11 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -22,10 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
 import { useChartOfAccounts } from "@/hooks/use-chart-of-accounts";
+import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
 import { useCreateFinancialEntry } from "@/hooks/use-financial-entries";
-import { Loader2 } from "lucide-react";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
+import { todayDateKey } from "@/lib/utils";
 
 const entrySchema = z
   .object({
@@ -50,7 +53,7 @@ const DEFAULTS: EntryFormValues = {
   accountId: "",
   chartAccountId: "",
   amount: 0,
-  date: new Date().toISOString().slice(0, 10),
+  date: todayDateKey(),
   paid: true,
   dueDate: "",
   description: "",
@@ -80,7 +83,7 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
   });
 
   useEffect(() => {
-    if (open) reset(DEFAULTS);
+    if (open) {reset(DEFAULTS);}
   }, [open, reset]);
 
   const accounts = accountsData?.data ?? [];
@@ -100,8 +103,14 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
       });
       addToast("Lançamento criado com sucesso!", "success");
       onOpenChange(false);
-    } catch {
-      addToast("Erro ao criar lançamento. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao criar lançamento. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
@@ -114,7 +123,9 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
             Registre uma despesa ou receita manual.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Tipo *</label>
@@ -142,9 +153,7 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
                 min="0"
                 {...register("amount")}
               />
-              {errors.amount && (
-                <p className="text-xs text-destructive">{errors.amount.message}</p>
-              )}
+              {errors.amount ? <p className="text-xs text-destructive">{errors.amount.message}</p> : null}
             </div>
           </div>
 
@@ -168,9 +177,7 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
                 </Select>
               )}
             />
-            {errors.accountId && (
-              <p className="text-xs text-destructive">{errors.accountId.message}</p>
-            )}
+            {errors.accountId ? <p className="text-xs text-destructive">{errors.accountId.message}</p> : null}
           </div>
 
           <div className="space-y-1">
@@ -203,17 +210,13 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
             <div className="space-y-1">
               <label className="text-sm font-medium">Data *</label>
               <Input type="date" {...register("date")} />
-              {errors.date && (
-                <p className="text-xs text-destructive">{errors.date.message}</p>
-              )}
+              {errors.date ? <p className="text-xs text-destructive">{errors.date.message}</p> : null}
             </div>
             {!isPaid && (
               <div className="space-y-1">
                 <label className="text-sm font-medium">Vencimento *</label>
                 <Input type="date" {...register("dueDate")} />
-                {errors.dueDate && (
-                  <p className="text-xs text-destructive">{errors.dueDate.message}</p>
-                )}
+                {errors.dueDate ? <p className="text-xs text-destructive">{errors.dueDate.message}</p> : null}
               </div>
             )}
           </div>
@@ -241,9 +244,7 @@ export function EntryFormDialog({ open, onOpenChange }: EntryFormDialogProps) {
               Cancelar
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Criar
             </Button>
           </DialogFooter>

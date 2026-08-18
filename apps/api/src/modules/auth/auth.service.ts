@@ -51,8 +51,15 @@ export class AuthService {
 
   private readonly MAX_FAILED_ATTEMPTS = 5;
   private readonly LOCKOUT_DURATION_SECONDS = 15 * 60;
-  private readonly REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
-  private readonly BLACKLIST_TTL_SECONDS = 7 * 24 * 60 * 60;
+  /**
+   * AE-19: the refresh token is kept in `localStorage`, so any XSS walks away
+   * with the whole session. Until it moves to an httpOnly cookie (see the ADR
+   * in `docs/adr/`), the exposure window is 24 hours instead of 7 days.
+   * Rotation on every use and revocation on logout are already in place below.
+   */
+  private readonly REFRESH_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+  /** A blacklist entry only has to outlive the token it revokes. */
+  private readonly BLACKLIST_TTL_SECONDS = 24 * 60 * 60;
   private readonly RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
   private readonly INVITE_TOKEN_TTL_SECONDS = 48 * 60 * 60; // 48 hours
   private readonly BCRYPT_SALT_ROUNDS = 12;

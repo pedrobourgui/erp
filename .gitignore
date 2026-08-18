@@ -81,3 +81,9 @@ docker-compose.override.yml
 .cache/
 tmp/
 temp/
+
+# Playwright (lote 10)
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/blob-report/
+apps/web/.playwright/

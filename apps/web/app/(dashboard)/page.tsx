@@ -1,25 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { KPICard } from "@/components/charts/kpi-card";
-import { formatCurrency } from "@/lib/utils";
-import {
-  useDashboardData,
-  type DashboardKPI,
-  type SalesTrendPoint,
-} from "@/hooks/use-dashboard";
-import { useRecentOrders, type OrderListItem } from "@/hooks/use-orders";
 import {
   DollarSign,
   TrendingUp,
@@ -28,6 +8,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
 } from "lucide-react";
+import Link from "next/link";
+import React from "react";
 import {
   BarChart,
   Bar,
@@ -39,6 +21,27 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+
+import { KPICard } from "@/components/charts/kpi-card";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import {
+  useDashboardData,
+  type DashboardKPI,
+  type SalesTrendPoint,
+} from "@/hooks/use-dashboard";
+import { useRecentOrders, type OrderListItem } from "@/hooks/use-orders";
+import { usePermissions } from "@/hooks/use-permissions";
+import { cn, formatCurrency, formatDate, pluralize } from "@/lib/utils";
+
 
 // ─── Shared chart tooltip style ──────────────────────────────────────────
 
@@ -82,6 +85,11 @@ export default function DashboardPage() {
 
 // ─── KPI Section ────────────────────────────────────────────────────────
 
+/**
+ * AE-27/FN-09: a seller reaches the dashboard with `reports:read` and used to
+ * read "A Pagar R$ 11.730,00" there. The API already omits those KPIs for them;
+ * the grid adapts so the remaining cards fill the row instead of leaving holes.
+ */
 function KPISection({
   kpis,
   isLoading,
@@ -89,19 +97,14 @@ function KPISection({
   kpis: DashboardKPI | undefined;
   isLoading: boolean;
 }) {
-  if (isLoading || !kpis) {
-    return (
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-36 animate-pulse rounded-xl border bg-muted" />
-        ))}
-      </div>
-    );
-  }
+  const { can } = usePermissions();
+  const showFinancial = can("financial:read");
+  const showStock = can("inventory:read");
 
-  return (
-    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
-      <div className="animate-slide-up stagger-1">
+  const cards = [
+    kpis && {
+      key: "todaySales",
+      node: (
         <KPICard
           label="Vendas do Dia"
           value={kpis.todaySales.value}
@@ -109,8 +112,11 @@ function KPISection({
           icon={<DollarSign className="h-5 w-5" />}
           sparklineData={kpis.todaySales.sparkline}
         />
-      </div>
-      <div className="animate-slide-up stagger-2">
+      ),
+    },
+    kpis && {
+      key: "avgTicket",
+      node: (
         <KPICard
           label="Ticket Médio"
           value={kpis.avgTicket.value}
@@ -122,31 +128,79 @@ function KPISection({
           }
           icon={<TrendingUp className="h-5 w-5" />}
         />
-      </div>
-      <div className="animate-slide-up stagger-3">
+      ),
+    },
+    kpis && showFinancial && kpis.receivablesOpen && {
+      key: "receivablesOpen",
+      node: (
         <KPICard
           label="A Receber (aberto)"
           value={kpis.receivablesOpen.value}
           formattedValue={formatCurrency(kpis.receivablesOpen.value)}
           icon={<ArrowDownLeft className="h-5 w-5" />}
         />
-      </div>
-      <div className="animate-slide-up stagger-4">
+      ),
+    },
+    kpis && showFinancial && kpis.payablesOpen && {
+      key: "payablesOpen",
+      node: (
         <KPICard
           label="A Pagar (aberto)"
           value={kpis.payablesOpen.value}
           formattedValue={formatCurrency(kpis.payablesOpen.value)}
           icon={<ArrowUpRight className="h-5 w-5" />}
         />
-      </div>
-      <div className="animate-slide-up stagger-5">
+      ),
+    },
+    kpis && showStock && {
+      key: "lowStockAlerts",
+      node: (
         <KPICard
           label="Estoque Crítico"
           value={kpis.lowStockAlerts.value}
-          formattedValue={`${kpis.lowStockAlerts.value} itens`}
+          formattedValue={pluralize(kpis.lowStockAlerts.value, "item", "itens")}
           icon={<AlertTriangle className="h-5 w-5" />}
         />
+      ),
+    },
+  ].filter(Boolean) as { key: string; node: React.ReactNode }[];
+
+  // Literal class names on purpose: Tailwind scans the source, so an
+  // interpolated `lg:grid-cols-${n}` would never be generated.
+  const COLUMNS_BY_COUNT: Record<number, string> = {
+    1: "lg:grid-cols-1",
+    2: "lg:grid-cols-2",
+    3: "lg:grid-cols-3",
+    4: "lg:grid-cols-4",
+    5: "lg:grid-cols-5",
+  };
+  // `auto-rows-fr` keeps every KPI the same height, not just the ones sharing a
+  // row: at md the grid wraps to two columns and the row with the sparkline
+  // would otherwise tower over the one below it.
+  const gridClass = cn(
+    "grid auto-rows-fr gap-5 md:grid-cols-2",
+    COLUMNS_BY_COUNT[Math.min(cards.length, 5)] ?? "lg:grid-cols-5"
+  );
+
+  if (isLoading || !kpis) {
+    return (
+      <div className="grid auto-rows-fr gap-5 md:grid-cols-2 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          // 170px is what a KPICard measures now that the row shares one
+          // height; h-36 left the grid jumping 26px when the data landed.
+          <div key={i} className="h-[170px] animate-pulse rounded-xl border bg-muted" />
+        ))}
       </div>
+    );
+  }
+
+  return (
+    <div className={gridClass}>
+      {cards.map((card, index) => (
+        <div key={card.key} className={`h-full animate-slide-up stagger-${index + 1}`}>
+          {card.node}
+        </div>
+      ))}
     </div>
   );
 }
@@ -188,7 +242,7 @@ function SalesTrendSection({
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={(v: string) => v.slice(5)}
+                  tickFormatter={(v: string) => formatDate(v, "dd/MM")}
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
@@ -200,9 +254,12 @@ function SalesTrendSection({
                   tickLine={false}
                   width={90}
                 />
+                {/* AE-22: the axis showed the ISO day (07-31) and the tooltip
+                    the full ISO date; both now read as dd/MM in pt-BR. */}
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
                   formatter={(v: number) => [formatCurrency(v), "Vendas"]}
+                  labelFormatter={(v: string) => formatDate(v)}
                 />
                 <Area
                   type="monotone"
@@ -274,7 +331,9 @@ function RecentOrdersSection({
                         #{order.orderNumber}
                       </Link>
                     </td>
-                    <td className="py-3.5">{order.customerName}</td>
+                    <td className="py-3.5">
+                      <TruncatedText text={order.customerName} className="max-w-[32ch]" />
+                    </td>
                     <td className="py-3.5"><StatusBadge status={order.status} /></td>
                     <td className="py-3.5 text-right font-medium tabular-nums">{formatCurrency(order.totalAmount)}</td>
                   </tr>

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto, ProductQueryDto } from './dto/product.dto';
@@ -67,6 +67,14 @@ function createMockPrisma() {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    inventoryItem: {
+      aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
+    },
+    orderItem: { count: jest.fn().mockResolvedValue(0) },
+    category: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn() },
+    stockAlert: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    // O soft delete roda numa transação junto com a resolução dos alertas
+    // (AE-02): o `tx` expõe os mesmos mocks para os testes inspecionarem.
     $transaction: jest.fn(),
     $queryRaw: jest.fn(),
     $queryRawUnsafe: jest.fn(),
@@ -78,9 +86,21 @@ function createMockPrisma() {
 describe('ProductsService', () => {
   let service: ProductsService;
   let prisma: ReturnType<typeof createMockPrisma>;
+  /** Cliente transacional, com os mesmos mocks do prisma de fora. */
+  let tx: {
+    product: { update: jest.Mock };
+    stockAlert: { updateMany: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = createMockPrisma();
+    tx = {
+      product: prisma.product as never,
+      stockAlert: prisma.stockAlert as never,
+    };
+    prisma.$transaction.mockImplementation(async (cb: unknown) =>
+      typeof cb === 'function' ? (cb as (t: unknown) => unknown)(tx) : cb,
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -517,6 +537,89 @@ describe('ProductsService', () => {
       expect(prisma.product.update).toHaveBeenCalledTimes(1);
     });
 
+    // ─── AE-02: produto com saldo não pode sumir ────────────────────────
+
+    describe('product with stock or history (AE-02)', () => {
+      // O QA excluiu um produto com 4 un. em estoque sem bloqueio nenhum: o
+      // alerta ficou órfão em /estoque/alertas e o KPI "Estoque Crítico"
+      // continuou contando um item que não existe mais.
+      beforeEach(() => {
+        prisma.product.findFirst.mockResolvedValue(makeProduct());
+      });
+
+      it('refuses to delete a product that still has stock', async () => {
+        prisma.inventoryItem.aggregate.mockResolvedValue({
+          _sum: { quantity: 4 },
+        });
+
+        await expect(service.remove(TENANT_A, 'prod-001')).rejects.toThrow(
+          ConflictException,
+        );
+      });
+
+      it('says how much stock is left, and offers to deactivate', async () => {
+        prisma.inventoryItem.aggregate.mockResolvedValue({
+          _sum: { quantity: 4 },
+        });
+
+        await expect(service.remove(TENANT_A, 'prod-001')).rejects.toThrow(
+          /4 un|inativ/i,
+        );
+      });
+
+      it('refuses to delete a product tied to an open order', async () => {
+        prisma.orderItem.count.mockResolvedValue(2);
+
+        await expect(service.remove(TENANT_A, 'prod-001')).rejects.toThrow(
+          ConflictException,
+        );
+      });
+
+      it('only counts orders that are still open', async () => {
+        prisma.orderItem.count.mockResolvedValue(0);
+
+        await service.remove(TENANT_A, 'prod-001');
+
+        const where = prisma.orderItem.count.mock.calls[0][0].where;
+        expect(where.order.status.notIn).toEqual(
+          expect.arrayContaining(['COMPLETED', 'CANCELLED', 'RETURNED']),
+        );
+      });
+
+      it('deletes a product with no stock and no history', async () => {
+        await expect(service.remove(TENANT_A, 'prod-001')).resolves.toMatchObject(
+          { success: true },
+        );
+      });
+
+      it('resolves the stock alerts of the deleted product', async () => {
+        // Senão o alerta fica órfão e o KPI "Estoque Crítico" segue contando.
+        await service.remove(TENANT_A, 'prod-001');
+
+        const args = prisma.stockAlert.updateMany.mock.calls[0][0];
+        expect(args.where).toMatchObject({
+          tenantId: TENANT_A,
+          productId: 'prod-001',
+          isResolved: false,
+        });
+        expect(args.data.isResolved).toBe(true);
+      });
+
+      it('deletes the product and resolves the alerts in one transaction', async () => {
+        await service.remove(TENANT_A, 'prod-001');
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      });
+
+      it('scopes the stock lookup by tenant', async () => {
+        await service.remove(TENANT_A, 'prod-001');
+
+        const where = prisma.inventoryItem.aggregate.mock.calls[0][0].where;
+        expect(where.tenantId).toBe(TENANT_A);
+        expect(where.productId).toBe('prod-001');
+      });
+    });
+
     it('should throw NotFoundException when product not found', async () => {
       prisma.product.findFirst.mockResolvedValue(null);
 
@@ -534,6 +637,83 @@ describe('ProductsService', () => {
 
       const findFirstArgs = prisma.product.findFirst.mock.calls[0][0];
       expect(findFirstArgs.where.tenantId).toBe(TENANT_A);
+    });
+  });
+  // ─── FT-08: filtro de categoria inclui as descendentes ────────────────────
+
+  describe('findAll: filtro por categoria', () => {
+    beforeEach(() => {
+      prisma.product.findMany.mockResolvedValue([]);
+      prisma.product.count.mockResolvedValue(0);
+    });
+
+    it('should filter by the category alone when it has no children', async () => {
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-raiz', parentId: null },
+        { id: 'cat-outra', parentId: null },
+      ]);
+
+      await service.findAll(TENANT_A, { categoryId: 'cat-raiz' } as never);
+
+      expect(prisma.product.findMany.mock.calls[0][0].where.categoryId).toBe('cat-raiz');
+    });
+
+    it('should include the descendants of the chosen category', async () => {
+      // Escolher "Eletrônicos" tinha de trazer "Eletrônicos › Áudio" junto; a
+      // igualdade exata fazia a categoria-pai parecer quase vazia.
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'eletronicos', parentId: null },
+        { id: 'audio', parentId: 'eletronicos' },
+        { id: 'fones', parentId: 'audio' },
+        { id: 'casa', parentId: null },
+      ]);
+
+      await service.findAll(TENANT_A, { categoryId: 'eletronicos' } as never);
+
+      const filter = prisma.product.findMany.mock.calls[0][0].where.categoryId;
+      expect(filter.in).toEqual(
+        expect.arrayContaining(['eletronicos', 'audio', 'fones']),
+      );
+      expect(filter.in).not.toContain('casa');
+    });
+
+    it('should not climb to the parent when a child is chosen', async () => {
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'eletronicos', parentId: null },
+        { id: 'audio', parentId: 'eletronicos' },
+      ]);
+
+      await service.findAll(TENANT_A, { categoryId: 'audio' } as never);
+
+      expect(prisma.product.findMany.mock.calls[0][0].where.categoryId).toBe('audio');
+    });
+
+    it('should survive a cycle in parentId instead of hanging', async () => {
+      // O schema não impede `a -> b -> a`; sem o conjunto de visitados a
+      // requisição ficaria presa no laço para sempre.
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'a', parentId: 'b' },
+        { id: 'b', parentId: 'a' },
+      ]);
+
+      await service.findAll(TENANT_A, { categoryId: 'a' } as never);
+
+      const filter = prisma.product.findMany.mock.calls[0][0].where.categoryId;
+      expect(filter.in.sort()).toEqual(['a', 'b']);
+    });
+
+    it('should scope the category tree by tenant', async () => {
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-raiz', parentId: null }]);
+
+      await service.findAll(TENANT_A, { categoryId: 'cat-raiz' } as never);
+
+      expect(prisma.category.findMany.mock.calls[0][0].where.tenantId).toBe(TENANT_A);
+    });
+
+    it('should not read the category tree when no category is filtered', async () => {
+      await service.findAll(TENANT_A, {} as never);
+
+      expect(prisma.category.findMany).not.toHaveBeenCalled();
     });
   });
 });

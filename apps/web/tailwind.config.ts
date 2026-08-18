@@ -18,8 +18,11 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
-        heading: ['"Satoshi"', '"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", '"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        // `font-heading` continua existindo (30+ usos) porque carrega o
+        // tracking dos títulos — o que sai é a família fantasma que ele
+        // apontava. Ao adotar uma display de verdade, troque só esta linha.
+        heading: ["var(--font-sans)", '"Plus Jakarta Sans"', "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

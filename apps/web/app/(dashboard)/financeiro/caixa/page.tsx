@@ -1,9 +1,12 @@
 "use client";
 
+import { Plus, Loader2, Landmark, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import React, { useState } from "react";
+
+import { RequirePermission } from "@/components/auth/require-permission";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +20,7 @@ import {
   type CashRegister,
 } from "@/hooks/use-cash-registers";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { Plus, Loader2, Landmark, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+
 import { CashRegisterCard } from "./_components/cash-register-card";
 import {
   CreateCashRegisterDialog,
@@ -27,9 +30,10 @@ import {
 } from "./_components/cash-register-dialogs";
 import { SessionHistory } from "./_components/session-history";
 
+
 // ─── Page ─────────────────────────────────────────────────────────────
 
-export default function CashRegistersPage() {
+function CashRegistersPageContent() {
   const { data, isLoading } = useCashRegisters();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -43,8 +47,8 @@ export default function CashRegistersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">Caixas</h1>
           <p className="text-muted-foreground">
             Gerencie os caixas registradores e suas sessões
@@ -192,12 +196,10 @@ function SessionDetailDialog({
                   {session.status === "OPEN" ? "Aberto" : "Fechado"}
                 </Badge>
               </div>
-              {session.operator && (
-                <div>
+              {session.operator ? <div>
                   <p className="text-muted-foreground">Operador</p>
                   <p className="font-medium">{session.operator.name}</p>
-                </div>
-              )}
+                </div> : null}
               <div>
                 <p className="text-muted-foreground">Aberto em</p>
                 <p className="font-medium">{formatDateTime(session.openedAt)}</p>
@@ -208,16 +210,28 @@ function SessionDetailDialog({
               </div>
             </div>
 
-            {/* Summary (entradas / saídas / saldo atual) */}
-            <div className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+            {/* Summary (vendas / entradas / saídas / saldo atual)
+
+                As vendas em dinheiro entram na gaveta e no saldo esperado do
+                fechamento, mas não são `CashMovement`: sem esta coluna o
+                resumo não fechava na conta — abertura R$ 200 + entradas
+                R$ 0,00 - saídas R$ 0,00 exibindo "Saldo atual R$ 500,00". O
+                operador não tinha como conferir a gaveta antes de fechar. */}
+            <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-muted-foreground">Entradas</p>
+                <p className="text-muted-foreground">Vendas em dinheiro</p>
+                <p className="font-medium text-green-600">
+                  + {formatCurrency(session.totals?.cashSales ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Suprimentos</p>
                 <p className="font-medium text-green-600">
                   + {formatCurrency(session.totals?.supplies ?? 0)}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Saídas</p>
+                <p className="text-muted-foreground">Sangrias</p>
                 <p className="font-medium text-red-600">
                   - {formatCurrency(session.totals?.withdrawals ?? 0)}
                 </p>
@@ -271,5 +285,15 @@ function SessionDetailDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// AE-27/FN-09: the menu hides this route, but a URL still reaches it — the
+// page guard is the real one.
+export default function CashRegistersPage() {
+  return (
+    <RequirePermission permission="financial:read" subject="os caixas">
+      <CashRegistersPageContent />
+    </RequirePermission>
   );
 }

@@ -7,6 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsStrongPassword } from '../../../common/validators/is-strong-password.validator';
 
 /** Self-service update of the authenticated user's own profile — SCRUM-23. */
 export class UpdateProfileDto {
@@ -39,7 +40,8 @@ export class ChangePasswordDto {
   @ApiProperty({ example: 'NovaSenha123' })
   @IsString()
   @IsNotEmpty({ message: 'Nova senha é obrigatória' })
-  @MinLength(6, { message: 'A nova senha deve ter no mínimo 6 caracteres' })
+  // FN-25: política única, compartilhada com o front (@erp/validators).
+  @IsStrongPassword([])
   @MaxLength(72, { message: 'A senha deve ter no máximo 72 caracteres' })
   newPassword: string;
 }

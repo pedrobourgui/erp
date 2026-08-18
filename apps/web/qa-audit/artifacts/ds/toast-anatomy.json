@@ -1,0 +1,48 @@
+{
+  "containerRole": null,
+  "containerAriaLive": null,
+  "stacked": 3,
+  "items": [
+    {
+      "text": "Já existe uma marca com este nome",
+      "bg": "rgb(254, 242, 242)",
+      "fg": "rgb(127, 29, 29)",
+      "ratio": 9.16,
+      "radius": "10px",
+      "closeBtn": {
+        "w": 24,
+        "h": 24,
+        "ariaLabel": null
+      },
+      "icon": "lucide lucide-circle-alert h-5 w-5 text-red-600 dark:text-re"
+    },
+    {
+      "text": "Já existe uma marca com este nome",
+      "bg": "rgb(254, 242, 242)",
+      "fg": "rgb(127, 29, 29)",
+      "ratio": 9.16,
+      "radius": "10px",
+      "closeBtn": {
+        "w": 24,
+        "h": 24,
+        "ariaLabel": null
+      },
+      "icon": "lucide lucide-circle-alert h-5 w-5 text-red-600 dark:text-re"
+    },
+    {
+      "text": "Já existe uma marca com este nome",
+      "bg": "rgb(254, 242, 242)",
+      "fg": "rgb(127, 29, 29)",
+      "ratio": 9.16,
+      "radius": "10px",
+      "closeBtn": {
+        "w": 24,
+        "h": 24,
+        "ariaLabel": null
+      },
+      "icon": "lucide lucide-circle-alert h-5 w-5 text-red-600 dark:text-re"
+    }
+  ],
+  "before": 3,
+  "afterAutoDismiss": 0
+}

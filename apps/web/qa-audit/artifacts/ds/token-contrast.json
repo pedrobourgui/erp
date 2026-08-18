@@ -1,0 +1,166 @@
+{
+  "light": {
+    "--muted-foreground / --background": {
+      "ratio": 4.495,
+      "fg": "215 16% 47%",
+      "bg": "210 20% 98%"
+    },
+    "--muted-foreground / --card": {
+      "ratio": 4.697,
+      "fg": "215 16% 47%",
+      "bg": "0 0% 100%"
+    },
+    "--foreground / --background": {
+      "ratio": 17.104,
+      "fg": "222 47% 11%",
+      "bg": "210 20% 98%"
+    },
+    "--accent / --background": {
+      "ratio": 2.48,
+      "fg": "160 84% 39%",
+      "bg": "210 20% 98%"
+    },
+    "--accent / --card": {
+      "ratio": 2.592,
+      "fg": "160 84% 39%",
+      "bg": "0 0% 100%"
+    },
+    "--accent-foreground / --accent": {
+      "ratio": 2.592,
+      "fg": "0 0% 100%",
+      "bg": "160 84% 39%"
+    },
+    "--success / --background": {
+      "ratio": 2.48,
+      "fg": "160 84% 39%",
+      "bg": "210 20% 98%"
+    },
+    "--warning / --background": {
+      "ratio": 2.041,
+      "fg": "38 92% 50%",
+      "bg": "210 20% 98%"
+    },
+    "--warning-foreground / --warning": {
+      "ratio": 6.098,
+      "fg": "38 92% 14%",
+      "bg": "38 92% 50%"
+    },
+    "--destructive / --background": {
+      "ratio": 4.591,
+      "fg": "0 72% 51%",
+      "bg": "210 20% 98%"
+    },
+    "--destructive-foreground / --destructive": {
+      "ratio": 4.797,
+      "fg": "0 0% 100%",
+      "bg": "0 72% 51%"
+    },
+    "--primary-foreground / --primary": {
+      "ratio": 14.497,
+      "fg": "210 40% 98%",
+      "bg": "222 47% 18%"
+    },
+    "--border / --card": {
+      "ratio": 1.238,
+      "fg": "220 13% 91%",
+      "bg": "0 0% 100%"
+    },
+    "--border / --background": {
+      "ratio": 1.185,
+      "fg": "220 13% 91%",
+      "bg": "210 20% 98%"
+    },
+    "--sidebar-fg / --sidebar-bg": {
+      "ratio": 10.934,
+      "fg": "220 20% 80%",
+      "bg": "225 33% 10%"
+    },
+    "--sidebar-active / --sidebar-bg": {
+      "ratio": 7.019,
+      "fg": "160 84% 39%",
+      "bg": "225 33% 10%"
+    }
+  },
+  "dark": {
+    "--muted-foreground / --background": {
+      "ratio": 5.293,
+      "fg": "215 20% 55%",
+      "bg": "225 33% 7%"
+    },
+    "--muted-foreground / --card": {
+      "ratio": 5.031,
+      "fg": "215 20% 55%",
+      "bg": "225 33% 10%"
+    },
+    "--foreground / --background": {
+      "ratio": 17.472,
+      "fg": "210 40% 96%",
+      "bg": "225 33% 7%"
+    },
+    "--accent / --background": {
+      "ratio": 7.384,
+      "fg": "160 84% 39%",
+      "bg": "225 33% 7%"
+    },
+    "--accent / --card": {
+      "ratio": 7.019,
+      "fg": "160 84% 39%",
+      "bg": "225 33% 10%"
+    },
+    "--accent-foreground / --accent": {
+      "ratio": 2.592,
+      "fg": "0 0% 100%",
+      "bg": "160 84% 39%"
+    },
+    "--success / --background": {
+      "ratio": 5.99,
+      "fg": "160 84% 35%",
+      "bg": "225 33% 7%"
+    },
+    "--warning / --background": {
+      "ratio": 6.968,
+      "fg": "38 92% 44%",
+      "bg": "225 33% 7%"
+    },
+    "--warning-foreground / --warning": {
+      "ratio": 2.747,
+      "fg": "0 0% 100%",
+      "bg": "38 92% 44%"
+    },
+    "--destructive / --background": {
+      "ratio": 2.661,
+      "fg": "0 62% 40%",
+      "bg": "225 33% 7%"
+    },
+    "--destructive-foreground / --destructive": {
+      "ratio": 6.875,
+      "fg": "210 40% 98%",
+      "bg": "0 62% 40%"
+    },
+    "--primary-foreground / --primary": {
+      "ratio": 17.472,
+      "fg": "225 33% 7%",
+      "bg": "210 40% 96%"
+    },
+    "--border / --card": {
+      "ratio": 1.257,
+      "fg": "225 20% 18%",
+      "bg": "225 33% 10%"
+    },
+    "--border / --background": {
+      "ratio": 1.323,
+      "fg": "225 20% 18%",
+      "bg": "225 33% 7%"
+    },
+    "--sidebar-fg / --sidebar-bg": {
+      "ratio": 8.619,
+      "fg": "220 20% 70%",
+      "bg": "225 33% 6%"
+    },
+    "--sidebar-active / --sidebar-bg": {
+      "ratio": 7.498,
+      "fg": "160 84% 39%",
+      "bg": "225 33% 6%"
+    }
+  }
+}

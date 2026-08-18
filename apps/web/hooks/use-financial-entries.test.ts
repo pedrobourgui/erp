@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -13,10 +13,14 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import api from '@/lib/api';
+
 import {
   useFinancialEntries,
   useCreateFinancialEntry,
   useSettleFinancialEntry,
+  useReverseSettlement,
+  useUpdateFinancialEntry,
+  useDeleteFinancialEntry,
   financialEntryKeys,
 } from './use-financial-entries';
 
@@ -212,6 +216,86 @@ describe('useSettleFinancialEntry', () => {
       kind: 'PAYABLE',
       amount: undefined,
       accountId: undefined,
+    });
+  });
+});
+
+// ─── FN-04: reversibilidade ──────────────────────────────────────────────
+
+describe('useReverseSettlement', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('POSTs the reversal to the settlement of the título', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { success: true, data: {} } });
+
+    const { result } = renderHook(() => useReverseSettlement(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      id: 'ar-1',
+      settlementId: 'trx-1',
+      reason: 'Baixa na conta errada',
+    });
+
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/financial-entries/ar-1/settlements/trx-1/reverse',
+      { reason: 'Baixa na conta errada' }
+    );
+  });
+
+  it('invalidates the entries and the account balances', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { success: true, data: {} } });
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(() => useReverseSettlement(), { wrapper });
+    await result.current.mutateAsync({
+      id: 'ar-1',
+      settlementId: 'trx-1',
+      reason: 'x',
+    });
+
+    // A reversal moves money back: leaving the old totals on screen is how the
+    // operator concludes the estorno did not work and does it twice.
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+describe('useUpdateFinancialEntry', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('PATCHes only the fields it was given', async () => {
+    mockedApi.patch.mockResolvedValueOnce({ data: { success: true, data: {} } });
+
+    const { result } = renderHook(() => useUpdateFinancialEntry(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      id: 'ar-1',
+      description: 'Novo texto',
+    });
+
+    expect(mockedApi.patch).toHaveBeenCalledWith('/financial-entries/ar-1', {
+      description: 'Novo texto',
+    });
+  });
+});
+
+describe('useDeleteFinancialEntry', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('sends the reason in the request body', async () => {
+    mockedApi.delete.mockResolvedValueOnce({ data: { success: true, data: {} } });
+
+    const { result } = renderHook(() => useDeleteFinancialEntry(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({ id: 'ap-1', reason: 'Duplicado' });
+
+    expect(mockedApi.delete).toHaveBeenCalledWith('/financial-entries/ap-1', {
+      data: { reason: 'Duplicado' },
     });
   });
 });

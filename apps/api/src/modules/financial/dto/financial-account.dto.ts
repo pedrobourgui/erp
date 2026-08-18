@@ -3,7 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsNumber,
   Min,
   MaxLength,
@@ -19,7 +19,7 @@ export class CreateFinancialAccountDto {
   name: string;
 
   @ApiProperty({ enum: ['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'] })
-  @IsEnum(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
+  @IsIn(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
   type: string;
 
   @ApiPropertyOptional({ example: '001' })
@@ -66,7 +66,7 @@ export class UpdateFinancialAccountDto {
 
   @ApiPropertyOptional({ enum: ['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'] })
   @IsOptional()
-  @IsEnum(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
+  @IsIn(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
   type?: string;
 
   @ApiPropertyOptional()
@@ -126,7 +126,7 @@ export class FinancialAccountQueryDto {
 
   @ApiPropertyOptional({ enum: ['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'] })
   @IsOptional()
-  @IsEnum(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
+  @IsIn(['CHECKING', 'SAVINGS', 'CASH', 'DIGITAL'])
   type?: string;
 
   @ApiPropertyOptional()

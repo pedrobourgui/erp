@@ -1,0 +1,62 @@
+{
+  "sidebar/link Dashboard": {
+    "focused": true,
+    "outline": "auto 1px rgb(0, 95, 204)",
+    "boxShadow": "none",
+    "visibleRing": true
+  },
+  "sidebar/grupo Estoque": {
+    "focused": true,
+    "outline": "auto 1px rgb(20, 108, 208)",
+    "boxShadow": "none",
+    "visibleRing": true
+  },
+  "sidebar/filho Produtos": {
+    "focused": true,
+    "outline": "auto 1px rgb(35, 117, 211)",
+    "boxShadow": "none",
+    "visibleRing": true
+  },
+  "header/busca": {
+    "focused": true,
+    "outline": "auto 1px rgba(10, 97, 197, 0.957)",
+    "boxShadow": "none",
+    "visibleRing": true
+  },
+  "header/tema": {
+    "focused": false,
+    "outline": "none 3px rgb(15, 23, 41)",
+    "boxShadow": "none",
+    "visibleRing": false
+  },
+  "breadcrumb": {
+    "focused": true,
+    "outline": "auto 1px rgb(0, 95, 204)",
+    "boxShadow": "none",
+    "visibleRing": true
+  },
+  "ui/Button primário": {
+    "focused": true,
+    "outline": "solid 2px rgba(248, 250, 252, 0.137)",
+    "boxShadow": "rgba(249, 250, 251, 0.863) 0px 0px 0px 1.72414px, rgba(24, 37, 67, 0.863) 0px 0px 0px 3.44",
+    "visibleRing": true
+  },
+  "ui/Input busca": {
+    "focused": true,
+    "outline": "solid 2px rgba(15, 23, 41, 0.137)",
+    "boxShadow": "rgba(249, 250, 251, 0.863) 0px 0px 0px 0px, rgba(24, 37, 67, 0.26) 0px 0px 0px 1.72555px, ",
+    "visibleRing": true
+  },
+  "ui/SelectTrigger": {
+    "focused": true,
+    "outline": "solid 2px rgba(0, 0, 0, 0)",
+    "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(24, 37, 67, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0",
+    "visibleRing": true
+  },
+  "tabela/paginação": {
+    "focused": true,
+    "outline": "solid 2px rgba(15, 23, 41, 0.137)",
+    "boxShadow": "rgba(249, 250, 251, 0.863) 0px 0px 0px 1.72531px, rgba(24, 37, 67, 0.863) 0px 0px 0px 3.45",
+    "visibleRing": true
+  }
+}

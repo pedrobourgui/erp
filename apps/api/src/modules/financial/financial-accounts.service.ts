@@ -3,10 +3,12 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  ConflictException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma, BankAccountType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import { parseUserDate } from '../../common/utils/date-range.util';
 import {
   CreateFinancialAccountDto,
   UpdateFinancialAccountDto,
@@ -17,6 +19,12 @@ import {
   PaginatedResponse,
   buildPaginatedResponse,
 } from '../../common/utils/pagination';
+import {
+  formatBRL,
+  subtractMoney,
+  toCents,
+  toMoney,
+} from '../../common/utils/money.util';
 
 @Injectable()
 export class FinancialAccountsService {
@@ -31,7 +39,9 @@ export class FinancialAccountsService {
     const { page = 1, limit = 20, search, type, isActive } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.FinancialAccountWhereInput = { tenantId };
+    // FN-16: conta excluída some das telas, mas continua no banco para não
+    // quebrar o extrato das transações que a referenciam.
+    const where: Prisma.FinancialAccountWhereInput = { tenantId, deletedAt: null };
 
     if (type) where.type = type as BankAccountType;
     if (isActive !== undefined) where.isActive = isActive;
@@ -77,7 +87,7 @@ export class FinancialAccountsService {
 
   async findOne(tenantId: string, id: string) {
     const account = await this.prisma.financialAccount.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
       select: {
         id: true,
         name: true,
@@ -103,7 +113,7 @@ export class FinancialAccountsService {
 
     if (!account) {
       throw new NotFoundException(
-        `Financial account with id ${id} not found for tenant ${tenantId}`,
+        `Conta financeira não encontrada`,
       );
     }
 
@@ -111,6 +121,8 @@ export class FinancialAccountsService {
   }
 
   async create(tenantId: string, dto: CreateFinancialAccountDto) {
+    await this.assertNoDuplicate(tenantId, dto.name, dto.code);
+
     const account = await this.prisma.financialAccount.create({
       data: {
         tenantId,
@@ -132,6 +144,116 @@ export class FinancialAccountsService {
     return account;
   }
 
+
+  // ─── FN-16: nome e código não podem repetir ─────────────────────────────
+
+  /**
+   * "Banco do Brasil | BB" existia duas vezes e todo combo do sistema ficava
+   * ambíguo: o operador não sabia qual conta uma baixa tinha creditado.
+   */
+  private async assertNoDuplicate(
+    tenantId: string,
+    name?: string,
+    code?: string | null,
+    exceptId?: string,
+  ): Promise<void> {
+    const notItself = exceptId ? { id: { not: exceptId } } : {};
+
+    if (code) {
+      const sameCode = await this.prisma.financialAccount.findFirst({
+        where: { tenantId, code, deletedAt: null, ...notItself },
+        select: { id: true },
+      });
+      if (sameCode) {
+        throw new ConflictException(
+          `Já existe uma conta financeira com o código "${code}"`,
+        );
+      }
+    }
+
+    if (name) {
+      const sameName = await this.prisma.financialAccount.findFirst({
+        where: {
+          tenantId,
+          name: { equals: name, mode: 'insensitive' },
+          deletedAt: null,
+          ...notItself,
+        },
+        select: { id: true },
+      });
+      if (sameName) {
+        throw new ConflictException(
+          `Já existe uma conta financeira chamada "${name}"`,
+        );
+      }
+    }
+  }
+
+  /**
+   * FN-16: uma conta com movimento **nunca** é excluída — vira inativa. Apagar
+   * uma conta que já apareceu num extrato deixaria transações órfãs e
+   * conciliação impossível. Sem movimento, sai das telas por soft delete.
+   */
+  async remove(tenantId: string, id: string) {
+    const account = await this.prisma.financialAccount.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      select: { id: true, name: true, balance: true },
+    });
+
+    if (!account) {
+      throw new NotFoundException(
+        `Conta financeira não encontrada`,
+      );
+    }
+
+    // Excluir uma conta com saldo faz o dinheiro sumir dos relatórios sem
+    // nunca ter sido movido de verdade — o saldo tem que ir para outra conta
+    // primeiro, não para o limbo de uma conta apagada.
+    if (toCents(account.balance) !== 0) {
+      throw new ConflictException(
+        `A conta "${account.name}" tem saldo de ${formatBRL(account.balance)} e não pode ser excluída. Transfira o saldo para outra conta antes de excluir.`,
+      );
+    }
+
+    const linkedMethods = await this.prisma.paymentMethod.findMany({
+      where: { tenantId, defaultAccountId: id },
+      select: { name: true },
+    });
+
+    if (linkedMethods.length > 0) {
+      throw new ConflictException(
+        `A conta "${account.name}" é a conta padrão de ${linkedMethods.length} método(s) de pagamento (${linkedMethods.map((m) => m.name).join(', ')}) e não pode ser excluída. Troque a conta padrão desses métodos antes de excluir.`,
+      );
+    }
+
+    const movements = await this.prisma.financialTransaction.count({
+      where: { tenantId, accountId: id },
+    });
+
+    if (movements > 0) {
+      await this.prisma.financialAccount.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      this.logger.log(
+        `Financial account ${id} deactivated (${movements} movements) for tenant ${tenantId}`,
+      );
+      return {
+        id,
+        deactivated: true,
+        message: `A conta "${account.name}" tem movimento e foi inativada em vez de excluída.`,
+      };
+    }
+
+    await this.prisma.financialAccount.update({
+      where: { id },
+      data: { deletedAt: new Date(), isActive: false },
+    });
+    this.logger.log(`Financial account ${id} deleted for tenant ${tenantId}`);
+
+    return { id, deactivated: false, message: 'Conta financeira excluída.' };
+  }
+
   async update(tenantId: string, id: string, dto: UpdateFinancialAccountDto) {
     const existing = await this.prisma.financialAccount.findFirst({
       where: { id, tenantId },
@@ -139,9 +261,11 @@ export class FinancialAccountsService {
 
     if (!existing) {
       throw new NotFoundException(
-        `Financial account with id ${id} not found for tenant ${tenantId}`,
+        `Conta financeira não encontrada`,
       );
     }
+
+    await this.assertNoDuplicate(tenantId, dto.name, dto.code, id);
 
     const updateData: Prisma.FinancialAccountUncheckedUpdateInput = {};
     if (dto.name !== undefined) updateData.name = dto.name;
@@ -185,7 +309,7 @@ export class FinancialAccountsService {
     const [from, to] = await Promise.all([
       this.prisma.financialAccount.findFirst({
         where: { id: dto.fromAccountId, tenantId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, type: true, balance: true },
       }),
       this.prisma.financialAccount.findFirst({
         where: { id: dto.toAccountId, tenantId },
@@ -195,19 +319,25 @@ export class FinancialAccountsService {
 
     if (!from) {
       throw new NotFoundException(
-        `Financial account with id ${dto.fromAccountId} not found for tenant ${tenantId}`,
+        `Conta de origem não encontrada`,
       );
     }
     if (!to) {
       throw new NotFoundException(
-        `Financial account with id ${dto.toAccountId} not found for tenant ${tenantId}`,
+        `Conta de destino não encontrada`,
       );
     }
 
     const transferId = randomUUID();
-    const when = dto.date ? new Date(dto.date) : new Date();
+    // Same rule as everywhere else: a date the user picked is a civil date.
+    const when = dto.date ? parseUserDate(dto.date) : new Date();
     const description =
       dto.description?.trim() || `Transferência ${from.name} → ${to.name}`;
+
+    // FN-17: uma conta do tipo Caixa é dinheiro físico — não existe saldo
+    // negativo numa gaveta. Conta bancária pode ficar negativa (limite,
+    // cheque especial), mas só com confirmação explícita de quem transfere.
+    assertCanGoNegative(from, amount, dto.allowNegativeBalance);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const source = await tx.financialAccount.update({
@@ -278,3 +408,31 @@ export class FinancialAccountsService {
     };
   }
 }
+
+/**
+ * FN-17: a transferência de uma conta zerada deixou o Santander em −R$ 250,00
+ * sem um aviso sequer. Dinheiro físico não fica negativo; conta bancária fica,
+ * mas nunca por acidente.
+ */
+function assertCanGoNegative(
+  account: { name: string; type: string; balance: Prisma.Decimal | number },
+  amount: number,
+  allowed?: boolean,
+): void {
+  const balance = toMoney(account.balance);
+  const after = subtractMoney(balance, amount);
+  if (after >= 0) return;
+
+  if (account.type === 'CASH') {
+    throw new BadRequestException(
+      `Saldo insuficiente em "${account.name}" (disponível: ${formatBRL(balance)}). Uma conta do tipo Caixa não pode ficar negativa.`,
+    );
+  }
+
+  if (!allowed) {
+    throw new BadRequestException(
+      `Esta transferência deixa "${account.name}" com saldo negativo (${formatBRL(after)}). Confirme para continuar.`,
+    );
+  }
+}
+

@@ -6,8 +6,21 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { TaxRegime } from '@prisma/client';
+import { onlyDigits } from '@erp/validators';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import {
+  startOfDayInTz,
+  toLocalDateKey,
+} from '../../common/utils/date-range.util';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+
+/** A plan limit as the Settings screen renders it. */
+export interface TenantUsageLimit {
+  key: 'users' | 'products' | 'orders' | 'warehouses';
+  label: string;
+  current: number;
+  max: number;
+}
 
 @Injectable()
 export class TenantsService {
@@ -93,11 +106,16 @@ export class TenantsService {
     // Verify tenant exists
     await this.findById(tenantId);
 
-    // If document is being updated, check for duplicates
-    if (dto.document) {
+    // AE-15: store the digits, format on display. A document kept with its
+    // mask makes duplicate detection bypassable by changing the formatting —
+    // `12.345.678/0001-90` and `12345678000190` are the same company and were
+    // two different rows.
+    const document = dto.document !== undefined ? onlyDigits(dto.document) : undefined;
+
+    if (document) {
       const existing = await this.prisma.tenant.findFirst({
         where: {
-          document: dto.document,
+          document,
           deletedAt: null,
           id: { not: tenantId },
         },
@@ -112,7 +130,7 @@ export class TenantsService {
       where: { id: tenantId },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.document !== undefined && { document: dto.document }),
+        ...(document !== undefined && { document }),
         ...(dto.email !== undefined && { email: dto.email }),
         ...(dto.phone !== undefined && { phone: dto.phone }),
         ...(dto.addressStreet !== undefined && { addressStreet: dto.addressStreet }),
@@ -147,6 +165,53 @@ export class TenantsService {
     this.logger.log(`Tenant updated: ${tenantId}`);
 
     return updated;
+  }
+
+  /**
+   * Plan limits with the tenant's real consumption (FN-08).
+   *
+   * The Settings screen used to render four hardcoded numbers ("245/500
+   * produtos") for every tenant. The limits have always existed on the model —
+   * only the reading was missing.
+   *
+   * The monthly order window opens at the first day of the **civil** month in
+   * the tenant timezone: `new Date(y, m, 1)` would use the process timezone and
+   * a container running in UTC would count the last three hours of the previous
+   * month (TZ-01).
+   */
+  async getUsage(tenantId: string) {
+    const tenant = await this.findById(tenantId);
+
+    const monthStartKey = `${toLocalDateKey(new Date()).slice(0, 7)}-01`;
+    const monthStart = startOfDayInTz(monthStartKey);
+
+    const [users, products, orders, warehouses] = await Promise.all([
+      this.prisma.user.count({ where: { tenantId, deletedAt: null } }),
+      this.prisma.product.count({ where: { tenantId, deletedAt: null } }),
+      this.prisma.order.count({
+        where: {
+          tenantId,
+          createdAt: { gte: monthStart },
+          status: { notIn: ['CANCELLED'] },
+        },
+      }),
+      // Warehouse has no soft delete — `isActive` is its lifecycle flag.
+      this.prisma.warehouse.count({ where: { tenantId, isActive: true } }),
+    ]);
+
+    const limits: TenantUsageLimit[] = [
+      { key: 'users', label: 'Usuários', current: users, max: tenant.maxUsers },
+      { key: 'products', label: 'Produtos', current: products, max: tenant.maxProducts },
+      { key: 'orders', label: 'Pedidos / mês', current: orders, max: tenant.maxOrders },
+      { key: 'warehouses', label: 'Depósitos', current: warehouses, max: tenant.maxWarehouses },
+    ];
+
+    return {
+      plan: tenant.plan,
+      status: tenant.status,
+      trialEndsAt: tenant.trialEndsAt,
+      limits,
+    };
   }
 
   async findByDocument(document: string) {

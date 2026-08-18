@@ -1,11 +1,13 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, ArrowRightLeft } from "lucide-react";
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
+import { MoneyInput } from "@/components/forms/money-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -21,12 +24,11 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { MoneyInput } from "@/components/forms/money-input";
 import { useToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/api";
 import { useCreateAccountTransfer } from "@/hooks/use-account-transfers";
 import type { FinancialAccount } from "@/hooks/use-financial-accounts";
-import { Loader2, ArrowRightLeft } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api";
+
 
 // ─── Schema ───────────────────────────────────────────────────────────
 
@@ -114,7 +116,9 @@ export function TransferDialog({ open, onOpenChange, accounts }: TransferDialogP
             saldos de forma atômica.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Conta de origem *</label>
@@ -136,9 +140,7 @@ export function TransferDialog({ open, onOpenChange, accounts }: TransferDialogP
                   </Select>
                 )}
               />
-              {errors.fromAccountId && (
-                <p className="text-xs text-destructive">{errors.fromAccountId.message}</p>
-              )}
+              {errors.fromAccountId ? <p className="text-xs text-destructive">{errors.fromAccountId.message}</p> : null}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Conta de destino *</label>
@@ -160,9 +162,7 @@ export function TransferDialog({ open, onOpenChange, accounts }: TransferDialogP
                   </Select>
                 )}
               />
-              {errors.toAccountId && (
-                <p className="text-xs text-destructive">{errors.toAccountId.message}</p>
-              )}
+              {errors.toAccountId ? <p className="text-xs text-destructive">{errors.toAccountId.message}</p> : null}
             </div>
           </div>
 
@@ -193,9 +193,7 @@ export function TransferDialog({ open, onOpenChange, accounts }: TransferDialogP
               Cancelar
             </Button>
             <Button type="submit" disabled={transferMutation.isPending}>
-              {transferMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {transferMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Transferir
             </Button>
           </DialogFooter>

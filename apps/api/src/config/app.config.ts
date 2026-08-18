@@ -15,7 +15,8 @@ export const appConfig = () => ({
     secret: process.env.JWT_SECRET || 'change-me-in-production',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'change-refresh-in-production',
     accessExpiresIn: '15m',
-    refreshExpiresIn: '7d',
+    // AE-19: shorter window for a token that lives in localStorage.
+    refreshExpiresIn: '24h',
   },
 
   minio: {

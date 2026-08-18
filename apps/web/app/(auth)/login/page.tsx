@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth.store";
 
 const loginSchema = z.object({
@@ -84,12 +85,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {error && (
-                <div className="animate-slide-down rounded-lg bg-danger/15 border border-danger/20 p-3.5 text-sm text-red-300">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-5"
+              noValidate
+            >
+              {error ? <div className="animate-slide-down rounded-lg bg-danger/15 border border-danger/20 p-3.5 text-sm text-red-300">
                   {error}
-                </div>
-              )}
+                </div> : null}
 
               <div className="space-y-2">
                 <label
@@ -105,9 +108,7 @@ export default function LoginPage() {
                   className="h-11 bg-white/[0.06] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-accent/50 focus-visible:border-accent/30"
                   {...register("email")}
                 />
-                {errors.email && (
-                  <p className="text-sm text-red-400">{errors.email.message}</p>
-                )}
+                {errors.email ? <p className="text-sm text-red-400">{errors.email.message}</p> : null}
               </div>
 
               <div className="space-y-2">
@@ -124,11 +125,9 @@ export default function LoginPage() {
                   className="h-11 bg-white/[0.06] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-accent/50 focus-visible:border-accent/30"
                   {...register("password")}
                 />
-                {errors.password && (
-                  <p className="text-sm text-red-400">
+                {errors.password ? <p className="text-sm text-red-400">
                     {errors.password.message}
-                  </p>
-                )}
+                  </p> : null}
               </div>
 
               <Button

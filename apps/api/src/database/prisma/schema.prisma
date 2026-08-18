@@ -588,6 +588,8 @@ model Product {
   ean       String?       // EAN/GTIN (código de barras)
   ncm       String?       // NCM (classificação fiscal)
   cest      String?       // CEST
+  // AE-08: sem CFOP não se emite NF-e de venda. O campo não existia em nenhuma aba.
+  cfop      String?       @db.VarChar(4)
 
   // Preços
   costPrice    Decimal  @default(0) @db.Decimal(15, 4)
@@ -701,6 +703,12 @@ model Warehouse {
   name      String
   code      String
   address   String?
+  // AE-12b: o DTO já recebia cidade/UF/CEP e o serviço os concatenava dentro de
+  // `address`, jogando fora a estrutura — o card exibia ", -" porque lia campos
+  // que nunca existiram.
+  city      String?  @db.VarChar(100)
+  state     String?  @db.VarChar(2)
+  zipCode   String?  @db.VarChar(10)
   isDefault Boolean  @default(false)
   isActive  Boolean  @default(true)
 
@@ -1087,6 +1095,9 @@ model FinancialAccount {
   orderPayments     OrderPayment[]
   cashRegisters     CashRegister[]
 
+  // FN-16: conta sem movimento pode ser excluída; com movimento, só inativada.
+  deletedAt         DateTime?
+
   @@index([tenantId])
   @@map("financial_accounts")
 }
@@ -1130,6 +1141,9 @@ model AccountsReceivable {
 
   notes       String?
   metadata    Json?
+
+  // FN-04: soft delete de título sem baixa e sem origem em pedido.
+  deletedAt   DateTime?
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -1176,6 +1190,9 @@ model AccountsPayable {
 
   notes       String?
   metadata    Json?
+
+  // FN-04: soft delete de título sem baixa e sem origem em pedido.
+  deletedAt   DateTime?
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

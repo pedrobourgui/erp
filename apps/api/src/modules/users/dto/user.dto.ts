@@ -6,6 +6,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsStrongPassword } from '../../../common/validators/is-strong-password.validator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'João Silva', description: 'Nome completo do usuário' })
@@ -21,7 +22,8 @@ export class CreateUserDto {
   @ApiProperty({ example: 'S3cur3P@ss', description: 'Senha do usuário' })
   @IsString({ message: 'Senha deve ser uma string' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  // FN-25: política única, compartilhada com o front (@erp/validators).
+  @IsStrongPassword(['email', 'name'])
   password: string;
 
   @ApiPropertyOptional({ example: '11999998888', description: 'Telefone do usuário' })
@@ -49,7 +51,8 @@ export class UpdateUserDto {
   @ApiPropertyOptional({ example: 'NovaSenha123', description: 'Nova senha' })
   @IsOptional()
   @IsString({ message: 'Senha deve ser uma string' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  // FN-25: política única, compartilhada com o front (@erp/validators).
+  @IsStrongPassword(['email', 'name'])
   password?: string;
 
   @ApiPropertyOptional({ example: '11999998888', description: 'Telefone do usuário' })

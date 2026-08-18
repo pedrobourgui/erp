@@ -1,0 +1,1456 @@
+{
+  "/": {
+    "h1": {
+      "text": "Dashboard",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 64,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "32px",
+    "headingTags": [
+      "H1:Dashboard",
+      "H3:Vendas do Período",
+      "H3:Pedidos Recentes",
+      "H3:Pedidos por Status"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Ver todos"
+      }
+    ],
+    "inputs": [],
+    "selects": [],
+    "gridGaps": [
+      "20px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque": {
+    "h1": {
+      "text": "Produtos",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Produtos"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Importar CSV"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/produtos": {
+    "h1": {
+      "text": "Produtos",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Produtos"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Importar CSV"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/categorias": {
+    "h1": {
+      "text": "Categorias",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Categorias"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Nova Categoria"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "20 por página"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/marcas": {
+    "h1": {
+      "text": "Marcas",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Marcas"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Nova Marca"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "20 por página"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/movimentacoes": {
+    "h1": {
+      "text": "Movimentações",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Movimentações"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Nova movimentação"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/depositos": {
+    "h1": {
+      "text": "Depósitos",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Depósitos",
+      "H3:Dep UI 611519",
+      "H3:QA Dep Editado 548306",
+      "H3:QA Padrão 178564224274",
+      "H3:QA Padrão 178563889531",
+      "H3:QA Padrão 178563666716"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Novo Depósito"
+      }
+    ],
+    "inputs": [],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/alertas": {
+    "h1": {
+      "text": "Alertas de Estoque",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Alertas de Estoque"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Todos os status"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/produtos/novo": {
+    "h1": {
+      "text": "Novo Produto",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Novo Produto",
+      "H3:Dados Gerais"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 42,
+        "radius": "0px",
+        "label": "Dados Gerais"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Selecionar categoria..."
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/vendas": {
+    "h1": {
+      "text": "Pedidos",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Pedidos"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Venda Balcão"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/vendas/pedidos": {
+    "h1": {
+      "text": "Pedidos",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Pedidos"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Venda Balcão"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/vendas/pedidos/novo": {
+    "h1": {
+      "text": "Nova Venda",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Nova Venda",
+      "H3:Cliente",
+      "H3:Adicionar Produtos",
+      "H3:Itens do Pedido",
+      "H3:Pagamento",
+      "H3:Envio e Observações"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Buscar cliente por nome "
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      },
+      {
+        "h": 40,
+        "radius": "8px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "24px",
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/vendas/balcao": {
+    "h1": {
+      "text": "Venda no Balcao",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Venda no Balcao",
+      "H3:Cliente",
+      "H3:Adicionar Produtos",
+      "H3:Itens da Venda",
+      "H3:Pagamento",
+      "H3:Desconto e Observações"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Buscar cliente por nome "
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      },
+      {
+        "h": 40,
+        "radius": "8px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "24px",
+      "16px",
+      "4px 12px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/clientes": {
+    "h1": {
+      "text": "Clientes",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Clientes"
+    ],
+    "cards": [],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Importar CSV"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/clientes/novo": {
+    "h1": {
+      "text": "Novo Cliente",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Novo Cliente",
+      "H3:Dados do Cliente"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/financeiro": {
+    "h1": {
+      "text": "Despesas e Receitas",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Despesas e Receitas"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Novo Lançamento"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Todos"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [
+      "16px",
+      "12px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/financeiro/contas": {
+    "h1": {
+      "text": "Contas Financeiras",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Contas Financeiras"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "0px 0px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Importar Despesas"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/financeiro/lancamentos": {
+    "h1": {
+      "text": "Despesas e Receitas",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Despesas e Receitas"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Novo Lançamento"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Todos"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [
+      "16px",
+      "12px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/financeiro/caixa": {
+    "h1": {
+      "text": "Caixas",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Caixas",
+      "H3:QA Caixa Financeiro",
+      "H3:Principal",
+      "H2:Histórico de sessões"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      },
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Novo Caixa"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Fechar"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/configuracoes": {
+    "h1": {
+      "text": "Configurações",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Configurações",
+      "H3:Dados da Empresa"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 42,
+        "radius": "0px",
+        "label": "Empresa"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Simples Nacional"
+      },
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Salvar Alterações"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [
+      {
+        "h": 36,
+        "radius": "10px"
+      },
+      {
+        "h": 1,
+        "radius": "0px"
+      }
+    ],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "h1": {
+      "text": "Condições de Pagamento",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Condições de Pagamento"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "0px 0px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Nova Condição"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/configuracoes/metodos-pagamento": {
+    "h1": {
+      "text": "Métodos de Pagamento",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Métodos de Pagamento"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "0px 0px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Novo Método"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Filtros"
+      },
+      {
+        "h": 32,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 36,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/configuracoes/perfil": {
+    "h1": {
+      "text": "Meu perfil",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Meu perfil",
+      "H3:Avatar",
+      "H3:Dados cadastrais",
+      "H3:Trocar senha"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      },
+      {
+        "radius": "9999px",
+        "borderWidth": "1px",
+        "borderColor": "rgb(229, 231, 235)",
+        "padding": "0px 0px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "Enviar imagem"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/produtos/cmsdr5w9n003e14ifss853uze": {
+    "h1": {
+      "text": "Lock qa-est-1785793162817",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 56,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Lock qa-est-1785793162",
+      "H3:Informações gerais",
+      "H3:Dados fiscais e dimens",
+      "H3:Variações (0)",
+      "H3:Estoque",
+      "H3:Imagens (0)"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      },
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [],
+    "selects": [],
+    "gridGaps": [
+      "16px",
+      "24px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/estoque/produtos/cmsdr5w9n003e14ifss853uze/edit": {
+    "h1": {
+      "text": "Editar Produto",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Editar Produto",
+      "H3:Dados Gerais"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 42,
+        "radius": "0px",
+        "label": "Dados Gerais"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Selecionar categoria..."
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/clientes/cmsdqxmbc001p14ifen0h3lcj": {
+    "h1": {
+      "text": "Semente qa-cfg-1785792789062",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Semente qa-cfg-1785792",
+      "H3:Informações de Contato"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      },
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 36,
+        "radius": "10px",
+        "label": "Excluir"
+      },
+      {
+        "h": 42,
+        "radius": "0px",
+        "label": "Informações"
+      }
+    ],
+    "inputs": [],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/clientes/cmsdqxmbc001p14ifen0h3lcj/edit": {
+    "h1": {
+      "text": "Editar Cliente",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Editar Cliente",
+      "H3:Dados do Cliente"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      }
+    ],
+    "inputs": [
+      {
+        "h": 40,
+        "radius": "10px"
+      }
+    ],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  },
+  "/vendas/pedidos/cmsdr8m14004l14ifwo8ub0ve": {
+    "h1": {
+      "text": "Pedido #PED-000123",
+      "fontSize": "30px",
+      "fontWeight": "700",
+      "lineHeight": "36px",
+      "fontFamily": "Satoshi"
+    },
+    "headerBlockHeight": 60,
+    "headerBottomMargin": "0px",
+    "contentRhythm": "24px",
+    "headingTags": [
+      "H1:Pedido #PED-000123",
+      "H3:Itens do Pedido"
+    ],
+    "cards": [
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "16px 16px"
+      },
+      {
+        "radius": "12px",
+        "borderWidth": "1px",
+        "borderColor": "rgba(229, 231, 235, 0.6)",
+        "padding": "24px 24px"
+      }
+    ],
+    "buttons": [
+      {
+        "h": 40,
+        "radius": "10px",
+        "label": "(ícone)"
+      },
+      {
+        "h": 42,
+        "radius": "0px",
+        "label": "Itens"
+      }
+    ],
+    "inputs": [],
+    "selects": [],
+    "gridGaps": [
+      "16px"
+    ],
+    "loading": {
+      "skeleton": 0,
+      "spinner": 0
+    }
+  }
+}

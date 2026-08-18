@@ -1,0 +1,125 @@
+import { getRolePermissions, type PermissionName } from '@erp/constants';
+import { describe, it, expect } from 'vitest';
+
+import { NAV_ITEMS, filterNavItems } from './nav-items';
+
+/**
+ * AE-27/FN-09: the sidebar showed every module to every role. These tests run
+ * the real role matrix from `@erp/constants` through the filter, so the menu a
+ * seller sees is asserted against the permissions the seed actually grants —
+ * not against a hand-written list that can drift from it.
+ */
+
+function menuFor(roleName: string) {
+  const granted: string[] = getRolePermissions(roleName);
+  const can = (permission: PermissionName) => granted.includes(permission);
+  const items = filterNavItems(NAV_ITEMS, can);
+  return {
+    groups: items.map((item) => item.title),
+    hrefs: items.flatMap((item) =>
+      item.children ? item.children.map((child) => child.href) : [item.href]
+    ),
+  };
+}
+
+const ownerMenu = { can: () => true };
+
+describe('filterNavItems', () => {
+  it('shows everything to owner', () => {
+    const items = filterNavItems(NAV_ITEMS, ownerMenu.can);
+
+    expect(items).toHaveLength(NAV_ITEMS.length);
+    expect(items.map((i) => i.title)).toContain('Financeiro');
+    expect(items.map((i) => i.title)).toContain('Configurações');
+  });
+
+  it('drops a group whose children are all gated away', () => {
+    const items = filterNavItems(NAV_ITEMS, () => false);
+
+    // Only the Dashboard survives — it is the one entry with no permission.
+    expect(items.map((i) => i.title)).toEqual(['Dashboard']);
+  });
+
+  it('keeps a group when at least one child survives', () => {
+    const can = (p: PermissionName) => p === 'products:read';
+    const estoque = filterNavItems(NAV_ITEMS, can).find((i) => i.title === 'Estoque');
+
+    expect(estoque?.children?.map((c) => c.title)).toEqual([
+      'Produtos',
+      'Categorias',
+      'Marcas',
+    ]);
+  });
+
+  it('does not mutate the shared config while filtering', () => {
+    const estoqueBefore = NAV_ITEMS.find((i) => i.title === 'Estoque')?.children?.length;
+
+    filterNavItems(NAV_ITEMS, () => false);
+
+    expect(NAV_ITEMS.find((i) => i.title === 'Estoque')?.children?.length).toBe(
+      estoqueBefore
+    );
+  });
+});
+
+describe('menu per role', () => {
+  describe('seller', () => {
+    const { groups, hrefs } = menuFor('seller');
+
+    it('does not show Financeiro or Configurações (AE-27)', () => {
+      expect(groups).not.toContain('Financeiro');
+      expect(groups).not.toContain('Configurações');
+    });
+
+    it('shows what a seller works with', () => {
+      expect(groups).toEqual(['Dashboard', 'Estoque', 'Vendas', 'Clientes']);
+      expect(hrefs).toContain('/vendas/balcao');
+      expect(hrefs).toContain('/vendas/pedidos');
+      expect(hrefs).toContain('/clientes');
+      expect(hrefs).toContain('/estoque/produtos');
+    });
+
+    it('hides the inventory admin screens the QA flagged', () => {
+      expect(hrefs).not.toContain('/estoque/movimentacoes');
+      expect(hrefs).not.toContain('/estoque/depositos');
+      expect(hrefs).not.toContain('/estoque/alertas');
+    });
+  });
+
+  describe('financial', () => {
+    const { groups, hrefs } = menuFor('financial');
+
+    it('shows the financial module', () => {
+      expect(groups).toContain('Financeiro');
+      expect(hrefs).toContain('/financeiro/caixa');
+    });
+
+    it('still reaches the payment configuration screens', () => {
+      expect(hrefs).toContain('/configuracoes/metodos-pagamento');
+      expect(hrefs).toContain('/configuracoes/condicoes-pagamento');
+    });
+
+    it('does not offer to create an order', () => {
+      expect(hrefs).not.toContain('/vendas/balcao');
+    });
+  });
+
+  describe('warehouse', () => {
+    const { groups, hrefs } = menuFor('warehouse');
+
+    it('sees stock, not money', () => {
+      expect(hrefs).toContain('/estoque/movimentacoes');
+      expect(groups).not.toContain('Financeiro');
+    });
+  });
+
+  describe('viewer', () => {
+    const { hrefs } = menuFor('viewer');
+
+    it('can look at the financial module but not create a sale', () => {
+      expect(hrefs).toContain('/financeiro/contas');
+      expect(hrefs).not.toContain('/vendas/balcao');
+      expect(hrefs).not.toContain('/configuracoes/metodos-pagamento');
+    });
+  });
+});

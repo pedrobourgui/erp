@@ -2,7 +2,16 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ReportsService, DashboardData } from './reports.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
 
+import { toLocalDateKey } from '../../common/utils/date-range.util';
+
 const TENANT_A = 'tenant-aaa-111';
+
+/**
+ * Calendar day in the *tenant's* timezone — the same key the service buckets
+ * by. Deriving it from the server's timezone made this suite pass only when the
+ * process happened to run in BRT (TZ-01).
+ */
+const localDateKey = (date: Date) => toLocalDateKey(date);
 const TENANT_B = 'tenant-bbb-222';
 
 function createMockPrisma() {
@@ -80,17 +89,55 @@ describe('ReportsService', () => {
 
     it('should compute open receivables as amount minus paidAmount', async () => {
       const result = await service.getDashboard(TENANT_A);
-      expect(result.kpis.receivablesOpen.value).toBe(800); // 1000 - 200
+      expect(result.kpis.receivablesOpen?.value).toBe(800); // 1000 - 200
     });
 
     it('should compute open payables as amount minus paidAmount', async () => {
       const result = await service.getDashboard(TENANT_A);
-      expect(result.kpis.payablesOpen.value).toBe(500);
+      expect(result.kpis.payablesOpen?.value).toBe(500);
     });
 
     it('should return the stock alerts count', async () => {
       const result = await service.getDashboard(TENANT_A);
       expect(result.kpis.lowStockAlerts.value).toBe(4);
+    });
+
+    // ─── Scoped payload (lote 4, AE-27/FN-09) ─────────────────────────────
+
+    describe('scope', () => {
+      it('omits the financial KPIs for a caller without financial:read', async () => {
+        const result = await service.getDashboard(TENANT_A, {
+          includeFinancial: false,
+        });
+
+        expect(result.kpis.receivablesOpen).toBeUndefined();
+        expect(result.kpis.payablesOpen).toBeUndefined();
+      });
+
+      it('still returns the sales KPIs a seller needs', async () => {
+        const result = await service.getDashboard(TENANT_A, {
+          includeFinancial: false,
+        });
+
+        expect(result.kpis.todaySales.value).toBe(750);
+        expect(result.kpis.avgTicket.value).toBe(250);
+        expect(result.salesTrend).toBeDefined();
+        expect(result.ordersByStatus.length).toBeGreaterThan(0);
+      });
+
+      it('does not even query the financial tables when they are out of scope', async () => {
+        await service.getDashboard(TENANT_A, { includeFinancial: false });
+
+        expect(prisma.accountsReceivable.aggregate).not.toHaveBeenCalled();
+        expect(prisma.accountsPayable.aggregate).not.toHaveBeenCalled();
+      });
+
+      it('includes everything by default', async () => {
+        const result = await service.getDashboard(TENANT_A);
+
+        expect(result.kpis.receivablesOpen?.value).toBe(800);
+        expect(result.kpis.payablesOpen?.value).toBe(500);
+      });
     });
 
     it('should map and sort ordersByStatus by count desc with labels', async () => {
@@ -111,7 +158,7 @@ describe('ReportsService', () => {
 
     it('should bucket trend orders into their day', async () => {
       const today = new Date();
-      const key = today.toISOString().slice(0, 10);
+      const key = localDateKey(today);
       prisma.order.findMany.mockReset().mockResolvedValue([
         { totalAmount: 100, createdAt: today },
         { totalAmount: 50, createdAt: today },
@@ -120,6 +167,32 @@ describe('ReportsService', () => {
       const result = await service.getDashboard(TENANT_A);
       const todayBucket = result.salesTrend.find((d) => d.date === key);
       expect(todayBucket?.total).toBe(150);
+    });
+
+    // Timezone regression: buckets are built from local midnight, so keying the
+    // orders in UTC silently dropped every sale made after 21:00 in UTC-3 —
+    // the dashboard showed no sales for the rest of the evening.
+    it('should keep late-evening sales in the current local day', async () => {
+      jest.useFakeTimers();
+      try {
+        // 23:30 of 31/07 in America/Sao_Paulo — already 01/08 in UTC. Stated as
+        // an absolute instant so the test means the same in every process TZ.
+        const lateEvening = new Date('2026-08-01T02:30:00.000Z');
+        jest.setSystemTime(lateEvening);
+
+        prisma.order.findMany.mockReset().mockResolvedValue([
+          { totalAmount: 100, createdAt: lateEvening },
+          { totalAmount: 50, createdAt: lateEvening },
+        ]);
+
+        const result = await service.getDashboard(TENANT_A);
+        const bucket = result.salesTrend.find((d) => d.date === '2026-07-31');
+
+        expect(bucket?.total).toBe(150);
+        expect(result.salesTrend[result.salesTrend.length - 1].date).toBe('2026-07-31');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('should scope every query by tenantId', async () => {
