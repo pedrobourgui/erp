@@ -1,0 +1,37 @@
+{
+  "/estoque/produtos": {
+    "porNomeVerDetalhes": 0,
+    "porNomeEditar": 0,
+    "porNomeExcluir": 0,
+    "iconButtonsNaTabela": 60,
+    "semNomeAcessivel": 60
+  },
+  "/clientes": {
+    "porNomeVerDetalhes": 0,
+    "porNomeEditar": 0,
+    "porNomeExcluir": 0,
+    "iconButtonsNaTabela": 40,
+    "semNomeAcessivel": 40
+  },
+  "/estoque/categorias": {
+    "porNomeVerDetalhes": 0,
+    "porNomeEditar": 0,
+    "porNomeExcluir": 0,
+    "iconButtonsNaTabela": 12,
+    "semNomeAcessivel": 12
+  },
+  "/estoque/marcas": {
+    "porNomeVerDetalhes": 0,
+    "porNomeEditar": 0,
+    "porNomeExcluir": 0,
+    "iconButtonsNaTabela": 8,
+    "semNomeAcessivel": 8
+  },
+  "/vendas/pedidos": {
+    "porNomeVerDetalhes": 0,
+    "porNomeEditar": 0,
+    "porNomeExcluir": 0,
+    "iconButtonsNaTabela": 40,
+    "semNomeAcessivel": 20
+  }
+}

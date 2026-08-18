@@ -1,0 +1,8 @@
+{
+  "marcas": [
+    "Erro ao criar marca.",
+    "Nova MarcaPreencha os dados para criar uma nova marca."
+  ],
+  "marcasToast": "Erro ao criar marca.",
+  "perfilToast": "Internal server error"
+}

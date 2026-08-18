@@ -1,9 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -110,7 +111,9 @@ export function CategoryFormDialog({
   }, [nameValue, isEdit, setValue]);
 
   const parentOptions = useMemo(() => {
-    if (!category) return categories;
+    if (!category) {
+      return categories;
+    }
     return categories.filter((c) => c.id !== category.id);
   }, [categories, category]);
 
@@ -128,7 +131,9 @@ export function CategoryFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Nome *</label>
             <Input
@@ -137,9 +142,7 @@ export function CategoryFormDialog({
               maxLength={255}
               autoFocus
             />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
 
           <div className="space-y-1.5">
@@ -184,7 +187,7 @@ export function CategoryFormDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isEdit ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>

@@ -1,0 +1,4925 @@
+{
+  "/": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000126\"",
+        "w": 99.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000125\"",
+        "w": 99.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000124\"",
+        "w": 99.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000123\"",
+        "w": 99.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000122\"",
+        "w": 99.5,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      },
+      {
+        "el": "th.pb-3.text-left.text-xs.font-medium \"Pedido\"",
+        "prop": "paddingTop",
+        "value": "1px"
+      },
+      {
+        "el": "th.pb-3.text-left.text-xs.font-medium \"Pedido\"",
+        "prop": "paddingLeft",
+        "value": "1px"
+      },
+      {
+        "el": "th.pb-3.text-left.text-xs.font-medium \"Pedido\"",
+        "prop": "paddingRight",
+        "value": "1px"
+      },
+      {
+        "el": "td.py-3.5 \"#PED-000126\"",
+        "prop": "paddingTop",
+        "value": "14px"
+      },
+      {
+        "el": "td.py-3.5 \"#PED-000126\"",
+        "prop": "paddingBottom",
+        "value": "14px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.text-xs.font-medium.text-emerald-600 \"+100.0%\"",
+        "classes": [
+          "text-emerald-600"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Cancelado\"",
+        "classes": [
+          "bg-red-100",
+          "text-red-800",
+          "border-red-200",
+          "bg-red-900",
+          "text-red-400",
+          "border-red-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Pendente\"",
+        "classes": [
+          "bg-yellow-100",
+          "text-yellow-800",
+          "border-yellow-200",
+          "bg-yellow-900",
+          "text-yellow-400",
+          "border-yellow-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Concluído\"",
+        "classes": [
+          "bg-emerald-100",
+          "text-emerald-800",
+          "border-emerald-200",
+          "bg-emerald-900",
+          "text-emerald-400",
+          "border-emerald-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Separando\"",
+        "classes": [
+          "bg-purple-100",
+          "text-purple-800",
+          "border-purple-200",
+          "bg-purple-900",
+          "text-purple-400",
+          "border-purple-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Confirmado\"",
+        "classes": [
+          "bg-blue-100",
+          "text-blue-800",
+          "border-blue-200",
+          "bg-blue-900",
+          "text-blue-400",
+          "border-blue-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Devolvido\"",
+        "classes": [
+          "bg-orange-100",
+          "text-orange-800",
+          "border-orange-200",
+          "bg-orange-900",
+          "text-orange-400",
+          "border-orange-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a. \"Ver todos\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000126\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000125\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000124\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000123\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000122\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Vendas do DiaR$ 4.955,90\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/estoque": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785796370222\"",
+        "w": 195,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785796370222\"",
+        "w": 217.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785793702604\"",
+        "w": 197.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785793702604\"",
+        "w": 219.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785793162817\"",
+        "w": 187.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785792837937\"",
+        "w": 215.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"ÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃ\"",
+        "w": 2399,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto NCM Ruim 34862\"",
+        "w": 171.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto MargemNeg 34862\"",
+        "w": 186.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto Neg 34862\"",
+        "w": 131.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Pomada\"",
+        "w": 56.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Updated Product Name\"",
+        "w": 158.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Tênis Nike Air Zoom Pegasus 40\"",
+        "w": 208.4,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Smart TV Samsung 55\" 4K Crystal\"",
+        "w": 220.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Carregador USB-C 20W Apple\"",
+        "w": 204.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Capinha iPhone 15 Pro Silicone\"",
+        "w": 202.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Bermuda Nike Flex Stride\"",
+        "w": 166.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Camiseta Nike Dri-FIT Masculina\"",
+        "w": 213,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"iPhone 15 Pro 256GB\"",
+        "w": 137.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Fone Bluetooth Galaxy Buds FE\"",
+        "w": 207,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.font-medium.text-yellow-600 \"1\"",
+        "classes": [
+          "text-yellow-600"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Inativo\"",
+        "classes": [
+          "bg-gray-100",
+          "text-gray-800",
+          "border-gray-200",
+          "bg-gray-900",
+          "text-gray-400",
+          "border-gray-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Ativo\"",
+        "classes": [
+          "bg-green-100",
+          "text-green-800",
+          "border-green-200",
+          "bg-green-900",
+          "text-green-400",
+          "border-green-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/produtos": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785796370222\"",
+        "w": 195,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785796370222\"",
+        "w": 217.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785793702604\"",
+        "w": 197.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785793702604\"",
+        "w": 219.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Lock qa-est-1785793162817\"",
+        "w": 187.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto qa-est-1785792837937\"",
+        "w": 215.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"ÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃ\"",
+        "w": 2399,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto NCM Ruim 34862\"",
+        "w": 171.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto MargemNeg 34862\"",
+        "w": 186.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Produto Neg 34862\"",
+        "w": 131.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Pomada\"",
+        "w": 56.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Updated Product Name\"",
+        "w": 158.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Tênis Nike Air Zoom Pegasus 40\"",
+        "w": 208.4,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Smart TV Samsung 55\" 4K Crystal\"",
+        "w": 220.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Carregador USB-C 20W Apple\"",
+        "w": 204.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Capinha iPhone 15 Pro Silicone\"",
+        "w": 202.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Bermuda Nike Flex Stride\"",
+        "w": 166.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Camiseta Nike Dri-FIT Masculina\"",
+        "w": 213,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"iPhone 15 Pro 256GB\"",
+        "w": 137.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Fone Bluetooth Galaxy Buds FE\"",
+        "w": 207,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.font-medium.text-yellow-600 \"1\"",
+        "classes": [
+          "text-yellow-600"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Inativo\"",
+        "classes": [
+          "bg-gray-100",
+          "text-gray-800",
+          "border-gray-200",
+          "bg-gray-900",
+          "text-gray-400",
+          "border-gray-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Ativo\"",
+        "classes": [
+          "bg-green-100",
+          "text-green-800",
+          "border-green-200",
+          "bg-green-900",
+          "text-green-400",
+          "border-green-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/categorias": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/marcas": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/movimentacoes": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Saída\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      }
+    ],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Entrada\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      },
+      {
+        "el": "span.font-medium.text-emerald-600 \"+1\"",
+        "classes": [
+          "text-emerald-600"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Ajuste\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/depositos": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Padrão\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dep UI 611519InativoRua Augusta, Consola\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/estoque/alertas": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Saldo 87789669\"",
+        "w": 134.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"ÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃÃ\"",
+        "w": 2399,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Saldo 84577622\"",
+        "w": 135.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Saldo 83593662\"",
+        "w": 136.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Saldo 83275981\"",
+        "w": 133.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Saldo 83193160\"",
+        "w": 132.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"QA Produto EDITADO\"",
+        "w": 142.4,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Resolvido\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Ativo\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      },
+      {
+        "el": "span.font-semibold.text-yellow-600 \"4\"",
+        "classes": [
+          "text-yellow-600"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/estoque/produtos/novo": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Produtos\"",
+        "w": 61.7,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dados GeraisNome *SKU *DescriçãoCategori\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/vendas": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\"",
+        "w": 49.5,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000126\"",
+        "w": 99.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000125\"",
+        "w": 99.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000124\"",
+        "w": 99.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000123\"",
+        "w": 99.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000122\"",
+        "w": 99.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000121\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000120\"",
+        "w": 101.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000119\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000118\"",
+        "w": 96.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000117\"",
+        "w": 95.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000116\"",
+        "w": 96.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000115\"",
+        "w": 96.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000114\"",
+        "w": 97,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000113\"",
+        "w": 96.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000112\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000111\"",
+        "w": 93.4,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000110\"",
+        "w": 98.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000109\"",
+        "w": 101.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000108\"",
+        "w": 101.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000107\"",
+        "w": 100.6,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Cancelado\"",
+        "classes": [
+          "bg-red-100",
+          "text-red-800",
+          "border-red-200",
+          "bg-red-900",
+          "text-red-400",
+          "border-red-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Pendente\"",
+        "classes": [
+          "bg-yellow-100",
+          "text-yellow-800",
+          "border-yellow-200",
+          "bg-yellow-900",
+          "text-yellow-400",
+          "border-yellow-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Concluído\"",
+        "classes": [
+          "bg-emerald-100",
+          "text-emerald-800",
+          "border-emerald-200",
+          "bg-emerald-900",
+          "text-emerald-400",
+          "border-emerald-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Separando\"",
+        "classes": [
+          "bg-purple-100",
+          "text-purple-800",
+          "border-purple-200",
+          "bg-purple-900",
+          "text-purple-400",
+          "border-purple-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Confirmado\"",
+        "classes": [
+          "bg-blue-100",
+          "text-blue-800",
+          "border-blue-200",
+          "bg-blue-900",
+          "text-blue-400",
+          "border-blue-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Devolvido\"",
+        "classes": [
+          "bg-orange-100",
+          "text-orange-800",
+          "border-orange-200",
+          "bg-orange-900",
+          "text-orange-400",
+          "border-orange-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Pedidos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Nova Venda\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Venda Balcão\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\""
+      },
+      {
+        "el": "a. \"Venda Balcão\""
+      },
+      {
+        "el": "a. \"Nova Venda\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/vendas/pedidos": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\"",
+        "w": 49.5,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000126\"",
+        "w": 99.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000125\"",
+        "w": 99.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000124\"",
+        "w": 99.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000123\"",
+        "w": 99.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000122\"",
+        "w": 99.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000121\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000120\"",
+        "w": 101.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000119\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000118\"",
+        "w": 96.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000117\"",
+        "w": 95.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000116\"",
+        "w": 96.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000115\"",
+        "w": 96.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000114\"",
+        "w": 97,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000113\"",
+        "w": 96.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000112\"",
+        "w": 96.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000111\"",
+        "w": 93.4,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000110\"",
+        "w": 98.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000109\"",
+        "w": 101.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000108\"",
+        "w": 101.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"#PED-000107\"",
+        "w": 100.6,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Cancelado\"",
+        "classes": [
+          "bg-red-100",
+          "text-red-800",
+          "border-red-200",
+          "bg-red-900",
+          "text-red-400",
+          "border-red-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Pendente\"",
+        "classes": [
+          "bg-yellow-100",
+          "text-yellow-800",
+          "border-yellow-200",
+          "bg-yellow-900",
+          "text-yellow-400",
+          "border-yellow-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Concluído\"",
+        "classes": [
+          "bg-emerald-100",
+          "text-emerald-800",
+          "border-emerald-200",
+          "bg-emerald-900",
+          "text-emerald-400",
+          "border-emerald-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Separando\"",
+        "classes": [
+          "bg-purple-100",
+          "text-purple-800",
+          "border-purple-200",
+          "bg-purple-900",
+          "text-purple-400",
+          "border-purple-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Confirmado\"",
+        "classes": [
+          "bg-blue-100",
+          "text-blue-800",
+          "border-blue-200",
+          "bg-blue-900",
+          "text-blue-400",
+          "border-blue-800"
+        ]
+      },
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Devolvido\"",
+        "classes": [
+          "bg-orange-100",
+          "text-orange-800",
+          "border-orange-200",
+          "bg-orange-900",
+          "text-orange-400",
+          "border-orange-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Pedidos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Nova Venda\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Venda Balcão\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\""
+      },
+      {
+        "el": "a. \"Venda Balcão\""
+      },
+      {
+        "el": "a. \"Nova Venda\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/vendas/pedidos/novo": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\"",
+        "w": 49.5,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Pedidos\"",
+        "w": 55.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Pedidos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Nova Venda\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Venda Balcão\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Pedidos\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"ClienteBuscar cliente por nome ou docume\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/vendas/balcao": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\"",
+        "w": 49.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "kbd.rounded.border.bg-muted.px-1.5 \"F2\"",
+        "ratio": 4.42,
+        "required": 4.5,
+        "color": "rgb(117, 136, 163)",
+        "bg": "rgb(29, 33, 48)",
+        "fontSize": "10px"
+      }
+    ],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Pedidos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Nova Venda\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Venda Balcão\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"ClienteBuscar cliente por nome ou docume\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/clientes": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785794822992\"",
+        "w": 203.9,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785794822992\"",
+        "w": 224.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785793881730\"",
+        "w": 202.4,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785793881730\"",
+        "w": 223.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785792789062\"",
+        "w": 225.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785792685887\"",
+        "w": 204,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785792685887\"",
+        "w": 224.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88104752\"",
+        "w": 144.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88102342\"",
+        "w": 145.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88101861\"",
+        "w": 139.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88095949\"",
+        "w": 148.5,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88095649\"",
+        "w": 148.8,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88095358\"",
+        "w": 149.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 88095079\"",
+        "w": 149.3,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 87792197\"",
+        "w": 140.7,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 87791735\"",
+        "w": 141.1,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 87791398\"",
+        "w": 142,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 87791162\"",
+        "w": 138.2,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 87790753\"",
+        "w": 145.6,
+        "h": 18
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"E2E Cliente 84694583\"",
+        "w": 147.2,
+        "h": 18
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785794822992\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785794822992\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785793881730\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785793881730\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Semente qa-cfg-1785792789062\""
+      },
+      {
+        "el": "a.font-medium.text-primary.hover:underline \"Duplo qa-cfg-1785792685887\""
+      }
+    ],
+    "inconsistentRadius": []
+  },
+  "/clientes/novo": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\"",
+        "w": 54.9,
+        "h": 20
+      },
+      {
+        "el": "input.sr-only \"\"",
+        "w": 1,
+        "h": 1
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\""
+      },
+      {
+        "el": "input.sr-only \"\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dados do ClientePessoa FísicaPessoa Jurí\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/financeiro": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\"",
+        "w": 69.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Despesa\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      },
+      {
+        "el": "span.text-red-600 \"R$ 89,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ],
+    "hardcodedColors": [
+      {
+        "el": "p.text-2xl.font-bold.text-green-600 \"R$ 20.927,00\"",
+        "classes": [
+          "text-green-600"
+        ]
+      },
+      {
+        "el": "p.text-2xl.font-bold.text-red-600 \"R$ 17.351,35\"",
+        "classes": [
+          "text-red-600"
+        ]
+      },
+      {
+        "el": "tr.border-b.transition-colors.hover:bg-muted/50.bg-red-50/60 \"01/08/2026Estorno de venda - PED-000029-\"",
+        "classes": [
+          "bg-red-50",
+          "bg-red-950"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Receita\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Em aberto\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Contas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Despesas e Receitas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Caixas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"ReceitasR$ 20.927,00\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/financeiro/contas": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\"",
+        "w": 69.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Ativa\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Contas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Despesas e Receitas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Caixas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"NomeTipoBancoSaldoVenda DiretaStatusAçõe\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/financeiro/lancamentos": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\"",
+        "w": 69.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Despesa\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      },
+      {
+        "el": "span.text-red-600 \"R$ 89,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ],
+    "hardcodedColors": [
+      {
+        "el": "p.text-2xl.font-bold.text-green-600 \"R$ 20.927,00\"",
+        "classes": [
+          "text-green-600"
+        ]
+      },
+      {
+        "el": "p.text-2xl.font-bold.text-red-600 \"R$ 17.351,35\"",
+        "classes": [
+          "text-red-600"
+        ]
+      },
+      {
+        "el": "tr.border-b.transition-colors.hover:bg-muted/50.bg-red-50/60 \"01/08/2026Estorno de venda - PED-000029-\"",
+        "classes": [
+          "bg-red-50",
+          "bg-red-950"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Receita\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Em aberto\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Contas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Despesas e Receitas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Caixas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"ReceitasR$ 20.927,00\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/financeiro/caixa": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\"",
+        "w": 69.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "span.text-red-600 \"-R$ 149,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ],
+    "hardcodedColors": [
+      {
+        "el": "div.flex.h-10.w-10.items-center \"\"",
+        "classes": [
+          "bg-green-500"
+        ]
+      },
+      {
+        "el": "p.text-2xl.font-bold.text-green-600 \"1\"",
+        "classes": [
+          "text-green-600"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Aberto\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      },
+      {
+        "el": "span.text-red-600 \"-R$ 149,90\"",
+        "classes": [
+          "text-red-600"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Contas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Despesas e Receitas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Caixas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Financeiro\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Total de Caixas2\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/configuracoes": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "select. \"Simples NacionalLucro PresumidoLucro Rea\"",
+        "w": 1,
+        "h": 1
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Geral\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Cond. Pagamento\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Métodos Pagamento\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "button.flex.items-center.gap-2.whitespace-nowrap \"Empresa\""
+      },
+      {
+        "el": "button.flex.items-center.gap-2.whitespace-nowrap \"Usuários\""
+      },
+      {
+        "el": "button.flex.items-center.gap-2.whitespace-nowrap \"Plano\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dados da EmpresaInformações cadastrais e\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\"",
+        "w": 99.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Entrada + Parcelas\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"A Vista\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Geral\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Cond. Pagamento\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Métodos Pagamento\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"NomeCódigoTipoParcelasDiasEntrada %Ações\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/configuracoes/metodos-pagamento": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\"",
+        "w": 99.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [
+      {
+        "el": "span.text-xs.text-destructive \"Sem conta — bloqueia a venda\"",
+        "ratio": 2.53,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(17, 21, 34)",
+        "fontSize": "12px"
+      }
+    ],
+    "hardcodedColors": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Boleto\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-700",
+          "text-amber-400"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Ativo\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Geral\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Cond. Pagamento\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Métodos Pagamento\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"NomeTipoConta vinculadaTaxa %Liquidação \"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/configuracoes/perfil": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\"",
+        "w": 99.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Geral\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Cond. Pagamento\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Métodos Pagamento\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Configurações\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"AvatarAEnviar imagemPNG ou JPG, até 5 MB\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/estoque/produtos/cmsdt86z6007u14if7l7b765j": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Produtos\"",
+        "w": 61.7,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      },
+      {
+        "el": "th.pb-2.pr-4.font-medium \"Depósito\"",
+        "prop": "paddingTop",
+        "value": "1px"
+      },
+      {
+        "el": "th.pb-2.pr-4.font-medium \"Depósito\"",
+        "prop": "paddingLeft",
+        "value": "1px"
+      },
+      {
+        "el": "th.pb-2.font-medium \"Alerta\"",
+        "prop": "paddingRight",
+        "value": "1px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Inativo\"",
+        "classes": [
+          "bg-gray-100",
+          "text-gray-800",
+          "border-gray-200",
+          "bg-gray-900",
+          "text-gray-400",
+          "border-gray-800"
+        ]
+      },
+      {
+        "el": "div.flex.h-10.w-10.items-center \"\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-600"
+        ]
+      },
+      {
+        "el": "div.flex.h-10.w-10.items-center \"\"",
+        "classes": [
+          "bg-blue-500",
+          "text-blue-600"
+        ]
+      },
+      {
+        "el": "div.flex.h-10.w-10.items-center \"\"",
+        "classes": [
+          "bg-amber-500",
+          "text-amber-600"
+        ]
+      },
+      {
+        "el": "p.text-xl.font-bold.tabular-nums.text-emerald-600 \"1\"",
+        "classes": [
+          "text-emerald-600"
+        ]
+      },
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"OK\"",
+        "classes": [
+          "bg-emerald-500",
+          "text-emerald-700",
+          "text-emerald-400"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Preço de CustoR$ 10,00\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/estoque/produtos/cmsdt86z6007u14if7l7b765j/edit": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Estoque\"",
+        "w": 56,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Produtos\"",
+        "w": 61.7,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Detalhe\"",
+        "w": 52.1,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Produtos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Categorias\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Marcas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Movimentações\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Depósitos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Alertas\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dados GeraisNome *SKU *DescriçãoCategori\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\"",
+        "w": 54.9,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\""
+      },
+      {
+        "el": "button.whitespace-nowrap.border-b-2.px-4.py-2.5 \"Informações\""
+      },
+      {
+        "el": "button.whitespace-nowrap.border-b-2.px-4.py-2.5 \"Endereços\""
+      },
+      {
+        "el": "button.whitespace-nowrap.border-b-2.px-4.py-2.5 \"Pedidos\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"SegmentoRegular\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k/edit": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\"",
+        "w": 54.9,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Detalhe\"",
+        "w": 52.1,
+        "h": 20
+      },
+      {
+        "el": "input.sr-only \"\"",
+        "w": 1,
+        "h": 1
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Clientes\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Detalhe\""
+      },
+      {
+        "el": "input.sr-only \"\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Dados do ClientePessoa FísicaPessoa Jurí\"",
+        "radius": "12px"
+      }
+    ]
+  },
+  "/vendas/pedidos/cmsdru2s9006714if6ghytud0": {
+    "horizontalOverflow": false,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "clippedNoScroll": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ],
+    "smallHitTargets": [
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\"",
+        "w": 35.2,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\"",
+        "w": 49.5,
+        "h": 20
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Pedidos\"",
+        "w": 55.5,
+        "h": 20
+      }
+    ],
+    "oddSpacing": [
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingTop",
+        "value": "10px"
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\"",
+        "prop": "paddingBottom",
+        "value": "10px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingTop",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingBottom",
+        "value": "2px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingLeft",
+        "value": "6px"
+      },
+      {
+        "el": "kbd.hidden.rounded.border.bg-background \"Ctrl K\"",
+        "prop": "paddingRight",
+        "value": "6px"
+      },
+      {
+        "el": "div.flex.items-center.gap-1.5 \"Alternar temaNotificaçõesAAdministrador\"",
+        "prop": "gap",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingTop",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "paddingBottom",
+        "value": "6px"
+      },
+      {
+        "el": "button.justify-center.whitespace-nowrap.text-sm.font-medium \"AAdministrador\"",
+        "prop": "gap",
+        "value": "10px"
+      },
+      {
+        "el": "td. \"\"",
+        "prop": "paddingTop",
+        "value": "1px"
+      },
+      {
+        "el": "td. \"\"",
+        "prop": "paddingBottom",
+        "value": "1px"
+      },
+      {
+        "el": "td. \"\"",
+        "prop": "paddingLeft",
+        "value": "1px"
+      },
+      {
+        "el": "td. \"\"",
+        "prop": "paddingRight",
+        "value": "1px"
+      }
+    ],
+    "lowContrast": [],
+    "hardcodedColors": [
+      {
+        "el": "span.inline-flex.items-center.rounded-full.border \"Cancelado\"",
+        "classes": [
+          "bg-red-100",
+          "text-red-800",
+          "border-red-200",
+          "bg-red-900",
+          "text-red-400",
+          "border-red-800"
+        ]
+      }
+    ],
+    "missingFocusRing": [
+      {
+        "el": "a.flex.items-center.gap-3.group \"EERP System\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Dashboard\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Estoque\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Vendas\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Pedidos\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Nova Venda\""
+      },
+      {
+        "el": "a.block.rounded-md.px-3.py-2 \"Venda Balcão\""
+      },
+      {
+        "el": "a.flex.items-center.gap-3.rounded-lg \"Clientes\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Financeiro\""
+      },
+      {
+        "el": "button.flex.w-full.items-center.gap-3 \"Configurações\""
+      },
+      {
+        "el": "button.relative.hidden.h-9.w-72 \"Buscar...Ctrl K\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Início\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Vendas\""
+      },
+      {
+        "el": "a.transition-colors.hover:text-foreground \"Pedidos\""
+      },
+      {
+        "el": "button.flex.items-center.gap-2.whitespace-nowrap \"Itens\""
+      }
+    ],
+    "inconsistentRadius": [
+      {
+        "el": "div.rounded-xl.border.border-border/60.bg-card \"Total do PedidoR$ 89,90\"",
+        "radius": "12px"
+      }
+    ]
+  }
+}

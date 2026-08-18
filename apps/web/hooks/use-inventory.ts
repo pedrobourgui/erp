@@ -1,14 +1,27 @@
+import type {
+  PaginatedResponse,
+  ApiResponse,
+  InventoryItem,
+  Warehouse as SharedWarehouse,
+} from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { PaginatedResponse, ApiResponse, InventoryItem } from "@erp/shared-types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-export type MovementType = "ENTRY" | "EXIT" | "ADJUSTMENT" | "TRANSFER";
+// Mirrors the MovementType enum in schema.prisma — keep all 6 values in sync.
+export type MovementType =
+  | "ENTRY"
+  | "EXIT"
+  | "ADJUSTMENT"
+  | "TRANSFER"
+  | "RETURN"
+  | "PRODUCTION";
 
 export type MovementReason =
   | "PURCHASE"
@@ -46,15 +59,12 @@ export interface StockMovement {
   createdAt: string;
 }
 
-export interface Warehouse {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  isDefault: boolean;
-  productCount: number;
+/**
+ * O contrato vem de `@erp/shared-types` (AE-12b). Redigitar a resposta dentro
+ * de `app/` foi como as três colunas vazias do lote 7 nasceram: o tipo local
+ * dizia que o campo existia e ninguém conferia contra a API.
+ */
+export interface Warehouse extends SharedWarehouse {
   createdAt: string;
 }
 
@@ -104,6 +114,34 @@ export interface CreateMovementPayload {
   quantity: number;
   unitCost?: number;
   notes?: string;
+}
+
+export interface TransferStockPayload {
+  productId: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  quantity: number;
+  notes?: string;
+}
+
+/**
+ * AE-25: `countedQuantity` is the balance on the shelf, not the difference.
+ * The server derives the delta from the balance it reads inside the
+ * transaction — computing it here would write a stale number whenever a sale
+ * lands between opening the form and saving it.
+ */
+export interface AdjustStockPayload {
+  productId: string;
+  warehouseId: string;
+  countedQuantity: number;
+  reason: "COUNT" | "DAMAGE" | "THEFT" | "ADJUSTMENT";
+  notes: string;
+}
+
+export interface AdjustStockResult extends StockMovement {
+  previousQuantity: number;
+  newQuantity: number;
+  delta: number;
 }
 
 export interface CreateWarehousePayload {
@@ -189,6 +227,94 @@ export function useCreateMovement() {
       const { data } = await api.post<ApiResponse<StockMovement>>(
         "/inventory/movement",
         payload
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
+export function useTransferStock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: TransferStockPayload) => {
+      const { data } = await api.post<ApiResponse<StockMovement>>(
+        "/inventory/transfer",
+        payload
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      // Both warehouses moved — invalidate the whole prefix, not only the
+      // movement list (the FN-11 mistake).
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export function useAdjustStock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: AdjustStockPayload) => {
+      const { data } = await api.post<ApiResponse<AdjustStockResult>>(
+        "/inventory/adjustment",
+        payload
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export interface UpdateWarehousePayload {
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+}
+
+export function useUpdateWarehouse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: UpdateWarehousePayload & { id: string }) => {
+      const { data } = await api.patch<ApiResponse<Warehouse>>(
+        `/inventory/warehouses/${id}`,
+        payload
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
+/** Answers whether the warehouse was deleted or merely deactivated (AE-12d). */
+export interface RemoveWarehouseResult {
+  success: boolean;
+  deactivated: boolean;
+  message: string;
+}
+
+export function useDeleteWarehouse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.delete<RemoveWarehouseResult>(
+        `/inventory/warehouses/${id}`
       );
       return data;
     },

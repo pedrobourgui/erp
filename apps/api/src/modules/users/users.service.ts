@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
+import { getRoleLabel } from '@erp/constants';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { RedisService } from '../../database/redis/redis.service';
 import {
@@ -84,6 +85,34 @@ export class UsersService {
         hasMore: page < totalPages,
       },
     };
+  }
+
+  /**
+   * Roles available in the tenant, for the invite dialog (FN-08).
+   *
+   * `POST /users/invite` requires a real `roleId`; the settings screen offered
+   * four invented slugs, so every invite would have been rejected. The
+   * permission rows are deliberately left out — the caller only needs to pick.
+   */
+  async findRoles(tenantId: string) {
+    const roles = await this.prisma.role.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { users: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return roles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      label: getRoleLabel(role.name),
+      description: role.description,
+      userCount: role._count.users,
+    }));
   }
 
   async findById(tenantId: string, id: string) {

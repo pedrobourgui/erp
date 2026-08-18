@@ -1,0 +1,578 @@
+{
+  "/": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 5,
+    "odd": 15,
+    "contrast": 0,
+    "hardcoded": 7,
+    "noFocus": 14,
+    "radius": 1,
+    "invisibleBorders": 2,
+    "borderSamples": [
+      {
+        "border": "rgb(153, 27, 27)",
+        "bg": "rgba(127, 29, 29, 0.3)",
+        "ratio": 1.21
+      },
+      {
+        "border": "rgb(30, 64, 175)",
+        "bg": "rgba(30, 58, 138, 0.3)",
+        "ratio": 1.19
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 22,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(31, 41, 55)",
+        "bg": "rgba(17, 24, 39, 0.3)",
+        "ratio": 1.21
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/produtos": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 22,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(31, 41, 55)",
+        "bg": "rgba(17, 24, 39, 0.3)",
+        "ratio": 1.21
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/categorias": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/estoque/marcas": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(37, 41, 55)",
+        "bg": "rgb(29, 33, 48)",
+        "ratio": 1.11
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/movimentacoes": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 1,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Saída\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      }
+    ]
+  },
+  "/estoque/depositos": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 1,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(37, 41, 55)",
+        "bg": "rgba(29, 33, 48, 0.3)",
+        "ratio": 1.11
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/alertas": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 9,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/estoque/produtos/novo": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/vendas": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 22,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 6,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 2,
+    "borderSamples": [
+      {
+        "border": "rgb(153, 27, 27)",
+        "bg": "rgba(127, 29, 29, 0.3)",
+        "ratio": 1.21
+      },
+      {
+        "border": "rgb(30, 64, 175)",
+        "bg": "rgba(30, 58, 138, 0.3)",
+        "ratio": 1.19
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/vendas/pedidos": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 22,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 6,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 2,
+    "borderSamples": [
+      {
+        "border": "rgb(153, 27, 27)",
+        "bg": "rgba(127, 29, 29, 0.3)",
+        "ratio": 1.21
+      },
+      {
+        "border": "rgb(30, 64, 175)",
+        "bg": "rgba(30, 58, 138, 0.3)",
+        "ratio": 1.19
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/vendas/pedidos/novo": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 14,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/vendas/balcao": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 1,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(37, 41, 55)",
+        "bg": "rgb(29, 33, 48)",
+        "ratio": 1.11
+      }
+    ],
+    "contrastSamples": [
+      {
+        "el": "kbd.rounded.border.bg-muted.px-1.5 \"F2\"",
+        "ratio": 4.42,
+        "required": 4.5,
+        "color": "rgb(117, 136, 163)",
+        "bg": "rgb(29, 33, 48)",
+        "fontSize": "10px"
+      }
+    ]
+  },
+  "/clientes": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 21,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/clientes/novo": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 11,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/financeiro": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 2,
+    "hardcoded": 5,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Despesa\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      },
+      {
+        "el": "span.text-red-600 \"R$ 89,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ]
+  },
+  "/financeiro/contas": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 1,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/financeiro/lancamentos": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 2,
+    "hardcoded": 5,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": [
+      {
+        "el": "div.inline-flex.items-center.rounded-md.border \"Despesa\"",
+        "ratio": 2.66,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "12px"
+      },
+      {
+        "el": "span.text-red-600 \"R$ 89,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ]
+  },
+  "/financeiro/caixa": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 1,
+    "hardcoded": 4,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": [
+      {
+        "el": "span.text-red-600 \"-R$ 149,90\"",
+        "ratio": 3.96,
+        "required": 4.5,
+        "color": "rgb(220, 38, 38)",
+        "bg": "rgb(12, 15, 24)",
+        "fontSize": "14px"
+      }
+    ]
+  },
+  "/configuracoes": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 2,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/configuracoes/metodos-pagamento": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 1,
+    "hardcoded": 2,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": [
+      {
+        "el": "span.text-xs.text-destructive \"Sem conta — bloqueia a venda\"",
+        "ratio": 2.53,
+        "required": 4.5,
+        "color": "rgb(165, 39, 39)",
+        "bg": "rgb(17, 21, 34)",
+        "fontSize": "12px"
+      }
+    ]
+  },
+  "/configuracoes/perfil": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(37, 41, 55)",
+        "bg": "rgb(29, 33, 48)",
+        "ratio": 1.11
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/produtos/cmsdt86z6007u14if7l7b765j": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 3,
+    "odd": 13,
+    "contrast": 0,
+    "hardcoded": 6,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 1,
+    "borderSamples": [
+      {
+        "border": "rgb(31, 41, 55)",
+        "bg": "rgba(17, 24, 39, 0.3)",
+        "ratio": 1.21
+      }
+    ],
+    "contrastSamples": []
+  },
+  "/estoque/produtos/cmsdt86z6007u14if7l7b765j/edit": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 4,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/clientes/cmsdse9w5007a14ifhjzqo98k/edit": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 4,
+    "odd": 10,
+    "contrast": 0,
+    "hardcoded": 0,
+    "noFocus": 12,
+    "radius": 1,
+    "invisibleBorders": 0,
+    "borderSamples": [],
+    "contrastSamples": []
+  },
+  "/vendas/pedidos/cmsdru2s9006714if6ghytud0": {
+    "dark": true,
+    "overflow": false,
+    "docW": "1440/1440",
+    "clipped": 2,
+    "small": 3,
+    "odd": 14,
+    "contrast": 0,
+    "hardcoded": 1,
+    "noFocus": 15,
+    "radius": 1,
+    "invisibleBorders": 2,
+    "borderSamples": [
+      {
+        "border": "rgb(153, 27, 27)",
+        "bg": "rgba(127, 29, 29, 0.3)",
+        "ratio": 1.21
+      },
+      {
+        "border": "rgb(37, 41, 55)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "ratio": 1.11
+      }
+    ],
+    "contrastSamples": []
+  }
+}

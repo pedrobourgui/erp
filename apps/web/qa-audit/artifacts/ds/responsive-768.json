@@ -1,0 +1,989 @@
+{
+  "/": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 5,
+    "odd": 15,
+    "contrast": 3,
+    "hardcoded": 7,
+    "noFocus": 14,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 670,
+        "wrapW": 670
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 21,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 2,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1298,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/produtos": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 21,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 2,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1298,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/categorias": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 4,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 718,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/marcas": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 718,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/movimentacoes": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 4,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1394,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/depositos": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 1,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/alertas": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 9,
+    "odd": 10,
+    "contrast": 4,
+    "hardcoded": 3,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1059,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/produtos/novo": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/vendas": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 1,
+    "odd": 10,
+    "contrast": 2,
+    "hardcoded": 0,
+    "noFocus": 12,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/vendas/pedidos": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 23,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 6,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 976,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/vendas/pedidos/novo": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 14,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/vendas/balcao": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 4,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/clientes": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 21,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 0,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1300,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/clientes/novo": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 3,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 11,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/financeiro": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 7,
+    "hardcoded": 5,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1179,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/financeiro/contas": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 1,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 804,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 729,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/financeiro/lancamentos": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 7,
+    "hardcoded": 5,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1179,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/financeiro/caixa": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 4,
+    "hardcoded": 4,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 1154,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/configuracoes": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 2,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 718,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/configuracoes/metodos-pagamento": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 2,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": true,
+        "overflowX": "auto",
+        "tableW": 822,
+        "wrapW": 718
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/configuracoes/perfil": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/produtos/cmsds18wh007014ifqupxg6m8": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 3,
+    "odd": 13,
+    "contrast": 2,
+    "hardcoded": 6,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 670,
+        "wrapW": 670
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/estoque/produtos/cmsds18wh007014ifqupxg6m8/edit": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 4,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/clientes/cmsdrs5ef005514ifn17uxgjv": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 2,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 13,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/clientes/cmsdrs5ef005514ifn17uxgjv/edit": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 4,
+    "odd": 10,
+    "contrast": 3,
+    "hardcoded": 0,
+    "noFocus": 12,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  },
+  "/vendas/pedidos/cmsdru2s9006714if6ghytud0": {
+    "overflow": false,
+    "docW": "768/768",
+    "clipped": 2,
+    "small": 3,
+    "odd": 14,
+    "contrast": 3,
+    "hardcoded": 1,
+    "noFocus": 15,
+    "radius": 1,
+    "mainScroll": {
+      "sw": 768,
+      "cw": 768
+    },
+    "tables": [
+      {
+        "scrolls": false,
+        "overflowX": "auto",
+        "tableW": 670,
+        "wrapW": 670
+      }
+    ],
+    "menuButton": true,
+    "menuButtonVisible": true,
+    "sidebarVisible": false,
+    "clippedEls": [
+      {
+        "el": "span.sr-only \"Alternar tema\"",
+        "scrollWidth": 90,
+        "clientWidth": 1
+      },
+      {
+        "el": "span.sr-only \"Notificações\"",
+        "scrollWidth": 86,
+        "clientWidth": 1
+      }
+    ]
+  }
+}

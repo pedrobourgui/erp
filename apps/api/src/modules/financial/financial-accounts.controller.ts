@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FinancialAccountsService } from './financial-accounts.service';
@@ -87,5 +88,17 @@ export class FinancialAccountsController {
   ) {
     const account = await this.financialAccountsService.update(tenantId, id, dto);
     return { success: true, data: account };
+  }
+
+  @Delete(':id')
+  @RequirePermissions('financial:delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Exclui a conta. Com movimento registrado ela é inativada, nunca apagada (FN-16).',
+  })
+  async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    const result = await this.financialAccountsService.remove(tenantId, id);
+    return { success: true, data: result };
   }
 }

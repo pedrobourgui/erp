@@ -1,25 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import { Plus, Edit, Trash2, ImageIcon } from "lucide-react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
-import { Tooltip } from "@/components/ui/tooltip";
+import React, { useState } from "react";
+
+import { Can } from "@/components/auth/can";
 import { BrandFormDialog } from "@/components/forms/brand-form-dialog";
 import {
   DataTable,
   type ColumnDef,
   type SortState,
 } from "@/components/tables/data-table";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   useBrands,
   useCreateBrand,
   useUpdateBrand,
   useDeleteBrand,
+  type BrandRow,
+  type BrandFormData,
 } from "@/hooks/use-products";
-import type { BrandRow, BrandFormData } from "@/hooks/use-products";
-import { Plus, Edit, Trash2, ImageIcon } from "lucide-react";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
 
 // ─── Actions cell ───────────────────────────────────────────────────
 
@@ -38,7 +42,7 @@ function BrandActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10 md:h-8 md:w-8"
           onClick={() => onEdit(brand)}
         >
           <Edit className="h-4 w-4" />
@@ -49,7 +53,7 @@ function BrandActions({
           variant="ghost"
           action="delete"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10 md:h-8 md:w-8"
           onClick={() => onDelete(brand)}
         >
           <Trash2 className="h-4 w-4" />
@@ -98,7 +102,7 @@ export default function BrandsPage() {
   const [deleteTarget, setDeleteTarget] = useState<BrandRow | null>(null);
 
   // Data
-  const { data, isLoading } = useBrands({ search: search || undefined });
+  const { data, isLoading, error } = useBrands({ search: search || undefined });
   const createMutation = useCreateBrand();
   const updateMutation = useUpdateBrand();
   const deleteMutation = useDeleteBrand();
@@ -134,22 +138,33 @@ export default function BrandsPage() {
       }
       setShowForm(false);
       setEditBrand(null);
-    } catch {
+    } catch (err) {
       addToast(
-        editBrand ? "Erro ao atualizar marca." : "Erro ao criar marca.",
+        getMutationErrorMessage(
+          err,
+          editBrand ? "Erro ao atualizar marca." : "Erro ao criar marca."
+        ),
         "error"
       );
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget) {
+      return;
+    }
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
       addToast("Marca excluída com sucesso!", "success");
       setDeleteTarget(null);
-    } catch {
-      addToast("Erro ao excluir marca.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao excluir marca."
+        ),
+        "error"
+      );
     }
   };
 
@@ -176,10 +191,12 @@ export default function BrandsPage() {
       accessor: (row) => row._count?.products ?? 0,
       sortable: true,
       className: "text-right",
+      nowrap: true,
       headerClassName: "text-right",
     },
     {
       id: "actions",
+      noTruncate: true,
       header: "Ações",
       cell: (row) => (
         <BrandActions
@@ -189,6 +206,7 @@ export default function BrandsPage() {
         />
       ),
       className: "text-right w-[100px]",
+      nowrap: true,
       headerClassName: "text-right",
     },
   ];
@@ -196,17 +214,19 @@ export default function BrandsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">Marcas</h1>
           <p className="text-muted-foreground">
             Gerencie as marcas de produtos
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Marca
-        </Button>
+        <Can permission="products:create">
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Marca
+          </Button>
+        </Can>
       </div>
 
       {/* Table */}
@@ -228,6 +248,7 @@ export default function BrandsPage() {
         }}
         searchPlaceholder="Buscar marcas..."
         isLoading={isLoading}
+        error={error}
         emptyMessage="Nenhuma marca encontrada"
         emptyDescription="Crie sua primeira marca clicando no botão acima."
       />
@@ -237,7 +258,7 @@ export default function BrandsPage() {
         open={showForm}
         onOpenChange={(open) => {
           setShowForm(open);
-          if (!open) setEditBrand(null);
+          if (!open) {setEditBrand(null);}
         }}
         brand={editBrand}
         loading={createMutation.isPending || updateMutation.isPending}
@@ -248,10 +269,15 @@ export default function BrandsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) {setDeleteTarget(null);}
         }}
         title="Excluir Marca"
-        message={`Deseja excluir "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`}
+        // AE-10: mesma regra da categoria — o número já está na tabela.
+        message={
+          (deleteTarget?._count?.products ?? 0) > 0
+            ? `"${deleteTarget?.name}" está em uso por ${deleteTarget?._count?.products} produto(s) e não pode ser excluída. Mova os produtos para outra marca primeiro.`
+            : `Deseja excluir "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`
+        }
         destructive
         confirmLabel="Excluir"
         loading={deleteMutation.isPending}

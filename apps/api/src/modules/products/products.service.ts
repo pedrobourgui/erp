@@ -45,6 +45,7 @@ export class ProductsService {
       status,
     } = query;
 
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
@@ -56,7 +57,11 @@ export class ProductsService {
       where.status = status as any;
     }
     if (categoryId) {
-      where.categoryId = categoryId;
+      // FT-08: filtrar por "Eletrônicos" tem de trazer também o que está em
+      // "Eletrônicos › Áudio". A igualdade exata é o que o usuário lê como
+      // "sumiram produtos" ao escolher a categoria-pai.
+      const categoryIds = await this.resolveCategoryTree(tenantId, categoryId);
+      where.categoryId = categoryIds.length > 1 ? { in: categoryIds } : categoryId;
     }
     if (brandId) {
       where.brandId = brandId;
@@ -147,7 +152,7 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Produto não encontrado');
     }
 
     // Aggregate total inventory
@@ -174,7 +179,7 @@ export class ProductsService {
       where: { tenantId, sku, deletedAt: null },
     });
     if (existing) {
-      throw new ConflictException(`Product with SKU "${sku}" already exists`);
+      throw new ConflictException(`Já existe um produto com o SKU "${sku}"`);
     }
 
     // Calculate sale price from cost + markup if not provided
@@ -192,7 +197,7 @@ export class ProductsService {
         where: { id: dto.categoryId, tenantId },
       });
       if (!category) {
-        throw new BadRequestException(`Category with id "${dto.categoryId}" not found`);
+        throw new BadRequestException(`Categoria não encontrada`);
       }
     }
 
@@ -202,7 +207,7 @@ export class ProductsService {
         where: { id: dto.brandId, tenantId },
       });
       if (!brand) {
-        throw new BadRequestException(`Brand with id "${dto.brandId}" not found`);
+        throw new BadRequestException(`Marca não encontrada`);
       }
     }
 
@@ -214,9 +219,12 @@ export class ProductsService {
         description: dto.description,
         type: (dto.type as any) || 'SIMPLE',
         status: (dto.status as any) || 'DRAFT',
-        ean: dto.ean,
-        ncm: dto.ncm,
-        cest: dto.cest,
+        // AE-08: guardados só com dígitos, como os documentos (AE-15) — a
+        // máscara é coisa de exibição, não de armazenamento.
+        ean: normalizeFiscalCode(dto.ean),
+        ncm: normalizeFiscalCode(dto.ncm),
+        cest: normalizeFiscalCode(dto.cest),
+        cfop: normalizeFiscalCode(dto.cfop),
         costPrice: dto.costPrice,
         salePrice,
         promoPrice: dto.promoPrice,
@@ -266,7 +274,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Produto não encontrado');
     }
 
     // If SKU changed, check uniqueness
@@ -275,7 +283,7 @@ export class ProductsService {
         where: { tenantId, sku: dto.sku, deletedAt: null, id: { not: id } },
       });
       if (skuExists) {
-        throw new ConflictException(`Product with SKU "${dto.sku}" already exists`);
+        throw new ConflictException(`Já existe um produto com o SKU "${dto.sku}"`);
       }
     }
 
@@ -298,6 +306,12 @@ export class ProductsService {
         status: dto.status as any,
         type: dto.type as any,
         metadata: dto.metadata as any,
+        // AE-08: mesma normalização da criação — editar com máscara não pode
+        // regravar o código formatado.
+        ean: normalizeFiscalCode(dto.ean),
+        ncm: normalizeFiscalCode(dto.ncm),
+        cest: normalizeFiscalCode(dto.cest),
+        cfop: normalizeFiscalCode(dto.cfop),
       },
       include: {
         variants: true,
@@ -314,17 +328,63 @@ export class ProductsService {
   /**
    * Soft delete a product.
    */
+  /**
+   * AE-02: um produto com 4 un. em estoque foi excluído sem bloqueio nenhum. O
+   * alerta ficou **órfão** em `/estoque/alertas` e o KPI "Estoque Crítico"
+   * continuou contando um item que não existe mais.
+   *
+   * Duas regras: quem tem saldo ou pedido em aberto não some (inative-o), e o
+   * que some leva junto suas pendências.
+   */
   async remove(tenantId: string, id: string) {
     const existing = await this.prisma.product.findFirst({
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Produto não encontrado');
     }
 
-    await this.prisma.product.update({
-      where: { id },
-      data: { deletedAt: new Date(), status: 'INACTIVE' },
+    const [stock, openOrderItems] = await Promise.all([
+      this.prisma.inventoryItem.aggregate({
+        where: { tenantId, productId: id },
+        _sum: { quantity: true },
+      }),
+      this.prisma.orderItem.count({
+        where: {
+          productId: id,
+          order: {
+            tenantId,
+            deletedAt: null,
+            status: { notIn: ['COMPLETED', 'CANCELLED', 'RETURNED'] },
+          },
+        },
+      }),
+    ]);
+
+    const balance = Number(stock._sum.quantity ?? 0);
+    if (balance > 0) {
+      throw new ConflictException(
+        `"${existing.name}" ainda tem ${balance} un. em estoque e não pode ser excluído. Zere o estoque ou inative o produto.`,
+      );
+    }
+
+    if (openOrderItems > 0) {
+      throw new ConflictException(
+        `"${existing.name}" está em ${openOrderItems} pedido(s) em aberto e não pode ser excluído. Inative o produto para tirá-lo das vendas.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id },
+        data: { deletedAt: new Date(), status: 'INACTIVE' },
+      });
+
+      // Sem isto o alerta sobrevive ao produto e o dashboard segue contando.
+      await tx.stockAlert.updateMany({
+        where: { tenantId, productId: id, isResolved: false },
+        data: { isResolved: true, resolvedAt: new Date() },
+      });
     });
 
     this.logger.log(`Product soft-deleted: ${id} for tenant ${tenantId}`);
@@ -332,6 +392,48 @@ export class ProductsService {
   }
 
   // ─── Categories ──────────────────────────────────────────────────────
+
+  /**
+   * A category and every category below it (FT-08).
+   *
+   * `where.categoryId = categoryId` is an exact match, so filtering by a parent
+   * category returned nothing from its children — the user picks "Eletrônicos"
+   * and sees fewer products than the count next to it promised.
+   *
+   * The whole tree is read in memory on purpose: categories are a low-cardinality
+   * entity (that is why the filter is a plain select and not a search), so this
+   * is one small query instead of a recursive CTE.
+   */
+  private async resolveCategoryTree(
+    tenantId: string,
+    rootId: string,
+  ): Promise<string[]> {
+    const categories = await this.prisma.category.findMany({
+      where: { tenantId, deletedAt: null },
+      select: { id: true, parentId: true },
+    });
+
+    const childrenOf = new Map<string, string[]>();
+    for (const category of categories) {
+      if (!category.parentId) continue;
+      const siblings = childrenOf.get(category.parentId) ?? [];
+      siblings.push(category.id);
+      childrenOf.set(category.parentId, siblings);
+    }
+
+    // Iterative walk with a visited set: a parentId cycle (which the schema
+    // does not prevent) would otherwise hang the request.
+    const collected = new Set<string>();
+    const pending = [rootId];
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      if (collected.has(current)) continue;
+      collected.add(current);
+      pending.push(...(childrenOf.get(current) ?? []));
+    }
+
+    return [...collected];
+  }
 
   /**
    * Return all categories as a hierarchical tree with product counts.
@@ -378,7 +480,7 @@ export class ProductsService {
     });
 
     if (!category) {
-      throw new NotFoundException(`Category with id "${id}" not found`);
+      throw new NotFoundException(`Categoria não encontrada`);
     }
 
     return category;
@@ -394,7 +496,7 @@ export class ProductsService {
       where: { tenantId, slug, deletedAt: null },
     });
     if (existing) {
-      throw new ConflictException(`Category with slug "${slug}" already exists`);
+      throw new ConflictException(`Já existe uma categoria com o identificador "${slug}"`);
     }
 
     if (dto.parentId) {
@@ -402,7 +504,7 @@ export class ProductsService {
         where: { id: dto.parentId, tenantId, deletedAt: null },
       });
       if (!parent) {
-        throw new BadRequestException(`Parent category with id "${dto.parentId}" not found`);
+        throw new BadRequestException(`Categoria pai não encontrada`);
       }
     }
 
@@ -428,7 +530,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException(`Category with id "${id}" not found`);
+      throw new NotFoundException(`Categoria não encontrada`);
     }
 
     // If slug is changing, check uniqueness
@@ -438,7 +540,7 @@ export class ProductsService {
         where: { tenantId, slug, deletedAt: null, id: { not: id } },
       });
       if (slugExists) {
-        throw new ConflictException(`Category with slug "${slug}" already exists`);
+        throw new ConflictException(`Já existe uma categoria com o identificador "${slug}"`);
       }
     }
 
@@ -446,13 +548,13 @@ export class ProductsService {
     if (dto.parentId !== undefined) {
       if (dto.parentId) {
         if (dto.parentId === id) {
-          throw new BadRequestException('A category cannot be its own parent');
+          throw new BadRequestException('Uma categoria não pode ser pai de si mesma');
         }
         const parent = await this.prisma.category.findFirst({
           where: { id: dto.parentId, tenantId, deletedAt: null },
         });
         if (!parent) {
-          throw new BadRequestException(`Parent category with id "${dto.parentId}" not found`);
+          throw new BadRequestException(`Categoria pai não encontrada`);
         }
       }
     }
@@ -480,7 +582,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException(`Category with id "${id}" not found`);
+      throw new NotFoundException(`Categoria não encontrada`);
     }
 
     const productCount = await this.prisma.product.count({
@@ -488,7 +590,7 @@ export class ProductsService {
     });
     if (productCount > 0) {
       throw new ConflictException(
-        `Cannot delete category: ${productCount} product(s) are still using it`,
+        `Esta categoria está em uso por ${productCount} produto(s) e não pode ser excluída. Mova os produtos para outra categoria primeiro.`,
       );
     }
 
@@ -577,7 +679,7 @@ export class ProductsService {
     });
 
     if (!brand) {
-      throw new NotFoundException(`Brand with id "${id}" not found`);
+      throw new NotFoundException(`Marca não encontrada`);
     }
 
     return brand;
@@ -591,7 +693,7 @@ export class ProductsService {
       where: { tenantId, name: dto.name, deletedAt: null },
     });
     if (existing) {
-      throw new ConflictException(`Brand "${dto.name}" already exists`);
+      throw new ConflictException(`Já existe uma marca chamada "${dto.name}"`);
     }
 
     const brand = await this.prisma.brand.create({
@@ -615,7 +717,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException(`Brand with id "${id}" not found`);
+      throw new NotFoundException(`Marca não encontrada`);
     }
 
     // If name is changing, check uniqueness
@@ -624,7 +726,7 @@ export class ProductsService {
         where: { tenantId, name: dto.name, deletedAt: null, id: { not: id } },
       });
       if (nameExists) {
-        throw new ConflictException(`Brand "${dto.name}" already exists`);
+        throw new ConflictException(`Já existe uma marca chamada "${dto.name}"`);
       }
     }
 
@@ -650,7 +752,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing) {
-      throw new NotFoundException(`Brand with id "${id}" not found`);
+      throw new NotFoundException(`Marca não encontrada`);
     }
 
     const productCount = await this.prisma.product.count({
@@ -658,7 +760,7 @@ export class ProductsService {
     });
     if (productCount > 0) {
       throw new ConflictException(
-        `Cannot delete brand: ${productCount} product(s) are still using it`,
+        `Esta marca está em uso por ${productCount} produto(s) e não pode ser excluída. Mova os produtos para outra marca primeiro.`,
       );
     }
 
@@ -681,4 +783,11 @@ export class ProductsService {
     const sequence = (count + 1).toString().padStart(6, '0');
     return `PRD-${sequence}`;
   }
+}
+
+/** Código fiscal só com dígitos; `undefined` continua `undefined`. */
+function normalizeFiscalCode(value?: string | null): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  return value.replace(/\D/g, '');
 }

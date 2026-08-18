@@ -17,6 +17,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      // Espelha o transpilePackages do next.config.js: os pacotes do workspace são TS cru.
+      '@erp/constants': path.resolve(__dirname, '../../packages/constants/src/index.ts'),
+      '@erp/shared-types': path.resolve(__dirname, '../../packages/shared-types/src/index.ts'),
+      '@erp/validators': path.resolve(__dirname, '../../packages/validators/src/index.ts'),
     },
   },
 });

@@ -49,6 +49,19 @@ export class UsersController {
     };
   }
 
+  // Declared before the ':id' routes so "roles" is not captured as an id param.
+  @Get('roles')
+  @RequirePermissions('users:read')
+  @ApiOperation({ summary: 'Listar os papéis disponíveis no tenant' })
+  async findRoles(@CurrentTenant() tenantId: string) {
+    const roles = await this.usersService.findRoles(tenantId);
+
+    return {
+      success: true,
+      data: roles,
+    };
+  }
+
   // ─── Self-service profile (SCRUM-23) ────────────────────────────────────
   // Declared before the ':id' routes so "me" is not captured as an id param.
 

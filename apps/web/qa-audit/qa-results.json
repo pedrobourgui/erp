@@ -1,0 +1,525 @@
+{
+  "config": {
+    "argv": [
+      "/Users/mac/.nvm/versions/node/v22.11.0/bin/node",
+      "/Users/mac/work/erp/node_modules/.bin/playwright",
+      "test",
+      "-c",
+      "qa-audit/playwright.qa.config.ts",
+      "qa-audit/design-system.spec.ts",
+      "--list"
+    ],
+    "configFile": "/Users/mac/work/erp/apps/web/qa-audit/playwright.qa.config.ts",
+    "rootDir": "/Users/mac/work/erp/apps/web/qa-audit",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/mac/work/erp/apps/web/qa-audit/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/mac/work/erp/apps/web/qa-audit",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "qa-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "design-system.spec.ts",
+      "file": "design-system.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "DS-inv: inventário de tokens/espaçamento/contraste em todas as rotas",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-ff2b044adc4ce54226ae",
+          "file": "design-system.spec.ts",
+          "line": 346,
+          "column": 5
+        },
+        {
+          "title": "DS-drift: cabeçalho, card, input, botão e h1 medidos rota a rota",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-90ee68aa47b4c6f153cb",
+          "file": "design-system.spec.ts",
+          "line": 376,
+          "column": 5
+        },
+        {
+          "title": "DS-drift-shots: comparativos do mesmo componente em telas equivalentes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-1c108ae67b553fc7318c",
+          "file": "design-system.spec.ts",
+          "line": 407,
+          "column": 5
+        },
+        {
+          "title": "DS-tip: todo botão só-ícone tem tooltip ou aria-label",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-b4655694722298693ac8",
+          "file": "design-system.spec.ts",
+          "line": 429,
+          "column": 5
+        },
+        {
+          "title": "DS-tip-name: botão só-ícone com tooltip tem nome acessível?",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-291f24ed9273875327df",
+          "file": "design-system.spec.ts",
+          "line": 492,
+          "column": 5
+        },
+        {
+          "title": "DS-tip-empty: Tooltip com content vazio some sem deixar rastro",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-35e6b124f080253065bc",
+          "file": "design-system.spec.ts",
+          "line": 535,
+          "column": 5
+        },
+        {
+          "title": "DS-tip-perm: controle desabilitado por permissão explica o porquê (seller)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-f45e4466d5f6cc391dfa",
+          "file": "design-system.spec.ts",
+          "line": 545,
+          "column": 5
+        },
+        {
+          "title": "DS-toast-ae10: 500 na mutação — fallback legível vs. texto cru do backend",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-be3f6b1e83d46ac1c1c6",
+          "file": "design-system.spec.ts",
+          "line": 620,
+          "column": 5
+        },
+        {
+          "title": "DS-toast-anatomy: duração, empilhamento, contraste, aria-live e fechar",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-f114690923c4df918b2c",
+          "file": "design-system.spec.ts",
+          "line": 676,
+          "column": 5
+        },
+        {
+          "title": "DS-toast-dark: toast no tema escuro",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-74257146fca85de398d0",
+          "file": "design-system.spec.ts",
+          "line": 760,
+          "column": 5
+        },
+        {
+          "title": "DS-rwd-390: varredura de overflow e corte em 390px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-8c528de5972e8d1c6223",
+          "file": "design-system.spec.ts",
+          "line": 790,
+          "column": 7
+        },
+        {
+          "title": "DS-rwd-768: varredura de overflow e corte em 768px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-7c1a640d413e755f93eb",
+          "file": "design-system.spec.ts",
+          "line": 790,
+          "column": 7
+        },
+        {
+          "title": "DS-rwd-1024: varredura de overflow e corte em 1024px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-9a5b5b61ff47fc77cc78",
+          "file": "design-system.spec.ts",
+          "line": 790,
+          "column": 7
+        },
+        {
+          "title": "DS-rwd-dialog: dialog cabe na tela em 390px (max-h/rodapé alcançável)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-85dc9a910c7f2bd779a6",
+          "file": "design-system.spec.ts",
+          "line": 840,
+          "column": 5
+        },
+        {
+          "title": "DS-dark: varredura completa no tema escuro",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-d91b3d3a63d54d48c154",
+          "file": "design-system.spec.ts",
+          "line": 896,
+          "column": 5
+        },
+        {
+          "title": "DS-dark-shots: pares claro/escuro das telas de referência",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-e606e968e03ea6e91ddd",
+          "file": "design-system.spec.ts",
+          "line": 950,
+          "column": 5
+        },
+        {
+          "title": "DS-a11y-shell: skip link, ordem de tabulação, aria-current, landmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-310640d317c978d4be82",
+          "file": "design-system.spec.ts",
+          "line": 973,
+          "column": 5
+        },
+        {
+          "title": "DS-a11y-focus: anel de foco real (outline computado) nos controles da shell",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-4e049cf19e0d117137d3",
+          "file": "design-system.spec.ts",
+          "line": 1036,
+          "column": 5
+        },
+        {
+          "title": "DS-token-contrast: razão AA de cada par de tokens, claro e escuro",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-3778682e27ce1d72fbfa",
+          "file": "design-system.spec.ts",
+          "line": 1084,
+          "column": 5
+        },
+        {
+          "title": "DS-a11y-dialog: foco preso no dialog e devolvido ao fechar",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-9698591ff5465dd38f7e",
+          "file": "design-system.spec.ts",
+          "line": 1144,
+          "column": 5
+        },
+        {
+          "title": "DS-a11y-palette: paleta de comandos só pelo teclado",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-4045f619b770ac3ce0f8",
+          "file": "design-system.spec.ts",
+          "line": 1222,
+          "column": 5
+        },
+        {
+          "title": "DS-load: skeleton × spinner × nada, rota a rota",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "cb9959aea8a42eda7d1c-246a010b14239cd73b80",
+          "file": "design-system.spec.ts",
+          "line": 1287,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-03T23:02:54.131Z",
+    "duration": 91.67599999999993,
+    "expected": 0,
+    "skipped": 22,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

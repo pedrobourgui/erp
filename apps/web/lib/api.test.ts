@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AxiosError } from 'axios';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { getApiErrorMessage } from './api';
 
-function axiosErrorWith(data: unknown): AxiosError {
+function axiosErrorWith(data: unknown, status = 400): AxiosError {
   const err = new AxiosError('Request failed');
-  err.response = { data, status: 400, statusText: 'Bad Request', headers: {}, config: {} } as never;
+  err.response = { data, status, statusText: 'Bad Request', headers: {}, config: {} } as never;
   return err;
 }
 
@@ -25,6 +26,26 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage(axiosErrorWith({}))).toBeUndefined();
     expect(getApiErrorMessage(axiosErrorWith({ message: '   ' }))).toBeUndefined();
     expect(getApiErrorMessage(axiosErrorWith({ message: 42 }))).toBeUndefined();
+  });
+
+  // FN-71: a 403 used to reach the user as "Erro ao criar metodo. Tente
+  // novamente." — which reads as a bug in the system, so people retry forever.
+  it('explains a 403 instead of letting it read as a technical failure', () => {
+    expect(
+      getApiErrorMessage(axiosErrorWith({ message: 'Permissão insuficiente para esta ação' }, 403))
+    ).toBe('Você não tem permissão para realizar esta ação. Fale com o administrador.');
+  });
+
+  it('overrides the backend message on a 403 even when it has none', () => {
+    expect(getApiErrorMessage(axiosErrorWith({}, 403))).toBe(
+      'Você não tem permissão para realizar esta ação. Fale com o administrador.'
+    );
+  });
+
+  it('keeps the backend message for every other status', () => {
+    expect(getApiErrorMessage(axiosErrorWith({ message: 'Saldo insuficiente' }, 409))).toBe(
+      'Saldo insuficiente'
+    );
   });
 
   it('returns undefined for non-Axios errors', () => {
@@ -131,6 +152,65 @@ describe('api module', () => {
       // Verify interceptors exist
       expect(api.interceptors.request).toBeDefined();
       expect(api.interceptors.response).toBeDefined();
+    });
+
+    // AE-03: a 401 from the login endpoint means "wrong credentials". Treating it
+    // as an expired session fired /auth/refresh, failed, and reloaded the page —
+    // wiping the error message the login form had just set.
+    it('AE-03: does not run the refresh flow for a 401 from /auth/login', async () => {
+      localStorage.setItem('erp_refresh_token', 'some-refresh-token');
+
+      const axiosModule = await import('axios');
+      const postSpy = vi.spyOn(axiosModule.default, 'post');
+
+      const { default: api } = await import('./api');
+      api.defaults.adapter = async (config) => {
+        throw {
+          response: {
+            status: 401,
+            data: { message: 'Email ou senha inválidos' },
+            headers: {},
+            statusText: 'Unauthorized',
+          },
+          config,
+          isAxiosError: true,
+        };
+      };
+
+      await expect(
+        api.post('/auth/login', { email: 'a@b.com', password: 'wrong' })
+      ).rejects.toMatchObject({ response: { status: 401 } });
+
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+
+    it('AE-03: still runs the refresh flow for a 401 from a protected route', async () => {
+      localStorage.setItem('erp_token', 'expired');
+      localStorage.setItem('erp_refresh_token', 'valid-refresh');
+
+      const axiosModule = await import('axios');
+      const postSpy = vi.spyOn(axiosModule.default, 'post').mockResolvedValue({
+        data: { data: { accessToken: 'new-token', refreshToken: 'new-refresh' } },
+      } as never);
+
+      const { default: api } = await import('./api');
+      let call = 0;
+      api.defaults.adapter = async (config) => {
+        call++;
+        if (call === 1) {
+          throw {
+            response: { status: 401, data: {}, headers: {}, statusText: 'Unauthorized' },
+            config,
+            isAxiosError: true,
+          };
+        }
+        return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config } as never;
+      };
+
+      await expect(api.get('/products')).resolves.toMatchObject({ status: 200 });
+
+      expect(postSpy).toHaveBeenCalledOnce();
+      expect(localStorage.getItem('erp_token')).toBe('new-token');
     });
   });
 

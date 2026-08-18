@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -32,7 +33,7 @@ export class PaymentMethodsController {
   ) {}
 
   @Get()
-  @RequirePermissions('financial:read')
+  @RequirePermissions('payment-methods:read')
   @ApiOperation({ summary: 'List payment methods with filters' })
   async findAll(
     @CurrentTenant() tenantId: string,
@@ -42,7 +43,7 @@ export class PaymentMethodsController {
   }
 
   @Get(':id')
-  @RequirePermissions('financial:read')
+  @RequirePermissions('payment-methods:read')
   @ApiOperation({ summary: 'Get a payment method by ID' })
   async findOne(
     @CurrentTenant() tenantId: string,
@@ -74,5 +75,17 @@ export class PaymentMethodsController {
   ) {
     const method = await this.paymentMethodsService.update(tenantId, id, dto);
     return { success: true, data: method };
+  }
+
+  @Delete(':id')
+  @RequirePermissions('financial:delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Exclui a forma de pagamento. Se já foi usada em algum pedido ou título, é inativada em vez de excluída.',
+  })
+  async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    const result = await this.paymentMethodsService.remove(tenantId, id);
+    return { success: true, data: result };
   }
 }

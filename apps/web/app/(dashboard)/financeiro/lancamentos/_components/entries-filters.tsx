@@ -9,7 +9,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
-import type { FinancialEntryListParams } from "@/hooks/use-financial-entries";
+import type {
+  FinancialEntryListParams,
+  FinancialEntryStatusFilter,
+  FinancialEntryType,
+} from "@/hooks/use-financial-entries";
+import { cn, isInvertedRange } from "@/lib/utils";
 
 const ALL = "all";
 
@@ -22,30 +27,44 @@ export function EntriesFilters({ filters, onChange }: EntriesFiltersProps) {
   const { data: accountsData } = useFinancialAccounts({ isActive: true });
   const accounts = accountsData?.data ?? [];
 
+  // FN-23: an inverted period returned an empty list with the generic "Ajuste
+  // os filtros", leaving the user to guess what was wrong.
+  const invertedRange = isInvertedRange(filters.startDate, filters.endDate);
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">De</label>
         <Input
           type="date"
+          max={filters.endDate || undefined}
           value={filters.startDate ?? ""}
           onChange={(e) => onChange({ startDate: e.target.value })}
+          className={cn(invertedRange && "border-destructive")}
         />
       </div>
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">Até</label>
         <Input
           type="date"
+          min={filters.startDate || undefined}
           value={filters.endDate ?? ""}
           onChange={(e) => onChange({ endDate: e.target.value })}
+          className={cn(invertedRange && "border-destructive")}
+          aria-invalid={invertedRange}
         />
+        {invertedRange ? <p className="text-xs text-destructive">
+            A data final deve ser posterior à inicial.
+          </p> : null}
       </div>
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">Tipo</label>
         <Select
           value={filters.type ?? ALL}
           onValueChange={(v) =>
-            onChange({ type: v === ALL ? undefined : (v as "REVENUE" | "EXPENSE") })
+            onChange({
+              type: v === ALL ? undefined : (v as FinancialEntryType),
+            })
           }
         >
           <SelectTrigger>
@@ -55,6 +74,7 @@ export function EntriesFilters({ filters, onChange }: EntriesFiltersProps) {
             <SelectItem value={ALL}>Todos</SelectItem>
             <SelectItem value="REVENUE">Receita</SelectItem>
             <SelectItem value="EXPENSE">Despesa</SelectItem>
+            <SelectItem value="TRANSFER">Transferência</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -82,7 +102,9 @@ export function EntriesFilters({ filters, onChange }: EntriesFiltersProps) {
         <Select
           value={filters.status ?? ALL}
           onValueChange={(v) =>
-            onChange({ status: v === ALL ? undefined : (v as "PAID" | "OPEN") })
+            onChange({
+              status: v === ALL ? undefined : (v as FinancialEntryStatusFilter),
+            })
           }
         >
           <SelectTrigger>
@@ -92,6 +114,7 @@ export function EntriesFilters({ filters, onChange }: EntriesFiltersProps) {
             <SelectItem value={ALL}>Todos</SelectItem>
             <SelectItem value="PAID">Pago</SelectItem>
             <SelectItem value="OPEN">Em aberto</SelectItem>
+            <SelectItem value="OVERDUE">Vencido</SelectItem>
           </SelectContent>
         </Select>
       </div>

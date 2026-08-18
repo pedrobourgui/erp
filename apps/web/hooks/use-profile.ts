@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
 import type { ApiResponse } from "@erp/shared-types";
+import { useMutation, useQuery } from "@tanstack/react-query";
+
+import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 
 // ─── Query ─────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ export interface ChangePasswordPayload {
 /** Reflects updated profile fields into the global auth store. */
 function syncAuthStore(profile: UserProfile) {
   const current = useAuthStore.getState().user;
-  if (!current) return;
+  if (!current) {return;}
   useAuthStore.getState().setUser({
     ...current,
     name: profile.name,

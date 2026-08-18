@@ -1,0 +1,124 @@
+{
+  "/estoque/produtos": {
+    "canDisableWrappers": 0,
+    "tooltip": null,
+    "orphanDisabled": [
+      {
+        "text": "",
+        "ariaLabel": "Primeira página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Página anterior",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Próxima página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Última página",
+        "title": null
+      }
+    ],
+    "sumiramSemExplicacao": [
+      "Importar CSV",
+      "Novo Produto"
+    ]
+  },
+  "/clientes": {
+    "canDisableWrappers": 0,
+    "tooltip": null,
+    "orphanDisabled": [
+      {
+        "text": "",
+        "ariaLabel": "Primeira página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Página anterior",
+        "title": null
+      }
+    ],
+    "sumiramSemExplicacao": []
+  },
+  "/vendas/pedidos": {
+    "canDisableWrappers": 0,
+    "tooltip": null,
+    "orphanDisabled": [
+      {
+        "text": "",
+        "ariaLabel": "Primeira página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Página anterior",
+        "title": null
+      }
+    ],
+    "sumiramSemExplicacao": []
+  },
+  "/estoque/categorias": {
+    "canDisableWrappers": 0,
+    "tooltip": null,
+    "orphanDisabled": [
+      {
+        "text": "",
+        "ariaLabel": "Primeira página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Página anterior",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Próxima página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Última página",
+        "title": null
+      }
+    ],
+    "sumiramSemExplicacao": [
+      "Nova Categoria"
+    ]
+  },
+  "/estoque/marcas": {
+    "canDisableWrappers": 0,
+    "tooltip": null,
+    "orphanDisabled": [
+      {
+        "text": "",
+        "ariaLabel": "Primeira página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Página anterior",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Próxima página",
+        "title": null
+      },
+      {
+        "text": "",
+        "ariaLabel": "Última página",
+        "title": null
+      }
+    ],
+    "sumiramSemExplicacao": [
+      "Nova Marca"
+    ]
+  }
+}

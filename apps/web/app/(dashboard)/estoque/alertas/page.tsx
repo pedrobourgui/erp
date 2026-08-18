@@ -1,19 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from "react";
+
+import { RequirePermission } from "@/components/auth/require-permission";
 import {
   DataTable,
   type ColumnDef,
 } from "@/components/tables/data-table";
-import {
-  useStockAlerts,
-  type StockAlert,
-  type AlertStatus,
-} from "@/hooks/use-inventory";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectTrigger,
@@ -21,6 +18,11 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  useStockAlerts,
+  type StockAlert,
+  type AlertStatus,
+} from "@/hooks/use-inventory";
 
 // ─── Columns ────────────────────────────────────────────────────────────
 
@@ -30,14 +32,16 @@ const columns: ColumnDef<StockAlert>[] = [
     header: "Produto",
     accessor: "productName",
     cell: (row) => (
-      <div>
+      // `block truncate` no próprio link: um <a> é inline e transborda a
+      // célula por cima da coluna Estoque Atual sem isso.
+      <div className="min-w-0">
         <Link
           href={`/estoque/produtos/${row.productId}`}
-          className="font-medium text-primary hover:underline"
+          className="block truncate font-medium text-primary hover:underline"
         >
           {row.productName}
         </Link>
-        <p className="text-xs text-muted-foreground font-mono">{row.productSku}</p>
+        <p className="truncate text-xs font-mono text-muted-foreground">{row.productSku}</p>
       </div>
     ),
   },
@@ -51,6 +55,7 @@ const columns: ColumnDef<StockAlert>[] = [
       </span>
     ),
     className: "text-right",
+    nowrap: true,
     headerClassName: "text-right",
   },
   {
@@ -58,6 +63,7 @@ const columns: ColumnDef<StockAlert>[] = [
     header: "Estoque Mínimo",
     accessor: "minStock",
     className: "text-right",
+    nowrap: true,
     headerClassName: "text-right",
   },
   {
@@ -98,12 +104,12 @@ const statusOptions: { value: AlertStatus | ""; label: string }[] = [
 
 // ─── Page ───────────────────────────────────────────────────────────────
 
-export default function StockAlertsPage() {
+function StockAlertsPageContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<AlertStatus | "">("");
 
-  const { data, isLoading } = useStockAlerts({
+  const { data, isLoading, error } = useStockAlerts({
     page,
     limit,
     status: statusFilter || undefined,
@@ -133,11 +139,9 @@ export default function StockAlertsPage() {
             ))}
           </SelectContent>
         </Select>
-        {statusFilter && (
-          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter(""); setPage(1); }}>
+        {statusFilter ? <Button variant="ghost" size="sm" onClick={() => { setStatusFilter(""); setPage(1); }}>
             Limpar filtro
-          </Button>
-        )}
+          </Button> : null}
       </div>
 
       <DataTable<StockAlert>
@@ -147,9 +151,20 @@ export default function StockAlertsPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
         isLoading={isLoading}
+        error={error}
         emptyMessage="Nenhum alerta de estoque"
         emptyDescription="Todos os produtos estão com estoque acima do mínimo."
       />
     </div>
+  );
+}
+
+// AE-27/FN-09: the menu hides this route, but a URL still reaches it — the
+// page guard is the real one.
+export default function StockAlertsPage() {
+  return (
+    <RequirePermission permission="inventory:read" subject="os alertas de estoque">
+      <StockAlertsPageContent />
+    </RequirePermission>
   );
 }

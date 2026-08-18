@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TruncatedText } from "@/components/ui/truncated-text";
 import { formatCurrency } from "@/lib/utils";
+
 import type { ProductVariantDetail } from "./types";
 
 type ProductVariantsCardProps = {
@@ -12,7 +14,9 @@ function variantStock(variant: ProductVariantDetail): number {
 }
 
 function formatAttributes(attributes?: Record<string, string | number> | null): string {
-  if (!attributes || Object.keys(attributes).length === 0) return "—";
+  if (!attributes || Object.keys(attributes).length === 0) {
+    return "—";
+  }
   return Object.entries(attributes)
     .map(([key, value]) => `${key}: ${value}`)
     .join(" · ");
@@ -45,8 +49,12 @@ export function ProductVariantsCard({ variants }: ProductVariantsCardProps) {
               <tbody>
                 {variants.map((variant) => (
                   <tr key={variant.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{variant.name}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{variant.sku}</td>
+                    <td className="py-2 pr-4 font-medium">
+                      <TruncatedText text={variant.name} className="max-w-[32ch]" />
+                    </td>
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      <TruncatedText text={variant.sku} className="max-w-[24ch]" />
+                    </td>
                     <td className="py-2 pr-4 text-muted-foreground">
                       {formatAttributes(variant.attributes)}
                     </td>

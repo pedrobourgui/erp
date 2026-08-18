@@ -4,7 +4,7 @@ import {
   IsOptional,
   IsNumber,
   IsInt,
-  IsEnum,
+  IsIn,
   IsArray,
   ValidateNested,
   IsBoolean,
@@ -15,6 +15,8 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+
+import { IsBrFiscal } from '../../../common/validators/is-br-fiscal.validator';
 
 export class CreateVariantDto {
   @ApiProperty()
@@ -27,9 +29,10 @@ export class CreateVariantDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'GTIN/EAN-8/12/13/14 with check digit, masked or not' })
   @IsOptional()
   @IsString()
+  @IsBrFiscal('ean')
   ean?: string;
 
   @ApiPropertyOptional()
@@ -94,28 +97,37 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({ enum: ['SIMPLE', 'VARIABLE', 'KIT', 'SERVICE'] })
   @IsOptional()
-  @IsEnum(['SIMPLE', 'VARIABLE', 'KIT', 'SERVICE'])
+  @IsIn(['SIMPLE', 'VARIABLE', 'KIT', 'SERVICE'])
   type?: string;
 
   @ApiPropertyOptional({ enum: ['ACTIVE', 'INACTIVE', 'DRAFT'] })
   @IsOptional()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'DRAFT'])
+  @IsIn(['ACTIVE', 'INACTIVE', 'DRAFT'])
   status?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'GTIN/EAN-8/12/13/14 with check digit, masked or not' })
   @IsOptional()
   @IsString()
+  @IsBrFiscal('ean')
   ean?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'NCM with 8 digits, masked or not; stored as digits only' })
   @IsOptional()
   @IsString()
+  @IsBrFiscal('ncm')
   ncm?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'CEST with 7 digits, masked or not; stored as digits only' })
   @IsOptional()
   @IsString()
+  @IsBrFiscal('cest')
   cest?: string;
+
+  @ApiPropertyOptional({ description: 'CFOP with 4 digits, masked or not; stored as digits only' })
+  @IsOptional()
+  @IsString()
+  @IsBrFiscal('cfop')
+  cfop?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -301,7 +313,7 @@ export class ProductQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional()
@@ -316,6 +328,6 @@ export class ProductQueryDto {
 
   @ApiPropertyOptional({ enum: ['ACTIVE', 'INACTIVE', 'DRAFT'] })
   @IsOptional()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'DRAFT'])
+  @IsIn(['ACTIVE', 'INACTIVE', 'DRAFT'])
   status?: string;
 }

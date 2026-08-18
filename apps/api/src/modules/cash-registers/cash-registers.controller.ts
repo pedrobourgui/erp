@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import {
+  CurrentPermissions,
   CurrentTenant,
   CurrentUser,
 } from '../../common/decorators/tenant.decorator';
@@ -151,7 +152,7 @@ export class CashRegistersController {
   }
 
   @Get('cash-registers/:id/session')
-  @RequirePermissions('financial:read')
+  @RequirePermissions('cash-registers:read-session')
   @ApiOperation({ summary: 'Get current open session with movements and totals' })
   async getCurrentSession(
     @CurrentTenant() tenantId: string,
@@ -167,13 +168,16 @@ export class CashRegistersController {
   // ─── Session History ─────────────────────────────────────────────────
 
   @Get('cash-register-sessions')
-  @RequirePermissions('financial:read')
+  @RequirePermissions('cash-registers:read-session')
   @ApiOperation({ summary: 'List cash register sessions with filters' })
   async findAllSessions(
     @CurrentTenant() tenantId: string,
+    @CurrentPermissions() permissions: string[],
     @Query() query: SessionQueryDto,
   ) {
-    return this.cashRegistersService.findAllSessions(tenantId, query);
+    return this.cashRegistersService.findAllSessions(tenantId, query, {
+      openSessionsOnly: !permissions.includes('financial:read'),
+    });
   }
 
   @Get('cash-register-sessions/:id')

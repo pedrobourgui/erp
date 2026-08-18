@@ -25,6 +25,18 @@ export class TenantsController {
     };
   }
 
+  @Get('current/usage')
+  @RequirePermissions('settings:read')
+  @ApiOperation({ summary: 'Plano e consumo real dos limites do tenant' })
+  async getCurrentUsage(@CurrentTenant() tenantId: string) {
+    const usage = await this.tenantsService.getUsage(tenantId);
+
+    return {
+      success: true,
+      data: usage,
+    };
+  }
+
   @Patch('current')
   @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Atualizar dados do tenant atual' })

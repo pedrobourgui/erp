@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -13,6 +13,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import api from '@/lib/api';
+
 import {
   useProducts,
   useProduct,

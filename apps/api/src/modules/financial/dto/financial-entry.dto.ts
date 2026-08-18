@@ -2,7 +2,7 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsEnum,
+  IsIn,
   IsNumber,
   IsPositive,
   IsBoolean,
@@ -20,12 +20,24 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const FINANCIAL_ENTRY_TYPES = ['REVENUE', 'EXPENSE'] as const;
 export type FinancialEntryType = (typeof FINANCIAL_ENTRY_TYPES)[number];
 
+/**
+ * A transfer is never *created* as an entry — it only ever exists as a pair of
+ * transactions (SCRUM-11) — but it does show up in the unified list, so both
+ * the filter and the listed entry accept it.
+ */
+export const FINANCIAL_ENTRY_LIST_TYPES = ['REVENUE', 'EXPENSE', 'TRANSFER'] as const;
+export type FinancialEntryListType = (typeof FINANCIAL_ENTRY_LIST_TYPES)[number];
+
 export const FINANCIAL_ENTRY_STATUS = ['PAID', 'OPEN'] as const;
-export type FinancialEntryStatusFilter = (typeof FINANCIAL_ENTRY_STATUS)[number];
+export type FinancialEntryStatus = (typeof FINANCIAL_ENTRY_STATUS)[number];
+
+/** FN-03: "vencido" is a slice of the open títulos, not a status of its own. */
+export const FINANCIAL_ENTRY_STATUS_FILTERS = ['PAID', 'OPEN', 'OVERDUE'] as const;
+export type FinancialEntryStatusFilter = (typeof FINANCIAL_ENTRY_STATUS_FILTERS)[number];
 
 export class CreateFinancialEntryDto {
   @ApiProperty({ enum: FINANCIAL_ENTRY_TYPES, example: 'REVENUE' })
-  @IsEnum(FINANCIAL_ENTRY_TYPES)
+  @IsIn(FINANCIAL_ENTRY_TYPES)
   type: FinancialEntryType;
 
   @ApiProperty({ example: 'acc-123', description: 'FinancialAccount id' })
@@ -90,18 +102,21 @@ export class FinancialEntryQueryDto {
   @IsDateString()
   endDate?: string;
 
-  @ApiPropertyOptional({ enum: FINANCIAL_ENTRY_TYPES })
+  @ApiPropertyOptional({ enum: FINANCIAL_ENTRY_LIST_TYPES })
   @IsOptional()
-  @IsEnum(FINANCIAL_ENTRY_TYPES)
-  type?: FinancialEntryType;
+  @IsIn(FINANCIAL_ENTRY_LIST_TYPES)
+  type?: FinancialEntryListType;
 
   @ApiPropertyOptional({ description: 'FinancialAccount id' })
   @IsOptional()
   @IsString()
   accountId?: string;
 
-  @ApiPropertyOptional({ enum: FINANCIAL_ENTRY_STATUS, description: 'PAID = pago, OPEN = em aberto' })
+  @ApiPropertyOptional({
+    enum: FINANCIAL_ENTRY_STATUS_FILTERS,
+    description: 'PAID = pago, OPEN = em aberto, OVERDUE = vencido',
+  })
   @IsOptional()
-  @IsEnum(FINANCIAL_ENTRY_STATUS)
+  @IsIn(FINANCIAL_ENTRY_STATUS_FILTERS)
   status?: FinancialEntryStatusFilter;
 }

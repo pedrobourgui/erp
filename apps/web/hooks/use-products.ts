@@ -1,11 +1,12 @@
+import type { Product, PaginatedResponse, ApiResponse, ProductStatus } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { Product, PaginatedResponse, ApiResponse, ProductStatus } from "@erp/shared-types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export interface ProductFormData {
   ncm?: string;
   cest?: string;
   ean?: string;
+  /** CFOP com 4 dígitos — sem ele não se emite NF-e de venda (AE-08). */
+  cfop?: string;
   weight?: number;
   height?: number;
   width?: number;

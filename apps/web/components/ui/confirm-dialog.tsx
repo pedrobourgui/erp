@@ -1,10 +1,17 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import React from "react";
-import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, X } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -24,6 +31,19 @@ interface ConfirmDialogProps {
 
 // ─── Component ──────────────────────────────────────────────────────────
 
+/**
+ * DS-08 / EST-07: isto era uma `<div>` sobreposta com overlay próprio. Sem
+ * `role="dialog"`, um leitor de tela não anunciava que algo tinha aberto; sem
+ * foco preso, o Tab passeava pela página atrás do overlay; sem devolução de
+ * foco, quem fechava com Esc voltava para o topo do documento. Confirmar uma
+ * exclusão é o pior lugar do sistema para o usuário não saber onde está.
+ *
+ * Reconstruído sobre o `Dialog` do Radix, que resolve os três de uma vez e
+ * ainda traz o `max-h-[85vh]` do DS-03 e o travamento de scroll de brinde.
+ *
+ * AE-09 continua valendo: hooks **antes** de qualquer return condicional. Aqui
+ * não há nenhum — o Radix é que decide o que montar a partir de `open`.
+ */
 export function ConfirmDialog({
   open,
   onOpenChange,
@@ -37,57 +57,21 @@ export function ConfirmDialog({
   onCancel,
   icon,
 }: ConfirmDialogProps) {
-  if (!open) return null;
-
-  const handleCancel = () => {
-    onCancel?.();
-    onOpenChange(false);
-  };
-
-  const handleConfirm = () => {
-    onConfirm();
-  };
-
-  // Close on overlay click
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleCancel();
+  /**
+   * Esc, clique no overlay e o "×" do primitivo chegam todos aqui como
+   * `open === false`. Cancelar por qualquer um dos três é cancelar — o
+   * `onCancel` do chamador não pode depender de qual foi.
+   */
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      onCancel?.();
     }
+    onOpenChange(next);
   };
-
-  // Close on Escape
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && open) {
-        handleCancel();
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={handleOverlayClick}
-    >
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-
-      {/* Dialog */}
-      <div className="relative z-50 w-full max-w-md rounded-lg border bg-background p-6 shadow-lg animate-in fade-in-0 zoom-in-95">
-        {/* Close button */}
-        <Tooltip content="Fechar">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </Tooltip>
-
-        {/* Icon */}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
         <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left">
           <div
             className={cn(
@@ -100,20 +84,21 @@ export function ConfirmDialog({
             {icon ?? <AlertTriangle className="h-6 w-6" />}
           </div>
 
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold leading-none tracking-tight">
-              {title}
-            </h3>
-            <div className="mt-2 text-sm text-muted-foreground">{message}</div>
+          <div className="min-w-0 flex-1">
+            <DialogTitle>{title}</DialogTitle>
+            {/* `message` aceita ReactNode, e um `<div>` dentro do `<p>` padrão
+                do Description seria HTML inválido. */}
+            <DialogDescription asChild>
+              <div className="mt-2 text-sm text-muted-foreground">{message}</div>
+            </DialogDescription>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <DialogFooter className="mt-6 flex-col-reverse gap-2 sm:mt-6">
           <Button
             type="button"
             variant="cancel"
-            onClick={handleCancel}
+            onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
             {cancelLabel}
@@ -121,16 +106,16 @@ export function ConfirmDialog({
           <Button
             type="button"
             variant={destructive ? "destructive" : "default"}
-            onClick={handleConfirm}
+            onClick={onConfirm}
             disabled={loading}
           >
-            {loading && (
+            {loading ? (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            )}
+            ) : null}
             {confirmLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

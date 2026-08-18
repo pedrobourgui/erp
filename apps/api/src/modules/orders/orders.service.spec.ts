@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { OrderStatus } from '@erp/shared-types';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import {
@@ -56,7 +57,7 @@ function makeOrder(overrides: Record<string, unknown> = {}) {
         orderId: 'order-uuid-001',
         fromStatus: null,
         toStatus: 'PENDING',
-        notes: 'Order created',
+        notes: 'Pedido criado',
         changedBy: USER_ID,
         createdAt: new Date('2026-03-01'),
       },
@@ -95,6 +96,7 @@ function createMockPrisma() {
       findFirst: jest.fn(),
     },
     cashRegisterSession: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'session-open-default' }]),
       findFirst: jest.fn(),
     },
     paymentMethod: {
@@ -109,6 +111,9 @@ function createMockPrisma() {
     orderStatusHistory: {
       findMany: jest.fn(),
       create: jest.fn(),
+    },
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     $transaction: jest.fn(),
   };
@@ -163,7 +168,7 @@ describe('OrdersService', () => {
     it('should return paginated orders for tenant', async () => {
       const result = await service.findAll(TENANT_ID, { page: 1, limit: 20 });
 
-      expect(result.data).toEqual(paginatedOrders);
+      expect(result.data).toMatchObject(paginatedOrders);
       expect(result.meta.total).toBe(total);
       expect(result.meta.page).toBe(1);
       expect(result.meta.limit).toBe(20);
@@ -196,14 +201,25 @@ describe('OrdersService', () => {
       expect(whereArg.customerId).toBe(customerId);
     });
 
-    it('should filter by date range (dateFrom/dateTo)', async () => {
+    // VD-09: `lte: new Date(dateTo)` is midnight *starting* the last day, so
+    // filtering "today" matched nothing — every order of the day is after it.
+    it('should filter by whole civil days in the tenant timezone', async () => {
       const dateFrom = '2026-01-01';
       const dateTo = '2026-03-31';
       await service.findAll(TENANT_ID, { dateFrom, dateTo });
 
       const whereArg = prisma.order.findMany.mock.calls[0][0].where;
-      expect(whereArg.createdAt.gte).toEqual(new Date(dateFrom));
-      expect(whereArg.createdAt.lte).toEqual(new Date(dateTo));
+      expect(whereArg.createdAt.gte).toEqual(new Date('2026-01-01T03:00:00.000Z'));
+      expect(whereArg.createdAt.lte).toEqual(new Date('2026-04-01T02:59:59.999Z'));
+    });
+
+    it('should include an order created late in the evening of the last day', async () => {
+      await service.findAll(TENANT_ID, { dateFrom: '2026-07-31', dateTo: '2026-07-31' });
+
+      const { gte, lte } = prisma.order.findMany.mock.calls[0][0].where.createdAt;
+      const lateSale = new Date('2026-08-01T02:50:00.000Z'); // 23:50 of 31/07 in -03
+
+      expect(lateSale >= gte && lateSale <= lte).toBe(true);
     });
 
     it('should search by order number', async () => {
@@ -228,6 +244,18 @@ describe('OrdersService', () => {
       expect(whereArg.tenantId).not.toBe(OTHER_TENANT_ID);
     });
 
+    it('should expose allowedTransitions on every row', async () => {
+      prisma.order.findMany.mockResolvedValue([
+        makeOrder({ status: 'PICKING' }),
+        makeOrder({ id: 'order-uuid-002', status: 'CANCELLED' }),
+      ]);
+
+      const result = await service.findAll(TENANT_ID, {});
+
+      expect(result.data[0].allowedTransitions).toEqual(['PACKED', 'CANCELLED']);
+      expect(result.data[1].allowedTransitions).toEqual([]);
+    });
+
     it('should include customer info and items count', async () => {
       await service.findAll(TENANT_ID, {});
 
@@ -239,6 +267,57 @@ describe('OrdersService', () => {
 
   // ─── findOne ────────────────────────────────────────────────────────────
 
+  // ─── AE-14: a coluna CLIENTE do dashboard vinha sempre vazia ─────────
+
+  describe('customerName in the list (AE-14)', () => {
+    // A API devolvia `customer: { name }` aninhado e o dashboard lia
+    // `customerName` plano. `undefined` renderiza como célula vazia: a coluna
+    // inteira parecia não ter dado, com o cliente ali do lado no banco.
+    it('exposes customerName flat, the way the dashboard reads it', async () => {
+      prisma.order.findMany.mockResolvedValue([
+        {
+          id: 'order-1',
+          status: 'CONFIRMED',
+          totalAmount: 199.9,
+          customer: { id: 'cust-1', name: 'Maria da Silva', email: 'm@x.com' },
+        },
+      ]);
+      prisma.order.count.mockResolvedValue(1);
+
+      const result = await service.findAll(TENANT_ID, {});
+
+      expect(result.data[0]).toMatchObject({ customerName: 'Maria da Silva' });
+    });
+
+    it('keeps the nested customer for whoever already uses it', async () => {
+      prisma.order.findMany.mockResolvedValue([
+        {
+          id: 'order-1',
+          status: 'CONFIRMED',
+          customer: { id: 'cust-1', name: 'Maria da Silva' },
+        },
+      ]);
+      prisma.order.count.mockResolvedValue(1);
+
+      const result = await service.findAll(TENANT_ID, {});
+
+      expect(result.data[0]).toMatchObject({
+        customer: { id: 'cust-1', name: 'Maria da Silva' },
+      });
+    });
+
+    it('is null for a counter sale with no customer', async () => {
+      prisma.order.findMany.mockResolvedValue([
+        { id: 'order-2', status: 'COMPLETED', customer: null },
+      ]);
+      prisma.order.count.mockResolvedValue(1);
+
+      const result = await service.findAll(TENANT_ID, {});
+
+      expect(result.data[0]).toMatchObject({ customerName: null });
+    });
+  });
+
   describe('findOne', () => {
     it('should return order with items, customer, status history', async () => {
       const order = makeOrder();
@@ -246,7 +325,7 @@ describe('OrdersService', () => {
 
       const result = await service.findOne(TENANT_ID, 'order-uuid-001');
 
-      expect(result).toEqual(order);
+      expect(result).toMatchObject(order);
       expect(prisma.order.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'order-uuid-001', tenantId: TENANT_ID, deletedAt: null },
@@ -265,6 +344,72 @@ describe('OrdersService', () => {
       await expect(service.findOne(TENANT_ID, 'nonexistent')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    // VD-06: the timeline showed a raw cuid because changedBy has no relation.
+    it('should resolve the user name of each status change', async () => {
+      prisma.order.findFirst.mockResolvedValue(makeOrder());
+      prisma.user.findMany.mockResolvedValue([{ id: USER_ID, name: 'Maria' }]);
+
+      const result = await service.findOne(TENANT_ID, 'order-uuid-001');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: [USER_ID] }, tenantId: TENANT_ID },
+        }),
+      );
+      expect(result.statusHistory[0].changedByName).toBe('Maria');
+    });
+
+    it('should return a null user name when the author is unknown', async () => {
+      prisma.order.findFirst.mockResolvedValue(makeOrder());
+      prisma.user.findMany.mockResolvedValue([]);
+
+      const result = await service.findOne(TENANT_ID, 'order-uuid-001');
+
+      expect(result.statusHistory[0].changedByName).toBeNull();
+    });
+
+    // VD-02: the UI must render its action buttons from this field instead of
+    // keeping its own copy of the state machine.
+    it.each<[OrderStatus, OrderStatus[]]>([
+      ['PENDING', ['CONFIRMED', 'CANCELLED']],
+      ['CONFIRMED', ['PICKING', 'CANCELLED']],
+      ['PICKING', ['PACKED', 'CANCELLED']],
+      ['PACKED', ['SHIPPED', 'CANCELLED']],
+      ['SHIPPED', ['DELIVERED']],
+      ['DELIVERED', ['COMPLETED', 'RETURNED']],
+      ['COMPLETED', []],
+      ['CANCELLED', []],
+      ['RETURNED', []],
+    ])('should expose allowedTransitions for %s', async (status, expected) => {
+      prisma.order.findFirst.mockResolvedValue(makeOrder({ status }));
+
+      const result = await service.findOne(TENANT_ID, 'order-uuid-001');
+
+      expect(result.allowedTransitions).toEqual(expected);
+    });
+
+    // VD-14: a counter sale is born COMPLETED and had no action at all — a
+    // wrong sale at the PDV could not be undone through the application.
+    it('should offer RETURNED for a completed counter sale', async () => {
+      prisma.order.findFirst.mockResolvedValue(
+        makeOrder({ status: 'COMPLETED', origin: 'BALCAO' }),
+      );
+
+      const result = await service.findOne(TENANT_ID, 'order-uuid-001');
+
+      expect(result.allowedTransitions).toEqual(['RETURNED']);
+    });
+
+    it('should not offer RETURNED for a completed order-based sale', async () => {
+      prisma.order.findFirst.mockResolvedValue(
+        makeOrder({ status: 'COMPLETED', origin: 'MANUAL' }),
+      );
+
+      const result = await service.findOne(TENANT_ID, 'order-uuid-001');
+
+      expect(result.allowedTransitions).toEqual([]);
     });
 
     it('should throw NotFoundException when order belongs to another tenant', async () => {
@@ -306,7 +451,7 @@ describe('OrdersService', () => {
       // For generateOrderNumber - no existing orders
       prisma.order.findFirst.mockResolvedValue(null);
       // A sale (default origin MANUAL) requires an open cash register at creation
-      prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-open-default' });
+      prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-open-default' }]);
       prisma.order.create.mockImplementation(async ({ data, include }: Record<string, unknown>) => ({
         id: 'order-uuid-new',
         tenantId: TENANT_ID,
@@ -319,7 +464,7 @@ describe('OrdersService', () => {
           {
             fromStatus: null,
             toStatus: 'PENDING',
-            notes: 'Order created',
+            notes: 'Pedido criado',
             changedBy: USER_ID,
           },
         ],
@@ -340,6 +485,66 @@ describe('OrdersService', () => {
       expect(data.discount).toBe(10);
       expect(data.shippingCost).toBe(15);
       expect(data.totalAmount).toBe(250);
+    });
+
+    // ─── VD-10: desconto acima do valor ────────────────────────────────────
+
+    it('should refuse a per-item discount larger than the line', async () => {
+      // The cart already refused it; the API only ran `calculateItemTotal`,
+      // which clamps at zero — so R$ 80 off a R$ 50 line was accepted and
+      // stored as a completed sale of R$ 0,00.
+      const dto = {
+        ...createDto,
+        discount: 0,
+        items: [{ productId: 'prod-uuid-002', quantity: 1, unitPrice: 50, discount: 80 }],
+      };
+      prisma.product.findMany.mockResolvedValue([products[1]]);
+
+      await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('should name the product and the maximum in the discount message', async () => {
+      const dto = {
+        ...createDto,
+        discount: 0,
+        items: [{ productId: 'prod-uuid-002', quantity: 1, unitPrice: 50, discount: 80 }],
+      };
+      prisma.product.findMany.mockResolvedValue([products[1]]);
+
+      // AE-12a: actionable — which line, and what the limit is.
+      await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+        /SKU-002/,
+      );
+      await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+        /50,00/,
+      );
+    });
+
+    it('should accept a discount exactly equal to the line value', async () => {
+      const dto = {
+        ...createDto,
+        discount: 0,
+        items: [{ productId: 'prod-uuid-002', quantity: 1, unitPrice: 50, discount: 50 }],
+      };
+      prisma.product.findMany.mockResolvedValue([products[1]]);
+
+      await expect(service.create(TENANT_ID, USER_ID, dto as any)).resolves.toBeDefined();
+    });
+
+    it('should refuse an order discount larger than the subtotal', async () => {
+      const dto = {
+        ...createDto,
+        items: [{ productId: 'prod-uuid-002', quantity: 1, unitPrice: 50 }],
+        discount: 500,
+      };
+      prisma.product.findMany.mockResolvedValue([products[1]]);
+
+      await expect(service.create(TENANT_ID, USER_ID, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should auto-generate sequential order number (PED-XXXXXX)', async () => {
@@ -424,7 +629,11 @@ describe('OrdersService', () => {
       expect(data.totalAmount).toBe(245 - 10 + 15); // 250
     });
 
-    it('should floor totalPrice to zero when discount exceeds line total', async () => {
+    it('should refuse — not floor — a discount that exceeds the line total', async () => {
+      // This test used to assert `totalPrice === 0`, which is what the bug
+      // looked like from the inside: the arithmetic helper clamps, so an
+      // absurd discount produced a valid-looking sale worth nothing. Clamping
+      // is right for display; accepting the input was not (VD-10).
       const dtoWithBigDiscount = {
         customerId: 'cust-uuid-001',
         items: [
@@ -434,10 +643,10 @@ describe('OrdersService', () => {
       prisma.product.findMany.mockResolvedValue([products[0]]);
       prisma.order.findFirst.mockResolvedValue(null);
 
-      await service.create(TENANT_ID, USER_ID, dtoWithBigDiscount as any);
-
-      const itemsCreated = prisma.order.create.mock.calls[0][0].data.items.create;
-      expect(itemsCreated[0].totalPrice).toBe(0);
+      await expect(
+        service.create(TENANT_ID, USER_ID, dtoWithBigDiscount as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.order.create).not.toHaveBeenCalled();
     });
 
     it('should emit ORDER_CREATED event', async () => {
@@ -457,13 +666,85 @@ describe('OrdersService', () => {
         expect.objectContaining({
           fromStatus: null,
           toStatus: 'PENDING',
-          notes: 'Order created',
+          notes: 'Pedido criado',
           changedBy: USER_ID,
         }),
       );
     });
 
     // ─── counter sale (BALCAO) requires an open cash register ─────────────
+    // ─── FN-05: com dois caixas abertos, a venda tem que dizer qual ─────
+
+    describe('cash register session choice (FN-05)', () => {
+      const counterSaleDto = { ...createDto, origin: 'BALCAO' };
+
+      beforeEach(() => {
+        prisma.inventoryItem.findFirst.mockResolvedValue({
+          id: 'ii-001',
+          available: 999,
+          product: { name: 'Widget A', sku: 'SKU-001' },
+        });
+      });
+
+      it('uses the only open session when there is exactly one', async () => {
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-1' }]);
+
+        await service.create(TENANT_ID, USER_ID, counterSaleDto as any);
+
+        const data = prisma.order.create.mock.calls[0][0].data;
+        expect(data.cashRegisterSessionId).toBe('session-1');
+      });
+
+      it('registers the sale on the session the caller chose', async () => {
+        prisma.cashRegisterSession.findMany.mockResolvedValue([
+          { id: 'session-1' },
+          { id: 'session-2' },
+        ]);
+
+        await service.create(TENANT_ID, USER_ID, {
+          ...counterSaleDto,
+          cashRegisterSessionId: 'session-2',
+        } as any);
+
+        const data = prisma.order.create.mock.calls[0][0].data;
+        expect(data.cashRegisterSessionId).toBe('session-2');
+      });
+
+      it('refuses to guess when two registers are open and none was chosen', async () => {
+        // Two PDVs open at once is legitimate in retail; picking one silently
+        // stamped the sale on the wrong drawer and broke both closings.
+        prisma.cashRegisterSession.findMany.mockResolvedValue([
+          { id: 'session-1' },
+          { id: 'session-2' },
+        ]);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, counterSaleDto as any),
+        ).rejects.toThrow(ConflictException);
+        expect(prisma.order.create).not.toHaveBeenCalled();
+      });
+
+      it('refuses a session that is not open for this tenant', async () => {
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-1' }]);
+
+        await expect(
+          service.create(TENANT_ID, USER_ID, {
+            ...counterSaleDto,
+            cashRegisterSessionId: 'session-from-another-tenant',
+          } as any),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('queries only open sessions of this tenant', async () => {
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-1' }]);
+
+        await service.create(TENANT_ID, USER_ID, counterSaleDto as any);
+
+        const where = prisma.cashRegisterSession.findMany.mock.calls[0][0].where;
+        expect(where).toMatchObject({ tenantId: TENANT_ID, status: 'OPEN' });
+      });
+    });
+
     describe('counter sale (origin BALCAO)', () => {
       const counterSaleDto = {
         ...createDto,
@@ -471,7 +752,7 @@ describe('OrdersService', () => {
       };
 
       it('should throw ConflictException when there is no open cash register', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+        prisma.cashRegisterSession.findMany.mockResolvedValue([]);
 
         await expect(
           service.create(TENANT_ID, USER_ID, counterSaleDto as any),
@@ -482,19 +763,19 @@ describe('OrdersService', () => {
       });
 
       it('should look up the open session scoped by tenant and status OPEN', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+        prisma.cashRegisterSession.findMany.mockResolvedValue([]);
 
         await expect(
           service.create(TENANT_ID, USER_ID, counterSaleDto as any),
         ).rejects.toThrow(ConflictException);
 
-        const whereArg = prisma.cashRegisterSession.findFirst.mock.calls[0][0].where;
+        const whereArg = prisma.cashRegisterSession.findMany.mock.calls[0][0].where;
         expect(whereArg.tenantId).toBe(TENANT_ID);
         expect(whereArg.status).toBe('OPEN');
       });
 
       it('should create the counter sale when a cash register is open', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-uuid-001' }]);
         // stock available for both items so validateStockForConfirmation passes
         prisma.inventoryItem.findFirst.mockResolvedValue({
           id: 'ii-001',
@@ -522,7 +803,7 @@ describe('OrdersService', () => {
       };
 
       it('should throw ConflictException when there is no open cash register', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+        prisma.cashRegisterSession.findMany.mockResolvedValue([]);
 
         await expect(
           service.create(TENANT_ID, USER_ID, orderSaleDto as any),
@@ -533,19 +814,19 @@ describe('OrdersService', () => {
       });
 
       it('should look up the open session scoped by tenant and status OPEN', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+        prisma.cashRegisterSession.findMany.mockResolvedValue([]);
 
         await expect(
           service.create(TENANT_ID, USER_ID, orderSaleDto as any),
         ).rejects.toThrow(ConflictException);
 
-        const whereArg = prisma.cashRegisterSession.findFirst.mock.calls[0][0].where;
+        const whereArg = prisma.cashRegisterSession.findMany.mock.calls[0][0].where;
         expect(whereArg.tenantId).toBe(TENANT_ID);
         expect(whereArg.status).toBe('OPEN');
       });
 
       it('should create the order (status PENDING) when a cash register is open', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-uuid-001' }]);
 
         await service.create(TENANT_ID, USER_ID, orderSaleDto as any);
 
@@ -556,7 +837,7 @@ describe('OrdersService', () => {
       });
 
       it('should stamp the open session so cash paid on the order reaches the drawer', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue({ id: 'session-uuid-001' });
+        prisma.cashRegisterSession.findMany.mockResolvedValue([{ id: 'session-uuid-001' }]);
 
         await service.create(TENANT_ID, USER_ID, orderSaleDto as any);
 
@@ -568,7 +849,7 @@ describe('OrdersService', () => {
     // ─── external channels are exempt from the open-cash-register rule ────────
     describe('external channel origins (exempt)', () => {
       it('should NOT require an open cash register for marketplace origins', async () => {
-        prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
+        prisma.cashRegisterSession.findMany.mockResolvedValue([]);
 
         await service.create(
           TENANT_ID,
@@ -692,7 +973,7 @@ describe('OrdersService', () => {
       });
     });
 
-    it.each([
+    it.each<[OrderStatus, OrderStatus]>([
       ['PENDING', 'CONFIRMED'],
       ['CONFIRMED', 'PICKING'],
       ['PICKING', 'PACKED'],
@@ -944,6 +1225,61 @@ describe('OrdersService', () => {
       expect(updateData.cancelReason).toBe(cancelDto.reason);
     });
 
+    // VD-01: the UI used to cancel through PATCH /status, which only flipped the
+    // column — stock stayed reserved and the receivable stayed open. There must
+    // be a single cancellation path no matter which endpoint is called.
+    describe('via updateStatus (VD-01)', () => {
+      it('should release stock and emit order.cancelled exactly once', async () => {
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'CONFIRMED' }));
+
+        await service.updateStatus(TENANT_ID, 'order-uuid-001', USER_ID, {
+          status: 'CANCELLED',
+          notes: 'Cliente desistiu',
+        });
+
+        const cancelEvents = eventEmitter.emit.mock.calls.filter(
+          ([name]: [string]) => name === 'order.cancelled',
+        );
+        expect(cancelEvents).toHaveLength(1);
+        expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+      });
+
+      it('should set cancelledAt and carry the notes as cancelReason', async () => {
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'PENDING' }));
+
+        await service.updateStatus(TENANT_ID, 'order-uuid-001', USER_ID, {
+          status: 'CANCELLED',
+          notes: 'Cliente desistiu',
+        });
+
+        const updateData = prisma.order.update.mock.calls[0][0].data;
+        expect(updateData.status).toBe('CANCELLED');
+        expect(updateData.cancelledAt).toBeInstanceOf(Date);
+        expect(updateData.cancelReason).toBe('Cliente desistiu');
+      });
+
+      it('should fall back to a default reason when no notes are given', async () => {
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'PENDING' }));
+
+        await service.updateStatus(TENANT_ID, 'order-uuid-001', USER_ID, {
+          status: 'CANCELLED',
+        });
+
+        const updateData = prisma.order.update.mock.calls[0][0].data;
+        expect(updateData.cancelReason).toBeTruthy();
+      });
+
+      it('should still reject cancelling a terminal order', async () => {
+        prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'COMPLETED' }));
+
+        await expect(
+          service.updateStatus(TENANT_ID, 'order-uuid-001', USER_ID, {
+            status: 'CANCELLED',
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
+    });
+
     it('should emit ORDER_CANCELLED event', async () => {
       prisma.order.findFirst.mockResolvedValue(makeOrder({ status: 'PENDING' }));
 
@@ -1046,7 +1382,7 @@ describe('OrdersService', () => {
       });
     });
 
-    const validTransitions: [string, string][] = [
+    const validTransitions: [OrderStatus, OrderStatus][] = [
       ['DRAFT', 'PENDING'],
       ['DRAFT', 'CANCELLED'],
       ['PENDING', 'CONFIRMED'],
@@ -1062,7 +1398,7 @@ describe('OrdersService', () => {
       ['DELIVERED', 'RETURNED'],
     ];
 
-    const invalidTransitions: [string, string][] = [
+    const invalidTransitions: [OrderStatus, OrderStatus][] = [
       ['PENDING', 'SHIPPED'],
       ['PENDING', 'DELIVERED'],
       ['PENDING', 'COMPLETED'],

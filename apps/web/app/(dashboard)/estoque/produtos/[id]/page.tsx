@@ -1,16 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useProduct, useDeleteProduct } from "@/hooks/use-products";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
 import {
   ArrowLeft,
   Edit,
@@ -20,15 +9,32 @@ import {
   DollarSign,
   Barcode,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { useProduct, useDeleteProduct } from "@/hooks/use-products";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
+import { formatCurrency } from "@/lib/utils";
+
+
+
 import {
   ProductGeneralCard,
   ProductFiscalCard,
 } from "./_components/product-general-card";
-import { ProductVariantsCard } from "./_components/product-variants-card";
 import { ProductImagesCard } from "./_components/product-images-card";
 import { ProductStockCard } from "./_components/product-stock-card";
+import { ProductVariantsCard } from "./_components/product-variants-card";
 import type { ProductDetail } from "./_components/types";
+
 
 // ─── Page ───────────────────────────────────────────────────────────────
 
@@ -66,29 +72,43 @@ export default function ProductDetailPage() {
       await deleteProduct.mutateAsync(productId);
       addToast("Produto excluído com sucesso!", "success");
       router.push("/estoque/produtos");
-    } catch {
-      addToast("Erro ao excluir produto. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getMutationErrorMessage(
+          err,
+          "Erro ao excluir produto. Tente novamente."
+        ),
+        "error"
+      );
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <Tooltip content="Voltar">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Tooltip>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
-              <StatusBadge status={product.status} size="md" />
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <TruncatedText
+                as="h1"
+                text={product.name}
+                className="text-3xl font-bold tracking-tight"
+              />
+              <StatusBadge status={product.status} size="md" className="shrink-0" />
             </div>
-            <p className="font-mono text-sm text-muted-foreground">SKU: {product.sku}</p>
+            <TruncatedText
+              as="p"
+              text={`SKU: ${product.sku}`}
+              className="font-mono text-sm text-muted-foreground"
+            />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link href={`/estoque/produtos/${productId}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
@@ -127,12 +147,12 @@ export default function ProductDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
               <Barcode className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground">SKU</p>
-              <p className="text-lg font-bold font-mono">{product.sku}</p>
+              <TruncatedText text={product.sku} className="font-mono text-lg font-bold" />
             </div>
           </CardContent>
         </Card>

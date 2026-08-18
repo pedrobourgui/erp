@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { Prisma, PaymentMethodType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
@@ -67,7 +68,7 @@ export class PaymentMethodsService {
 
     if (!method) {
       throw new NotFoundException(
-        `Payment method with id ${id} not found for tenant ${tenantId}`,
+        `Forma de pagamento não encontrada`,
       );
     }
 
@@ -75,13 +76,15 @@ export class PaymentMethodsService {
   }
 
   async create(tenantId: string, dto: CreatePaymentMethodDto) {
+    assertImmediateHasAccount(dto.type, dto.defaultAccountId);
+
     if (dto.defaultAccountId) {
       const account = await this.prisma.financialAccount.findFirst({
         where: { id: dto.defaultAccountId, tenantId },
       });
       if (!account) {
         throw new NotFoundException(
-          `Financial account ${dto.defaultAccountId} not found for tenant ${tenantId}`,
+          `Conta financeira não encontrada`,
         );
       }
     }
@@ -119,9 +122,18 @@ export class PaymentMethodsService {
 
     if (!existing) {
       throw new NotFoundException(
-        `Payment method with id ${id} not found for tenant ${tenantId}`,
+        `Forma de pagamento não encontrada`,
       );
     }
+
+    // VD-11: o tipo resultante da edição é o que vale — trocar um boleto para
+    // dinheiro sem vincular conta recria exatamente o bug.
+    assertImmediateHasAccount(
+      dto.type ?? existing.type,
+      dto.defaultAccountId !== undefined
+        ? dto.defaultAccountId
+        : existing.defaultAccountId,
+    );
 
     if (dto.defaultAccountId) {
       const account = await this.prisma.financialAccount.findFirst({
@@ -129,7 +141,7 @@ export class PaymentMethodsService {
       });
       if (!account) {
         throw new NotFoundException(
-          `Financial account ${dto.defaultAccountId} not found for tenant ${tenantId}`,
+          `Conta financeira não encontrada`,
         );
       }
     }
@@ -160,4 +172,67 @@ export class PaymentMethodsService {
 
     return updated;
   }
+
+  async remove(tenantId: string, id: string) {
+    const method = await this.prisma.paymentMethod.findFirst({
+      where: { id, tenantId },
+      select: { id: true, name: true },
+    });
+
+    if (!method) {
+      throw new NotFoundException(
+        `Forma de pagamento não encontrada`,
+      );
+    }
+
+    // Um pedido antigo aponta para este método por `paymentMethodId` — apagar
+    // de verdade quebraria o histórico de vendas já fechadas. Mesma regra do
+    // FN-16 nas contas financeiras: usado vira inativo, nunca usado some.
+    const [orderPayments, receivables, payables] = await Promise.all([
+      this.prisma.orderPayment.count({ where: { tenantId, paymentMethodId: id } }),
+      this.prisma.accountsReceivable.count({ where: { tenantId, paymentMethodId: id } }),
+      this.prisma.accountsPayable.count({ where: { tenantId, paymentMethodId: id } }),
+    ]);
+    const usageCount = orderPayments + receivables + payables;
+
+    if (usageCount > 0) {
+      await this.prisma.paymentMethod.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      this.logger.log(
+        `Payment method ${id} deactivated (${usageCount} references) for tenant ${tenantId}`,
+      );
+      return {
+        id,
+        deactivated: true,
+        message: `A forma de pagamento "${method.name}" já foi usada e foi inativada em vez de excluída.`,
+      };
+    }
+
+    await this.prisma.paymentMethod.delete({ where: { id } });
+    this.logger.log(`Payment method ${id} deleted for tenant ${tenantId}`);
+
+    return { id, deactivated: false, message: 'Forma de pagamento excluída.' };
+  }
+}
+
+/**
+ * Tipos liquidados na hora: o dinheiro entra na conta no momento da venda, então
+ * a conta precisa existir. Sem ela a API recusa a venda (SCRUM-30) — ou pior,
+ * o operador escolhe um método `OTHER` que passa na validação e gera recebível
+ * pendente para uma venda já paga (VD-11).
+ */
+const IMMEDIATE_METHOD_TYPES = ['CASH', 'PIX', 'DEBIT_CARD'];
+
+function assertImmediateHasAccount(
+  type: string | undefined,
+  defaultAccountId: string | null | undefined,
+): void {
+  if (!type || !IMMEDIATE_METHOD_TYPES.includes(type)) return;
+  if (defaultAccountId) return;
+
+  throw new BadRequestException(
+    'Métodos de pagamento à vista (dinheiro, PIX, débito) exigem uma conta financeira vinculada — é nela que o dinheiro entra no momento da venda.',
+  );
 }

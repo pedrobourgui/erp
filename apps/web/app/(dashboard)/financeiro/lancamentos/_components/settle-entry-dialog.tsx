@@ -1,9 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
+import { MoneyInput } from "@/components/forms/money-input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +23,6 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { MoneyInput } from "@/components/forms/money-input";
 import { useToast } from "@/components/ui/toast";
 import { useFinancialAccounts } from "@/hooks/use-financial-accounts";
 import {
@@ -29,7 +31,7 @@ import {
 } from "@/hooks/use-financial-entries";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+
 
 const settleSchema = z.object({
   amount: z.coerce.number().positive("Valor deve ser maior que zero"),
@@ -69,7 +71,9 @@ export function SettleEntryDialog({ entry, onOpenChange }: SettleEntryDialogProp
   const isReceivable = entry?.kind === "RECEIVABLE";
 
   const onSubmit = async (values: SettleFormValues) => {
-    if (!entry) return;
+    if (!entry) {
+      return;
+    }
     try {
       await settleMutation.mutateAsync({
         id: entry.id,
@@ -103,7 +107,9 @@ export function SettleEntryDialog({ entry, onOpenChange }: SettleEntryDialogProp
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4"
+          noValidate
+        >
           <MoneyInput
             name="amount"
             control={control}
@@ -133,9 +139,7 @@ export function SettleEntryDialog({ entry, onOpenChange }: SettleEntryDialogProp
                 </Select>
               )}
             />
-            {errors.accountId && (
-              <p className="text-xs text-destructive">{errors.accountId.message}</p>
-            )}
+            {errors.accountId ? <p className="text-xs text-destructive">{errors.accountId.message}</p> : null}
           </div>
 
           <DialogFooter>
@@ -147,9 +151,7 @@ export function SettleEntryDialog({ entry, onOpenChange }: SettleEntryDialogProp
               Cancelar
             </Button>
             <Button type="submit" variant="success" disabled={settleMutation.isPending}>
-              {settleMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {settleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Confirmar baixa
             </Button>
           </DialogFooter>

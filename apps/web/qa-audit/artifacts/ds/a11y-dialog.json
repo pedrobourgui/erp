@@ -1,0 +1,30 @@
+{
+  "confirmDialog": {
+    "tabTrap": [
+      "FORA:button:",
+      "FORA:button:",
+      "FORA:button:",
+      "FORA:button:",
+      "FORA:button:",
+      "FORA:button:",
+      "FORA:button:20 por página",
+      "DENTRO:button:"
+    ],
+    "dialogAria": {
+      "role": null,
+      "ariaModal": null,
+      "ariaLabelledby": null,
+      "maxHeight": "none"
+    },
+    "focusAfterClose": "body:((e, i, s, u, m, a, "
+  },
+  "radixDialog": {
+    "ariaModal": null,
+    "ariaLabelledby": "radix-:rr:",
+    "ariaDescribedby": "radix-:rs:",
+    "maxHeight": "765px",
+    "overflowY": "hidden",
+    "height": 455,
+    "radius": "10px"
+  }
+}

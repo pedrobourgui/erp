@@ -254,6 +254,361 @@ describe('FinancialEntriesService', () => {
       expect(result.totals.balance).toBe(100);
     });
 
+    // ─── FN-04: a tela precisa saber o que pode editar ──────────────────
+
+    it('flags a título that came from an order so the UI does not offer to edit it', async () => {
+      prisma.accountsReceivable.findMany.mockResolvedValue([
+        {
+          id: 'ar-1',
+          amount: 100,
+          paidAmount: 0,
+          description: 'PED-000010',
+          dueDate: new Date('2026-08-10T03:00:00.000Z'),
+          status: 'PENDING',
+          chartAccountId: null,
+          chartAccount: null,
+          metadata: null,
+          orderPayment: null,
+          paymentMethod: null,
+          orderId: 'order-1',
+        },
+      ]);
+      prisma.accountsReceivable.count.mockResolvedValue(1);
+
+      const result = await service.findAll(TENANT_A, {});
+
+      expect(result.data[0].fromDocument).toBe(true);
+    });
+
+    it('marks a manual título as editable', async () => {
+      prisma.accountsReceivable.findMany.mockResolvedValue([
+        {
+          id: 'ar-2',
+          amount: 100,
+          paidAmount: 0,
+          description: 'Receita manual',
+          dueDate: new Date('2026-08-10T03:00:00.000Z'),
+          status: 'PENDING',
+          chartAccountId: null,
+          chartAccount: null,
+          metadata: null,
+          orderPayment: null,
+          paymentMethod: null,
+          orderId: null,
+        },
+      ]);
+      prisma.accountsReceivable.count.mockResolvedValue(1);
+
+      const result = await service.findAll(TENANT_A, {});
+
+      expect(result.data[0].fromDocument).toBe(false);
+    });
+
+    // ─── FN-04: título excluído não volta na listagem ───────────────────
+
+    it('leaves soft-deleted títulos out of the list and of the totals', async () => {
+      await service.findAll(TENANT_A, {});
+
+      const listWhere = prisma.accountsReceivable.findMany.mock.calls[0][0].where;
+      const totalsWhere = prisma.accountsReceivable.aggregate.mock.calls[0][0].where;
+      expect(listWhere.deletedAt).toBeNull();
+      expect(totalsWhere.deletedAt).toBeNull();
+
+      const payableWhere = prisma.accountsPayable.findMany.mock.calls[0][0].where;
+      expect(payableWhere.deletedAt).toBeNull();
+    });
+
+    // ─── FN-12: transferência entre contas próprias não é receita nem despesa
+
+    describe('internal transfers (FN-12)', () => {
+      // Moving R$ 250 from Santander to Caixa raised Receitas *and* Despesas by
+      // 250: the money never entered or left the company, so a DRE built on
+      // these totals was inflated on both sides.
+      function transferRow(direction: 'in' | 'out') {
+        return {
+          id: `trx-${direction}`,
+          type: direction === 'in' ? 'CREDIT' : 'DEBIT',
+          amount: 250,
+          description: 'Transferência Santander → Caixa Principal',
+          createdAt: new Date('2026-08-01T12:00:00.000Z'),
+          accountId: direction === 'in' ? 'acc-2' : 'acc-1',
+          chartAccountId: null,
+          chartAccount: null,
+          referenceType: 'transfer',
+        };
+      }
+
+      it('excludes transfers from the revenue and expense totals', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const [creditCall, debitCall] =
+          prisma.financialTransaction.aggregate.mock.calls;
+        expect(creditCall[0].where.referenceType).toEqual({ not: 'transfer' });
+        expect(debitCall[0].where.referenceType).toEqual({ not: 'transfer' });
+      });
+
+      it('still lists them when no type filter is applied', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        // Out of the totals, but never out of the list: the operator has to be
+        // able to see that the money moved between the company's own accounts.
+        expect(where.referenceType).toBeUndefined();
+      });
+
+      it('still lists the two legs, labelled as transfers', async () => {
+        prisma.financialTransaction.findMany.mockResolvedValue([
+          transferRow('out'),
+          transferRow('in'),
+        ]);
+        prisma.financialTransaction.count.mockResolvedValue(2);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data).toHaveLength(2);
+        expect(result.data.every((e) => e.type === 'TRANSFER')).toBe(true);
+      });
+
+      it('keeps a normal sale as REVENUE', async () => {
+        prisma.financialTransaction.findMany.mockResolvedValue([
+          { ...transferRow('in'), referenceType: 'order' },
+        ]);
+        prisma.financialTransaction.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].type).toBe('REVENUE');
+      });
+
+      it('keeps a settlement as REVENUE or EXPENSE', async () => {
+        prisma.financialTransaction.findMany.mockResolvedValue([
+          { ...transferRow('out'), referenceType: 'payable' },
+        ]);
+        prisma.financialTransaction.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].type).toBe('EXPENSE');
+      });
+
+      it('hides both legs when the user filters by REVENUE', async () => {
+        await service.findAll(TENANT_A, { type: 'REVENUE' });
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        // Filtering "receitas" must not surface the credit leg of a transfer:
+        // it is not revenue, and showing it there is what made the total lie.
+        expect(where.referenceType).toEqual({ not: 'transfer' });
+      });
+
+      it('counts the listed rows with the same filter it lists them', async () => {
+        await service.findAll(TENANT_A, {});
+
+        const listWhere =
+          prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        const countWhere = prisma.financialTransaction.count.mock.calls[0][0].where;
+        expect(countWhere).toEqual(listWhere);
+      });
+
+      it('shows only transfers when the user asks for them', async () => {
+        await service.findAll(TENANT_A, { type: 'TRANSFER' });
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        expect(where.referenceType).toBe('transfer');
+        // A título is never a transfer, so neither side is queried.
+        expect(prisma.accountsReceivable.findMany).not.toHaveBeenCalled();
+        expect(prisma.accountsPayable.findMany).not.toHaveBeenCalled();
+      });
+    });
+
+    // ─── FN-03: um título vencido precisa aparecer como Vencido ─────────
+
+    describe('OVERDUE (FN-03)', () => {
+      // Nothing in the codebase ever promoted a título to OVERDUE: the seed's
+      // receivables were due in March and still read "Em aberto" in August.
+      // The status is derived on read (no waiting for a job) and materialised
+      // by the daily job, so filters and reports agree.
+      const YESTERDAY = new Date('2026-07-31T03:00:00.000Z');
+      const TOMORROW = new Date('2026-08-02T03:00:00.000Z');
+
+      beforeEach(() => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-08-01T15:00:00.000Z'));
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      function receivable(overrides: Record<string, unknown>) {
+        return {
+          id: 'ar-1',
+          amount: 300,
+          paidAmount: 0,
+          description: 'Título',
+          dueDate: YESTERDAY,
+          status: 'PENDING',
+          chartAccountId: null,
+          chartAccount: null,
+          metadata: null,
+          orderPayment: null,
+          paymentMethod: null,
+          ...overrides,
+        };
+      }
+
+      it('reads a PENDING título past its due date as OVERDUE', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([receivable({})]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].status).toBe('OVERDUE');
+      });
+
+      it('leaves a título due today alone — the day is not over', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          receivable({ dueDate: new Date('2026-08-01T03:00:00.000Z') }),
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].status).toBe('PENDING');
+      });
+
+      it('leaves a future título alone', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          receivable({ dueDate: TOMORROW }),
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].status).toBe('PENDING');
+      });
+
+      it('promotes a partially paid título too — the rest is still late', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          receivable({ status: 'PARTIALLY_PAID', paidAmount: 100 }),
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].status).toBe('OVERDUE');
+      });
+
+      it('never re-labels a settled or cancelled título', async () => {
+        prisma.accountsPayable.findMany.mockResolvedValue([
+          { ...receivable({ status: 'CANCELLED' }), id: 'ap-1' },
+        ]);
+        prisma.accountsPayable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, { type: 'EXPENSE' });
+
+        expect(result.data[0].status).toBe('CANCELLED');
+      });
+
+      it('filters by OVERDUE with the same rule the list displays', async () => {
+        await service.findAll(TENANT_A, { status: 'OVERDUE' });
+
+        const where = prisma.accountsReceivable.findMany.mock.calls[0][0].where;
+        expect(where.status).toEqual({ in: ['PENDING', 'PARTIALLY_PAID', 'OVERDUE'] });
+        // Past due date, in the tenant timezone: 2026-08-01 00:00 BRT = 03:00Z
+        expect(where.dueDate).toEqual({ lt: new Date('2026-08-01T03:00:00.000Z') });
+      });
+
+      it('lists the overdue títulos before everything else', async () => {
+        prisma.financialTransaction.findMany.mockResolvedValue([
+          {
+            id: 'trx-1',
+            type: 'CREDIT',
+            amount: 100,
+            description: 'Venda de hoje',
+            createdAt: new Date('2026-08-01T12:00:00.000Z'),
+            accountId: 'acc-1',
+            chartAccountId: null,
+            chartAccount: null,
+          },
+        ]);
+        prisma.accountsReceivable.findMany.mockResolvedValue([receivable({})]);
+        prisma.financialTransaction.count.mockResolvedValue(1);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        // The transaction is newer, so date ordering alone would bury the
+        // overdue título — the one row the user has to act on.
+        expect(result.data.map((e) => e.status)).toEqual(['OVERDUE', 'PAID']);
+      });
+
+      it('reports the overdue total as its own figure', async () => {
+        prisma.accountsReceivable.aggregate.mockResolvedValue({
+          _sum: { amount: 500, paidAmount: 100 },
+        });
+        prisma.accountsPayable.aggregate.mockResolvedValue({
+          _sum: { amount: 200, paidAmount: 0 },
+        });
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.totals.overdueRevenue).toBe(400);
+        expect(result.totals.overdueExpense).toBe(200);
+      });
+    });
+
+    // ─── FN-28: nenhum ruído de ponto flutuante na resposta ──────────────
+
+    describe('rounding (FN-28)', () => {
+      it('does not leak float noise into the totals', async () => {
+        // The API answered "balance": 708.9000000000001 for exactly this shape:
+        // a CREDIT of 299.80 plus an open receivable of 409.10.
+        prisma.financialTransaction.aggregate
+          .mockResolvedValueOnce({ _sum: { amount: 299.8 } })
+          .mockResolvedValueOnce({ _sum: { amount: null } });
+        prisma.accountsReceivable.aggregate.mockResolvedValue({
+          _sum: { amount: 409.1, paidAmount: null },
+        });
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.totals.revenue).toBe(708.9);
+        expect(result.totals.balance).toBe(708.9);
+      });
+
+      it('keeps the balance clean when revenue and expense both drift', async () => {
+        prisma.financialTransaction.aggregate
+          .mockResolvedValueOnce({ _sum: { amount: 1000.1 } })
+          .mockResolvedValueOnce({ _sum: { amount: 999.9 } });
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.totals.balance).toBe(0.2);
+      });
+
+      it('rounds the outstanding amount of a título to cents', async () => {
+        prisma.accountsReceivable.findMany.mockResolvedValue([
+          {
+            id: 'ar-1',
+            amount: 708.9,
+            paidAmount: 299.8,
+            description: 'PED-000009',
+            dueDate: new Date('2026-08-01'),
+            status: 'PARTIALLY_PAID',
+            chartAccountId: null,
+            chartAccount: null,
+            metadata: null,
+            orderPayment: null,
+            paymentMethod: null,
+          },
+        ]);
+        prisma.accountsReceivable.count.mockResolvedValue(1);
+
+        const result = await service.findAll(TENANT_A, {});
+
+        expect(result.data[0].amount).toBe(409.1);
+      });
+    });
+
     // ─── SCRUM-41: sales must show up as receitas ─────────────────────────
     describe('sales (SCRUM-41)', () => {
       it('should NOT restrict transactions to manual entries', async () => {
@@ -376,6 +731,46 @@ describe('FinancialEntriesService', () => {
           accountId: 'acc-1',
           accountName: 'Conta Corrente',
         });
+      });
+    });
+
+    // FN-01: the range used to end at 02:59 UTC of the last day (setHours in the
+    // process timezone), so `startDate=endDate=31/07` returned 4 of 11 records.
+    describe('date range (FN-01)', () => {
+      it('should cover whole civil days in the tenant timezone', async () => {
+        await service.findAll(TENANT_A, {
+          startDate: '2026-07-31',
+          endDate: '2026-07-31',
+        });
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        expect(where.createdAt).toEqual({
+          gte: new Date('2026-07-31T03:00:00.000Z'),
+          lte: new Date('2026-08-01T02:59:59.999Z'),
+        });
+      });
+
+      it('should include an entry made at 23:50 of the last day', async () => {
+        await service.findAll(TENANT_A, {
+          startDate: '2026-07-31',
+          endDate: '2026-07-31',
+        });
+
+        const { gte, lte } = prisma.financialTransaction.findMany.mock.calls[0][0].where.createdAt;
+        const lateEntry = new Date('2026-08-01T02:50:00.000Z');
+
+        expect(lateEntry >= gte && lateEntry <= lte).toBe(true);
+      });
+
+      // FN-23: the UI warns first, but an inverted range must not read as "no results".
+      it('should swap an inverted range instead of returning nothing', async () => {
+        await service.findAll(TENANT_A, {
+          startDate: '2026-12-31',
+          endDate: '2026-01-01',
+        });
+
+        const where = prisma.financialTransaction.findMany.mock.calls[0][0].where;
+        expect(where.createdAt.gte < where.createdAt.lte).toBe(true);
       });
     });
 

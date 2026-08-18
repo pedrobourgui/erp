@@ -1,10 +1,11 @@
+import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -24,6 +25,13 @@ export interface PaymentMethod {
   name: string;
   type: PaymentMethodType;
   defaultAccountId: string | null;
+  /**
+   * VD-11: the API has always returned this and the local type dropped it, so
+   * the screen that tells the operator to "configure a conta vinculada" could
+   * not show which account was linked. Same class as AE-13 — a retyped
+   * response silently loses a field and the column just looks empty.
+   */
+  defaultAccount?: { id: string; name: string; type: string } | null;
   feePercentage: number;
   settlementDays: number;
   requiresAuthorization: boolean;
@@ -35,6 +43,9 @@ export interface PaymentMethod {
 
 export interface PaymentMethodListParams {
   search?: string;
+  /** FT-05: aceitos pela API desde sempre e ausentes na tela. */
+  type?: PaymentMethodType;
+  isActive?: boolean;
   limit?: number;
 }
 
@@ -58,6 +69,8 @@ export function usePaymentMethods(params: PaymentMethodListParams = {}) {
         {
           params: {
             search: params.search || undefined,
+            type: params.type || undefined,
+            isActive: params.isActive,
             limit: params.limit ?? 100,
           },
         }
@@ -112,6 +125,30 @@ export function useUpdatePaymentMethod() {
       const { data } = await api.patch<ApiResponse<PaymentMethod>>(
         `/payment-methods/${id}`,
         payload
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: paymentMethodKeys.lists(),
+      });
+    },
+  });
+}
+
+export interface DeletePaymentMethodResult {
+  id: string;
+  deactivated: boolean;
+  message: string;
+}
+
+export function useDeletePaymentMethod() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.delete<ApiResponse<DeletePaymentMethodResult>>(
+        `/payment-methods/${id}`
       );
       return data;
     },

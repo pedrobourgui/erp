@@ -1,72 +1,138 @@
 "use client";
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { useWarehouses, useCreateWarehouse, type Warehouse } from "@/hooks/use-inventory";
+  Plus,
+  Warehouse as WarehouseIcon,
+  MapPin,
+  Package,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import React, { useState } from "react";
+
+import { Can } from "@/components/auth/can";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Warehouse as WarehouseIcon, MapPin, Package, Loader2 } from "lucide-react";
-import { maskCEP } from "@/lib/masks";
+import { Tooltip } from "@/components/ui/tooltip";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import {
+  useWarehouses,
+  useDeleteWarehouse,
+  type Warehouse,
+} from "@/hooks/use-inventory";
+import { getMutationErrorMessage } from "@/lib/mutation-error";
+import { pluralize } from "@/lib/utils";
 
-// ─── Schema ─────────────────────────────────────────────────────────────
+import { WarehouseFormDialog } from "./_components/warehouse-form-dialog";
 
-const warehouseSchema = z.object({
-  name: z.string().min(2, "Nome do depósito é obrigatório").max(255, "Nome muito longo"),
-  address: z.string().min(5, "Endereço é obrigatório (mínimo 5 caracteres)").max(500, "Endereço muito longo"),
-  city: z.string().min(2, "Cidade é obrigatória").max(100, "Cidade muito longa"),
-  state: z.string().length(2, "Informe a UF com 2 letras"),
-  zipCode: z.string().min(1, "CEP é obrigatório").max(10, "CEP muito longo").refine(
-    (val) => val.replace(/\D/g, '').length === 8,
-    { message: "CEP inválido" }
-  ),
-  isDefault: z.boolean().optional(),
-});
-
-type WarehouseFormValues = z.infer<typeof warehouseSchema>;
+/**
+ * Endereço do depósito, só com as partes que existem.
+ *
+ * AE-12b: a tela interpolava `{address}, {city} - {state}` com separadores
+ * fixos, então um depósito sem cidade exibia ", -" — que o QA leu como dado
+ * corrompido.
+ */
+function formatWarehouseAddress(warehouse: {
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+}): string {
+  const cityState = [warehouse.city, warehouse.state].filter(Boolean).join(" - ");
+  return [warehouse.address, cityState].filter(Boolean).join(", ");
+}
 
 // ─── Warehouse card ─────────────────────────────────────────────────────
 
-function WarehouseCard({ warehouse }: { warehouse: Warehouse }) {
+interface WarehouseCardProps {
+  warehouse: Warehouse;
+  onEdit: (warehouse: Warehouse) => void;
+  onDelete: (warehouse: Warehouse) => void;
+}
+
+function WarehouseCard({ warehouse, onEdit, onDelete }: WarehouseCardProps) {
+  const address = formatWarehouseAddress(warehouse);
+  const isInactive = warehouse.isActive === false;
+
   return (
-    <Card>
+    <Card className={isInactive ? "opacity-60" : undefined}>
       <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <WarehouseIcon className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold">{warehouse.name}</h3>
-                {warehouse.isDefault && (
-                  <Badge variant="success" className="text-xs">Padrão</Badge>
-                )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <TruncatedText as="h3" text={warehouse.name} className="font-semibold" />
+                {warehouse.isDefault ? (
+                  <Badge variant="success" className="text-xs">
+                    Padrão
+                  </Badge>
+                ) : null}
+                {isInactive ? (
+                  <Badge variant="secondary" className="text-xs">
+                    Inativo
+                  </Badge>
+                ) : null}
               </div>
-              <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                {warehouse.address}, {warehouse.city} - {warehouse.state}
-              </div>
+              {address ? (
+                <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <TruncatedText text={address} />
+                </div>
+              ) : null}
             </div>
           </div>
+
+          {/* AE-12d: os cards não tinham editar nem excluir. */}
+          <div className="flex shrink-0 gap-1">
+            <Can permission="inventory:update" mode="disable">
+              <Tooltip content="Editar depósito">
+                {/* Um botão só de ícone precisa de nome acessível: o tooltip do
+                    Radix é `aria-describedby`, não substitui o rótulo. */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Editar depósito"
+                  onClick={() => onEdit(warehouse)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </Can>
+            <Can permission="inventory:delete" mode="disable">
+              <Tooltip
+                content={
+                  warehouse.isDefault
+                    ? "O depósito padrão não pode ser excluído"
+                    : "Excluir depósito"
+                }
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Excluir depósito"
+                  disabled={warehouse.isDefault}
+                  onClick={() => onDelete(warehouse)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </Tooltip>
+            </Can>
+          </div>
         </div>
+
         <div className="mt-4 flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
           <Package className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            <span className="font-semibold">{warehouse.productCount}</span>{" "}
-            <span className="text-muted-foreground">produtos</span>
+            <span className="font-semibold">{warehouse.productCount ?? 0}</span>{" "}
+            <span className="text-muted-foreground">
+              {pluralize(warehouse.productCount ?? 0, "produto", "produtos")}
+            </span>
           </span>
         </div>
       </CardContent>
@@ -76,49 +142,54 @@ function WarehouseCard({ warehouse }: { warehouse: Warehouse }) {
 
 // ─── Page ───────────────────────────────────────────────────────────────
 
-export default function WarehousesPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+function WarehousesPageContent() {
   const { data: resp, isLoading } = useWarehouses();
-  const createWarehouse = useCreateWarehouse();
+  const deleteWarehouse = useDeleteWarehouse();
   const { addToast } = useToast();
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Warehouse | null>(null);
+  const [deleting, setDeleting] = useState<Warehouse | null>(null);
+
   const warehouses = resp?.data ?? [];
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<WarehouseFormValues>({
-    resolver: zodResolver(warehouseSchema),
-    defaultValues: { name: "", address: "", city: "", state: "", zipCode: "", isDefault: false },
-  });
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
 
-  const handleCreate = async (values: WarehouseFormValues) => {
+  const openEdit = (warehouse: Warehouse) => {
+    setEditing(warehouse);
+    setFormOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleting?.id) {return;}
     try {
-      await createWarehouse.mutateAsync(values);
-      addToast("Depósito criado com sucesso!", "success");
-      reset();
-      setDialogOpen(false);
-    } catch {
-      addToast("Erro ao criar depósito. Tente novamente.", "error");
+      const result = await deleteWarehouse.mutateAsync(deleting.id);
+      // The API decides between deleting and deactivating — say which one
+      // happened instead of a generic "excluído com sucesso" that would be a
+      // lie for a warehouse that is still there, inactive.
+      addToast(result.message, "success");
+      setDeleting(null);
+    } catch (err) {
+      addToast(getMutationErrorMessage(err, "Erro ao excluir o depósito."), "error");
     }
   };
 
-  const fieldError = (field: keyof WarehouseFormValues) =>
-    errors[field]?.message as string | undefined;
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">Depósitos</h1>
           <p className="text-muted-foreground">Gerencie seus depósitos e locais de estoque</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Depósito
-        </Button>
+        <Can permission="inventory:create" mode="disable">
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Depósito
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -127,81 +198,69 @@ export default function WarehousesPage() {
             <div key={i} className="h-40 animate-pulse rounded-xl border bg-muted" />
           ))}
         </div>
-      ) : warehouses.length === 0 ? (
+      ) : null}
+
+      {!isLoading && warehouses.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <WarehouseIcon className="h-12 w-12 text-muted-foreground/50" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">Nenhum depósito cadastrado</p>
-            <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">
+              Nenhum depósito cadastrado
+            </p>
+            <Button className="mt-4" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Criar primeiro depósito
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : null}
+
+      {!isLoading && warehouses.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {warehouses.map((wh) => (
-            <WarehouseCard key={wh.id} warehouse={wh} />
+            <WarehouseCard
+              key={wh.id}
+              warehouse={wh}
+              onEdit={openEdit}
+              onDelete={setDeleting}
+            />
           ))}
         </div>
-      )}
+      ) : null}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo Depósito</DialogTitle>
-            <DialogDescription>Preencha os dados para criar um novo depósito.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit(handleCreate)} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Nome *</label>
-              <Input {...register("name")} placeholder="Nome do depósito" maxLength={255} />
-              {fieldError("name") && <p className="text-xs text-destructive">{fieldError("name")}</p>}
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Endereço *</label>
-              <Input {...register("address")} placeholder="Rua, número" maxLength={500} />
-              {fieldError("address") && <p className="text-xs text-destructive">{fieldError("address")}</p>}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Cidade *</label>
-                <Input {...register("city")} placeholder="Cidade" maxLength={100} />
-                {fieldError("city") && <p className="text-xs text-destructive">{fieldError("city")}</p>}
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">UF *</label>
-                <Input {...register("state")} placeholder="SP" maxLength={2} />
-                {fieldError("state") && <p className="text-xs text-destructive">{fieldError("state")}</p>}
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">CEP *</label>
-                <Input
-                  {...register("zipCode")}
-                  onChange={(e) => {
-                    const masked = maskCEP(e.target.value);
-                    setValue("zipCode", masked, { shouldValidate: true });
-                  }}
-                  placeholder="00000-000"
-                  maxLength={9}
-                />
-                {fieldError("zipCode") && <p className="text-xs text-destructive">{fieldError("zipCode")}</p>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="isDefault" {...register("isDefault")} className="h-4 w-4 rounded border-gray-300" />
-              <label htmlFor="isDefault" className="text-sm font-medium">Depósito padrão</label>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="cancel" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createWarehouse.isPending}>
-                {createWarehouse.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Criar Depósito
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {formOpen ? (
+        <WarehouseFormDialog
+          key={editing?.id ?? "new"}
+          warehouse={editing}
+          open={formOpen}
+          onOpenChange={setFormOpen}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Excluir depósito"
+        message={
+          deleting && (deleting.productCount ?? 0) > 0
+            ? `"${deleting.name}" tem ${pluralize(deleting.productCount ?? 0, "produto", "produtos")} vinculados. Depósitos com histórico são desativados, não excluídos.`
+            : `"${deleting?.name}" será excluído. Se houver histórico de movimentações, ele será apenas desativado.`
+        }
+        confirmLabel="Excluir"
+        destructive
+        loading={deleteWarehouse.isPending}
+        onConfirm={handleDelete}
+      />
     </div>
+  );
+}
+
+// AE-27/FN-09: the menu hides this route, but a URL still reaches it — the
+// page guard is the real one.
+export default function WarehousesPage() {
+  return (
+    <RequirePermission permission="inventory:read" subject="os depósitos">
+      <WarehousesPageContent />
+    </RequirePermission>
   );
 }

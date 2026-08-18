@@ -9,6 +9,7 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
+    "test:tz": "for tz in America/Sao_Paulo UTC Asia/Tokyo; do echo \"TZ=$tz\" && TZ=$tz jest || exit 1; done",
     "test:watch": "jest --watch",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "prisma generate --schema=src/database/prisma/schema.prisma",
@@ -16,7 +17,8 @@
     "db:migrate:prod": "prisma migrate deploy --schema=src/database/prisma/schema.prisma",
     "db:seed": "ts-node src/database/prisma/seed.ts",
     "db:studio": "prisma studio --schema=src/database/prisma/schema.prisma",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "lint:ci": "eslint \"{src,test}/**/*.ts\" --max-warnings=0"
   },
   "dependencies": {
     "@erp/constants": "*",

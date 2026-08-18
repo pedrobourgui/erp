@@ -3,13 +3,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsNumber,
-  IsEnum,
+  IsIn,
   IsArray,
   IsUUID,
   IsEmail,
   Min,
   MaxLength,
   IsObject,
+  IsBoolean,
+  Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
@@ -40,7 +42,7 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({ enum: ['CPF', 'CNPJ'] })
   @IsOptional()
-  @IsEnum(['CPF', 'CNPJ'])
+  @IsIn(['CPF', 'CNPJ'])
   documentType?: string;
 
   @ApiPropertyOptional({ description: 'Trade name (PJ)' })
@@ -101,7 +103,7 @@ export class CustomerQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional()
@@ -116,6 +118,63 @@ export class CustomerQueryDto {
 
   @ApiPropertyOptional({ enum: ['CPF', 'CNPJ'] })
   @IsOptional()
-  @IsEnum(['CPF', 'CNPJ'])
+  @IsIn(['CPF', 'CNPJ'])
   documentType?: string;
 }
+
+export class CreateCustomerAddressDto {
+  @ApiPropertyOptional({ description: 'Label (Casa, Trabalho, Entrega)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  label?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  street: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  number: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  complement?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  neighborhood: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  city: string;
+
+  @ApiProperty({ description: 'UF with 2 letters; stored uppercased' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 2)
+  state: string;
+
+  @ApiProperty({ description: 'CEP, with or without mask; stored as digits only' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(9)
+  zipCode: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+}
+
+export class UpdateCustomerAddressDto extends PartialType(CreateCustomerAddressDto) {}

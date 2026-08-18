@@ -1,10 +1,11 @@
+import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -28,6 +29,12 @@ export interface CashRegisterSession {
   totals?: {
     supplies: number;
     withdrawals: number;
+    /**
+     * Vendas em dinheiro da sessão. Compõem o `currentBalance` e o saldo
+     * esperado no fechamento — omitir da tela fazia o resumo não fechar:
+     * abertura R$ 200 + entradas R$ 0 - saídas R$ 0 exibindo saldo R$ 500.
+     */
+    cashSales?: number;
     currentBalance?: number;
   };
 }
@@ -117,9 +124,10 @@ export function useCreateCashRegister() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: cashRegisterKeys.lists(),
-      });
+      // FN-11: o prefixo inteiro. Invalidar só `lists()` deixava a tabela de
+      // sessões (`sessionList(params)`) intacta — o operador fechava o caixa e
+      // a tela continuava mostrando "Aberto".
+      queryClient.invalidateQueries({ queryKey: cashRegisterKeys.all });
     },
   });
 }
@@ -142,9 +150,10 @@ export function useOpenCashRegister() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: cashRegisterKeys.lists(),
-      });
+      // FN-11: o prefixo inteiro. Invalidar só `lists()` deixava a tabela de
+      // sessões (`sessionList(params)`) intacta — o operador fechava o caixa e
+      // a tela continuava mostrando "Aberto".
+      queryClient.invalidateQueries({ queryKey: cashRegisterKeys.all });
     },
   });
 }
@@ -169,9 +178,10 @@ export function useCloseCashRegister() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: cashRegisterKeys.lists(),
-      });
+      // FN-11: o prefixo inteiro. Invalidar só `lists()` deixava a tabela de
+      // sessões (`sessionList(params)`) intacta — o operador fechava o caixa e
+      // a tela continuava mostrando "Aberto".
+      queryClient.invalidateQueries({ queryKey: cashRegisterKeys.all });
     },
   });
 }
@@ -196,9 +206,10 @@ export function useCashSupply() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: cashRegisterKeys.lists(),
-      });
+      // FN-11: o prefixo inteiro. Invalidar só `lists()` deixava a tabela de
+      // sessões (`sessionList(params)`) intacta — o operador fechava o caixa e
+      // a tela continuava mostrando "Aberto".
+      queryClient.invalidateQueries({ queryKey: cashRegisterKeys.all });
     },
   });
 }
@@ -223,9 +234,10 @@ export function useCashWithdraw() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: cashRegisterKeys.lists(),
-      });
+      // FN-11: o prefixo inteiro. Invalidar só `lists()` deixava a tabela de
+      // sessões (`sessionList(params)`) intacta — o operador fechava o caixa e
+      // a tela continuava mostrando "Aberto".
+      queryClient.invalidateQueries({ queryKey: cashRegisterKeys.all });
     },
   });
 }

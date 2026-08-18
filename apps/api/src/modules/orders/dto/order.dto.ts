@@ -1,9 +1,10 @@
+import { OrderStatus } from '@erp/shared-types';
 import {
   IsString,
   IsNotEmpty,
   IsOptional,
   IsNumber,
-  IsEnum,
+  IsIn,
   IsArray,
   ValidateNested,
   // IsUUID removed: DB uses cuid(), not uuid
@@ -85,7 +86,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({ enum: ['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'] })
   @IsOptional()
-  @IsEnum(['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'])
+  @IsIn(['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'])
   origin?: string;
 
   @ApiPropertyOptional()
@@ -138,6 +139,13 @@ export class CreateOrderDto {
   @MaxLength(1000)
   internalNotes?: string;
 
+  @ApiPropertyOptional({
+    description: 'Open cash-register session the sale is registered in; required when more than one is open',
+  })
+  @IsOptional()
+  @IsString()
+  cashRegisterSessionId?: string;
+
   @ApiPropertyOptional({ type: [CreateOrderPaymentDto] })
   @IsOptional()
   @IsArray()
@@ -150,8 +158,8 @@ export class UpdateOrderStatusDto {
   @ApiProperty({
     enum: ['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'],
   })
-  @IsEnum(['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'])
-  status: string;
+  @IsIn(['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'])
+  status: OrderStatus;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -195,17 +203,17 @@ export class OrderQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional({ enum: ['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'] })
   @IsOptional()
-  @IsEnum(['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'])
+  @IsIn(['DRAFT', 'PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'])
   status?: string;
 
   @ApiPropertyOptional({ enum: ['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'] })
   @IsOptional()
-  @IsEnum(['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'])
+  @IsIn(['MANUAL', 'BALCAO', 'MERCADO_LIVRE', 'SHOPEE', 'AMAZON', 'MAGALU', 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE', 'API'])
   origin?: string;
 
   @ApiPropertyOptional()

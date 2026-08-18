@@ -7,10 +7,17 @@ import {
 } from '@nestjs/common';
 import { Prisma, FinancialStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import { parseUserDate } from '../../common/utils/date-range.util';
 import {
   SettleFinancialEntryDto,
   SettleableKind,
 } from './dto/settle-financial-entry.dto';
+import {
+  formatBRL,
+  subtractMoney,
+  sumMoney,
+  toMoney,
+} from '../../common/utils/money.util';
 
 /** Statuses a título can be settled from. */
 const SETTLEABLE_STATUSES: FinancialStatus[] = [
@@ -66,20 +73,23 @@ export class FinancialSettlementsService {
 
     const accountId = await this.resolveAccountId(tenantId, titulo, dto.accountId);
 
-    const amount = Number(titulo.amount);
-    const alreadyPaid = Number(titulo.paidAmount);
-    const outstanding = round2(amount - alreadyPaid);
+    // FN-28: money is added and subtracted in cents, never as raw floats.
+    const amount = toMoney(titulo.amount);
+    const alreadyPaid = toMoney(titulo.paidAmount);
+    const outstanding = subtractMoney(amount, alreadyPaid);
 
-    const settledAmount = dto.amount != null ? round2(dto.amount) : outstanding;
+    const settledAmount = dto.amount != null ? toMoney(dto.amount) : outstanding;
     if (settledAmount <= 0 || settledAmount > outstanding + EPSILON) {
       throw new BadRequestException(
-        `Valor da baixa (${settledAmount.toFixed(2)}) deve ser maior que zero e no máximo o saldo em aberto (${outstanding.toFixed(2)})`,
+        `O valor da baixa (${formatBRL(settledAmount)}) deve ser maior que zero e no máximo o saldo em aberto (${formatBRL(outstanding)})`,
       );
     }
 
-    const paidAmount = round2(alreadyPaid + settledAmount);
+    const paidAmount = sumMoney([alreadyPaid, settledAmount]);
     const isFullyPaid = paidAmount >= amount - EPSILON;
-    const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+    // A date picked in the UI is a civil date (midnight in the tenant
+    // timezone); an ISO instant sent by an integration is kept as it is.
+    const paidAt = dto.paidAt ? parseUserDate(dto.paidAt) : new Date();
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       const account = await tx.financialAccount.update({
@@ -161,7 +171,7 @@ export class FinancialSettlementsService {
 
     if (!receivable) {
       throw new NotFoundException(
-        `Receivable with id ${id} not found for tenant ${tenantId}`,
+        `Título a receber não encontrado`,
       );
     }
     return receivable;
@@ -184,7 +194,7 @@ export class FinancialSettlementsService {
 
     if (!payable) {
       throw new NotFoundException(
-        `Payable with id ${id} not found for tenant ${tenantId}`,
+        `Título a pagar não encontrado`,
       );
     }
     return { ...payable, orderPayment: null };
@@ -214,7 +224,7 @@ export class FinancialSettlementsService {
       });
       if (!account) {
         throw new NotFoundException(
-          `Financial account with id ${requestedAccountId} not found for tenant ${tenantId}`,
+          `Conta financeira não encontrada`,
         );
       }
       return account.id;
@@ -235,9 +245,6 @@ export class FinancialSettlementsService {
   }
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 function readAccountIdFromMetadata(metadata: Prisma.JsonValue): string | null {
   if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {

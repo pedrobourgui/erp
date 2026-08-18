@@ -1,8 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render as rtlRender, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { Toaster, useToast } from './toast';
+import { TooltipProvider } from './tooltip';
+
+/**
+ * The component renders Radix tooltips, which throw outside a provider.
+ * `providers.tsx` mounts one in the app; the tests need the same wrapper.
+ */
+function render(ui: React.ReactElement) {
+  return rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
+}
 
 // Helper component that uses toast context
 function ToastConsumer() {
@@ -102,16 +112,10 @@ describe('Toaster', () => {
     await user.click(screen.getByText('Add Toast'));
     expect(screen.getByText('Test message')).toBeInTheDocument();
 
-    // Click the X button (the close button inside the toast)
-    const closeButton = screen.getByRole('button', { name: '' }); // X icon button
-    // There might be multiple buttons; find the one inside the toast portal
-    const allButtons = screen.getAllByRole('button');
-    const closeBtn = allButtons.find(
-      (btn) => btn !== screen.getByText('Add Toast')
-    );
-    if (closeBtn) {
-      await user.click(closeBtn);
-    }
+    // DS-01: o botão de fechar é só um ícone, e antes não tinha nome nenhum —
+    // este teste o procurava por `{ name: '' }`. Agora o `Tooltip` empresta o
+    // seu `content` ao gatilho, então ele se chama "Fechar" como deve.
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
 
     expect(screen.getByTestId('toast-count').textContent).toBe('0');
   });

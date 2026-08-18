@@ -1,17 +1,21 @@
+import type {
+  Order,
+  OrderStatus,
+  OrderStatusHistoryEntry,
+  OrderOrigin,
+  PaginatedResponse,
+  ApiResponse,
+} from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type {
-  Order,
-  OrderStatus,
-  OrderOrigin,
-  PaginatedResponse,
-  ApiResponse,
-} from "@erp/shared-types";
+
+export type { OrderStatusHistoryEntry };
 
 // ─── Extended order types for frontend ──────────────────────────────────
 
@@ -36,12 +40,15 @@ export interface OrderPayment {
 export interface OrderDetail extends OrderListItem {
   items: OrderItem[];
   customer: OrderCustomer;
-  shipping: OrderShipping;
   payments?: OrderPayment[];
   receivables: OrderReceivable[];
-  history: OrderHistoryEntry[];
-  sellerName?: string;
-  notes?: string;
+  /**
+   * VD-06: the API returns `statusHistory`, never `history`, and the shipping
+   * fields live on the order root — see `Order` in `@erp/shared-types`.
+   */
+  statusHistory: OrderStatusHistoryEntry[];
+  seller?: { id: string; name: string };
+  salesChannel?: { id: string; name: string; type: string };
 }
 
 export interface OrderItem {
@@ -79,17 +86,6 @@ export interface OrderCustomer {
   addresses?: CustomerAddress[];
 }
 
-export interface OrderShipping {
-  carrier: string;
-  method: string;
-  trackingCode?: string;
-  trackingUrl?: string;
-  estimatedDelivery?: string;
-  shippedAt?: string;
-  deliveredAt?: string;
-  cost: number;
-}
-
 export interface OrderReceivable {
   id: string;
   description?: string;
@@ -102,14 +98,6 @@ export interface OrderReceivable {
   method?: string;
   paymentMethod?: { name: string };
   paidAt?: string;
-}
-
-export interface OrderHistoryEntry {
-  id: string;
-  status: OrderStatus;
-  note?: string;
-  userName: string;
-  createdAt: string;
 }
 
 // ─── Params ─────────────────────────────────────────────────────────────
@@ -183,6 +171,10 @@ export function useOrder(
   });
 }
 
+/**
+ * Every status change except cancellation. Cancelling has side effects on stock
+ * and on the receivable, so it has its own endpoint — see `useCancelOrder`.
+ */
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
 
@@ -193,7 +185,7 @@ export function useUpdateOrderStatus() {
       note,
     }: {
       id: string;
-      status: OrderStatus;
+      status: Exclude<OrderStatus, "CANCELLED">;
       note?: string;
     }) => {
       const { data } = await api.patch<ApiResponse<Order>>(
@@ -207,6 +199,86 @@ export function useUpdateOrderStatus() {
       queryClient.invalidateQueries({
         queryKey: orderKeys.detail(variables.id),
       });
+      // SHIPPED turns the reservation into an actual stock exit, and DELIVERED /
+      // COMPLETED settle the receivable: refresh both domains.
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["financial-entries"] });
+    },
+  });
+}
+
+/**
+ * VD-01: cancelling releases the reserved stock and cancels the receivable.
+ * Only `PATCH /orders/:id/cancel` does that — `PATCH /status` used to be called
+ * here and silently left both behind.
+ */
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const trimmed = reason?.trim();
+      if (!trimmed) {
+        throw new Error("Informe o motivo do cancelamento.");
+      }
+      const { data } = await api.patch<ApiResponse<Order>>(
+        `/orders/${id}/cancel`,
+        { reason: trimmed }
+      );
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["financial-entries"] });
+    },
+  });
+}
+
+export interface ReverseSaleResult {
+  orderId: string;
+  status: OrderStatus;
+  returnedItems: number;
+  refundedAmount: number;
+  payableId: string | null;
+  cashWithdrawn: boolean;
+}
+
+/**
+ * VD-14: undoing a finished sale — a counter sale born `COMPLETED` or a
+ * delivered order being returned. Unlike a plain status change, it puts the
+ * goods back in stock, undoes the receivables and takes the refund out of the
+ * cash session, so it has its own endpoint.
+ */
+export function useReverseSale() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const trimmed = reason?.trim();
+      if (!trimmed) {
+        throw new Error("Informe o motivo do estorno.");
+      }
+      const { data } = await api.post<ApiResponse<ReverseSaleResult>>(
+        `/orders/${id}/reverse`,
+        { reason: trimmed }
+      );
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["financial-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-registers"] });
     },
   });
 }
@@ -236,7 +308,14 @@ export interface CreateOrderPayload {
   payments?: CreateOrderPaymentPayload[];
   shippingMethod?: string;
   shippingCost: number;
+  /** Order-level discount, applied on top of per-item discounts. */
+  discount?: number;
   notes?: string;
+  /**
+   * Caixa em que a venda é registrada. Obrigatório quando há mais de um caixa
+   * aberto — a API recusa adivinhar por conta própria (FN-05).
+   */
+  cashRegisterSessionId?: string;
 }
 
 export function useCreateOrder() {

@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { cn } from "@/lib/utils";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   useController,
   type Control,
@@ -9,17 +8,12 @@ import {
   type Path,
 } from "react-hook-form";
 
+import { cn } from "@/lib/utils";
+
 // ─── Formatting helpers ─────────────────────────────────────────────────
 
-function parseBRLToNumber(value: string): number {
-  // Remove R$, dots (thousands), and convert comma to dot
-  const cleaned = value
-    .replace(/[R$\s]/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
-}
+/** Digits beyond this length overflow the safe integer range for cents. */
+const MAX_DIGITS = 15;
 
 function formatNumberToBRL(value: number): string {
   return value.toLocaleString("pt-BR", {
@@ -28,14 +22,18 @@ function formatNumberToBRL(value: number): string {
   });
 }
 
-function formatInputValue(raw: string): string {
-  // Only keep digits
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return "";
-  // Convert to number (cents)
-  const cents = parseInt(digits, 10);
-  const value = cents / 100;
-  return formatNumberToBRL(value);
+/**
+ * Reads a currency value out of whatever the input currently holds.
+ * The field is digit-driven: every digit is a cent, so "1234" is R$ 12,34.
+ */
+export function parseInputToNumber(raw: string, allowNegative = false): number {
+  const digits = raw.replace(/\D/g, "").slice(0, MAX_DIGITS);
+  if (!digits) {
+    return 0;
+  }
+  const value = Number.parseInt(digits, 10) / 100;
+  const isNegative = allowNegative && raw.trimStart().startsWith("-");
+  return isNegative ? -value : value;
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -48,6 +46,8 @@ interface MoneyInputProps<TFieldValues extends FieldValues> {
   disabled?: boolean;
   className?: string;
   error?: string;
+  /** Allows a leading minus sign. Off by default — prices are never negative. */
+  allowNegative?: boolean;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -60,39 +60,57 @@ export function MoneyInput<TFieldValues extends FieldValues>({
   disabled = false,
   className,
   error,
+  allowNegative = false,
 }: MoneyInputProps<TFieldValues>) {
   const {
     field,
     fieldState: { error: fieldError },
   } = useController({ name, control });
 
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const numericValue =
+    field.value == null || field.value === "" ? 0 : Number(field.value);
+
+  // An empty string (instead of "0,00") lets the placeholder show and keeps
+  // the caret from landing to the left of pre-existing text.
   const displayValue =
-    field.value != null && field.value !== ""
-      ? formatNumberToBRL(Number(field.value))
-      : "";
+    Number.isNaN(numericValue) || numericValue === 0
+      ? ""
+      : formatNumberToBRL(numericValue);
+
+  // The input is right-aligned and controlled: without this, clicking it puts
+  // the caret at position 0 and every keystroke multiplies the value instead
+  // of appending cents.
+  const moveCaretToEnd = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) {
+      return;
+    }
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }, []);
+
+  useEffect(() => {
+    if (inputRef.current && document.activeElement === inputRef.current) {
+      moveCaretToEnd();
+    }
+  }, [displayValue, moveCaretToEnd]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
-      const formatted = formatInputValue(raw);
-      if (formatted === "") {
-        field.onChange(0);
-      } else {
-        field.onChange(parseBRLToNumber(formatted));
-      }
+      field.onChange(parseInputToNumber(e.target.value, allowNegative));
     },
-    [field]
+    [field, allowNegative]
   );
 
   const errorMessage = error ?? fieldError?.message;
 
   return (
     <div className={cn("space-y-1", className)}>
-      {label && (
-        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+      {label ? <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
           {label}
-        </label>
-      )}
+        </label> : null}
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
           R$
@@ -100,8 +118,14 @@ export function MoneyInput<TFieldValues extends FieldValues>({
         <input
           type="text"
           inputMode="numeric"
+          ref={(el) => {
+            inputRef.current = el;
+            field.ref(el);
+          }}
           value={displayValue}
           onChange={handleChange}
+          onFocus={moveCaretToEnd}
+          onClick={moveCaretToEnd}
           onBlur={field.onBlur}
           placeholder={placeholder}
           disabled={disabled}
@@ -111,9 +135,7 @@ export function MoneyInput<TFieldValues extends FieldValues>({
           )}
         />
       </div>
-      {errorMessage && (
-        <p className="text-xs text-destructive">{errorMessage}</p>
-      )}
+      {errorMessage ? <p className="text-xs text-destructive">{errorMessage}</p> : null}
     </div>
   );
 }

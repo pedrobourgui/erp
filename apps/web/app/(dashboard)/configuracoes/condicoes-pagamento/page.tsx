@@ -1,13 +1,18 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { RequirePermission } from "@/components/auth/require-permission";
+import { FilterField, FilterPanel } from "@/components/tables/filter-panel";
+import { ListSearch } from "@/components/tables/list-search";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -24,6 +29,10 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import { TruncatedText } from "@/components/ui/truncated-text";
+import { useFilters } from "@/hooks/use-filters";
+import { useInvalidSubmit } from "@/hooks/use-invalid-submit";
 import {
   usePaymentConditions,
   useCreatePaymentCondition,
@@ -32,9 +41,10 @@ import {
   type PaymentCondition,
   type PaymentConditionType,
 } from "@/hooks/use-payment-conditions";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, cn } from "@/lib/utils";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+
+
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
@@ -59,23 +69,48 @@ const TYPE_LABELS: Record<PaymentConditionType, string> = {
 // ─── Schema ────────────────────────────────────────────────────────────
 
 const conditionSchema = z.object({
-  name: z.string().min(1, "Nome obrigatorio").max(100),
-  code: z.string().min(1, "Codigo obrigatorio").max(20),
+  name: z.string().min(1, "Nome obrigatório").max(100),
+  code: z.string().min(1, "Código obrigatório").max(20),
   type: z.enum(["CASH", "INSTALLMENT", "ENTRY_PLUS_INSTALLMENT"]),
-  installments: z.number().min(1).default(1),
-  daysBetweenInstallments: z.number().min(0).default(30),
-  entryPercentage: z.number().min(0).max(100).default(0),
+  // FN-14: `max={48}` no HTML é contornável — a regra tem que estar aqui.
+  installments: z
+    .number()
+    .int("Informe um número inteiro de parcelas")
+    .min(1, "A condição precisa de pelo menos 1 parcela")
+    .max(48, "O máximo é 48 parcelas")
+    .default(1),
+  daysBetweenInstallments: z
+    .number()
+    .int("Informe um número inteiro de dias")
+    .min(0, "O intervalo não pode ser negativo")
+    .max(365, "O intervalo máximo é 365 dias")
+    .default(30),
+  entryPercentage: z
+    .number()
+    .min(0, "A entrada não pode ser negativa")
+    .max(100, "A entrada não pode passar de 100% do valor")
+    .default(0),
 });
 
 type ConditionFormValues = z.infer<typeof conditionSchema>;
 
 // ─── Page ──────────────────────────────────────────────────────────────
 
-export default function PaymentConditionsPage() {
-  const { data, isLoading } = usePaymentConditions();
+function PaymentConditionsPageContent() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PaymentCondition | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PaymentCondition | null>(null);
+
+  // FT-05: nem busca a tela tinha.
+  const filters = useFilters({ search: "", type: "", isActive: "" }, () => {});
+
+  const { data, isLoading } = usePaymentConditions({
+    search: filters.values.search || undefined,
+    type: (filters.values.type || undefined) as PaymentConditionType | undefined,
+    isActive: filters.values.isActive
+      ? filters.values.isActive === "true"
+      : undefined,
+  });
 
   const conditions = data?.data ?? [];
 
@@ -91,18 +126,67 @@ export default function PaymentConditionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      {/* `flex-wrap` + `items-start`: o painel de filtros pede a linha inteira
+          (`basis-full`) e só consegue tomá-la se a linha puder quebrar. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">
-            Condicoes de Pagamento
+            Condições de Pagamento
           </h1>
           <p className="text-muted-foreground">
-            Configure as condicoes de pagamento disponiveis
+            Configure as condições de pagamento disponíveis
           </p>
         </div>
+
+      <FilterPanel
+        values={filters.values}
+        onClear={filters.clear}
+        search={
+          <ListSearch
+            value={filters.values.search}
+            onChange={(value) => filters.set("search", value)}
+            placeholder="Buscar por nome..."
+          />
+        }
+      >
+        <FilterField label="Tipo">
+          <Select
+            value={filters.values.type || "__all"}
+            onValueChange={(v) => filters.set("type", v === "__all" ? "" : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os tipos</SelectItem>
+              {TYPE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        <FilterField label="Situação">
+          <Select
+            value={filters.values.isActive || "__all"}
+            onValueChange={(v) => filters.set("isActive", v === "__all" ? "" : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Ativas e inativas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Ativas e inativas</SelectItem>
+              <SelectItem value="true">Somente ativas</SelectItem>
+              <SelectItem value="false">Somente inativas</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+      </FilterPanel>
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
-          Nova Condicao
+          Nova Condição
         </Button>
       </div>
 
@@ -152,7 +236,7 @@ function ConditionsTable({
     return (
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
-          Nenhuma condicao de pagamento cadastrada
+          Nenhuma condição de pagamento cadastrada
         </CardContent>
       </Card>
     );
@@ -166,19 +250,23 @@ function ConditionsTable({
             <thead className="border-b bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Codigo</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Código</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tipo</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Parcelas</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Dias</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Entrada %</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acoes</th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
               </tr>
             </thead>
             <tbody>
               {conditions.map((c) => (
                 <tr key={c.id} className="border-b last:border-0">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{c.code}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <TruncatedText text={c.name} className="max-w-[36ch]" />
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    <TruncatedText text={c.code} className="max-w-[24ch]" />
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={TYPE_BADGE[c.type]}>
                       {TYPE_LABELS[c.type]}
@@ -189,10 +277,10 @@ function ConditionsTable({
                   <td className="px-4 py-3 text-center">{c.entryPercentage}%</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(c)}>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-8 md:w-8" onClick={() => onEdit(c)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" action="delete" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(c)}>
+                      <Button variant="ghost" action="delete" size="icon" className="h-10 w-10 text-destructive md:h-8 md:w-8" onClick={() => onDelete(c)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -250,6 +338,9 @@ function ConditionFormDialog({
         },
   });
 
+  // FN-13: nenhum submit pode morrer em silêncio.
+  const onInvalid = useInvalidSubmit();
+
   // Reset form when editing changes
   React.useEffect(() => {
     if (open) {
@@ -293,11 +384,12 @@ function ConditionFormDialog({
         addToast("Condicao criada com sucesso!", "success");
       }
       onOpenChange(false);
-    } catch {
+    } catch (err) {
       addToast(
-        editing
-          ? "Erro ao atualizar condicao. Tente novamente."
-          : "Erro ao criar condicao. Tente novamente.",
+        getApiErrorMessage(err) ??
+          (editing
+            ? "Erro ao atualizar condição. Tente novamente."
+            : "Erro ao criar condição. Tente novamente."),
         "error"
       );
     }
@@ -305,26 +397,35 @@ function ConditionFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      {/* FN-14: com 999 parcelas o preview crescia sem limite e os botões
+          Cancelar/Criar ficavam permanentemente fora da viewport — só o ESC
+          resolvia. Corpo rolável, rodapé sempre visível. */}
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar Condicao" : "Nova Condicao"}</DialogTitle>
+          <DialogTitle>{editing ? "Editar Condição" : "Nova Condição"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Atualize os dados da condicao de pagamento."
-              : "Preencha os dados para criar uma nova condicao de pagamento."}
+              ? "Atualize os dados da condição de pagamento."
+              : "Preencha os dados para criar uma nova condição de pagamento."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          className="flex min-h-0 flex-1 flex-col"
+          noValidate
+        >
+          {/* FN-14: só o corpo rola; o rodapé com Cancelar/Criar fica fixo. */}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Nome *</label>
               <Input {...register("name")} placeholder="Ex: 3x sem juros" maxLength={100} />
-              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Codigo *</label>
               <Input {...register("code")} placeholder="Ex: 3X_SJ" maxLength={20} />
-              {errors.code && <p className="text-xs text-destructive">{errors.code.message}</p>}
+              {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
             </div>
           </div>
 
@@ -348,8 +449,7 @@ function ConditionFormDialog({
             />
           </div>
 
-          {showInstallments && (
-            <div className="grid gap-4 sm:grid-cols-2">
+          {showInstallments ? <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Parcelas</label>
                 <Input
@@ -358,6 +458,7 @@ function ConditionFormDialog({
                   max={48}
                   {...register("installments", { valueAsNumber: true })}
                 />
+                {errors.installments ? <p className="text-xs text-destructive">{errors.installments.message}</p> : null}
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Dias entre parcelas</label>
@@ -367,12 +468,11 @@ function ConditionFormDialog({
                   max={365}
                   {...register("daysBetweenInstallments", { valueAsNumber: true })}
                 />
+                {errors.daysBetweenInstallments ? <p className="text-xs text-destructive">{errors.daysBetweenInstallments.message}</p> : null}
               </div>
-            </div>
-          )}
+            </div> : null}
 
-          {showEntry && (
-            <div className="space-y-1">
+          {showEntry ? <div className="space-y-1">
               <label className="text-sm font-medium">Entrada (%)</label>
               <Input
                 type="number"
@@ -381,8 +481,8 @@ function ConditionFormDialog({
                 step={0.01}
                 {...register("entryPercentage", { valueAsNumber: true })}
               />
-            </div>
-          )}
+              {errors.entryPercentage ? <p className="text-xs text-destructive">{errors.entryPercentage.message}</p> : null}
+            </div> : null}
 
           {/* Preview */}
           <InstallmentPreview
@@ -391,13 +491,14 @@ function ConditionFormDialog({
             daysBetween={daysBetween}
             entryPercentage={entryPct}
           />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4 shrink-0 border-t pt-4">
             <Button type="button" variant="cancel" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {editing ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>
@@ -455,13 +556,18 @@ function InstallmentPreview({
     return result;
   }, [type, installments, daysBetween, entryPercentage]);
 
+  // Mesmo com o limite de 48 no schema, 48 linhas já estouram o diálogo.
+  const MAX_PREVIEW_LINES = 6;
+  const visibleLines = lines.slice(0, MAX_PREVIEW_LINES);
+  const hiddenCount = lines.length - visibleLines.length;
+
   return (
     <div className="rounded-lg border bg-muted/30 p-3 dark:bg-muted/10">
       <p className="mb-2 text-xs font-medium text-muted-foreground">
         Exemplo para {formatCurrency(SAMPLE_AMOUNT)}
       </p>
       <div className="space-y-1">
-        {lines.map((line, idx) => (
+        {visibleLines.map((line, idx) => (
           <div key={idx} className="flex items-center justify-between text-sm">
             <span>{line.label}</span>
             <div className="flex items-center gap-3">
@@ -472,6 +578,11 @@ function InstallmentPreview({
             </div>
           </div>
         ))}
+        {hiddenCount > 0 && (
+          <p className="pt-1 text-xs text-muted-foreground">
+            … e mais {hiddenCount} parcela{hiddenCount > 1 ? "s" : ""}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -490,13 +601,18 @@ function DeleteConditionDialog({
   const { addToast } = useToast();
 
   const handleDelete = async () => {
-    if (!condition) return;
+    if (!condition) {
+      return;
+    }
     try {
       await deleteMutation.mutateAsync(condition.id);
       addToast("Condicao excluida com sucesso!", "success");
       onClose();
-    } catch {
-      addToast("Erro ao excluir condicao. Tente novamente.", "error");
+    } catch (err) {
+      addToast(
+        getApiErrorMessage(err) ?? "Erro ao excluir condição. Tente novamente.",
+        "error"
+      );
       onClose();
     }
   };
@@ -511,5 +627,15 @@ function DeleteConditionDialog({
       loading={deleteMutation.isPending}
       onConfirm={handleDelete}
     />
+  );
+}
+
+// AE-27/FN-09: the menu hides this route, but a URL still reaches it — the
+// page guard is the real one.
+export default function PaymentConditionsPage() {
+  return (
+    <RequirePermission permission="financial:create" subject="as condições de pagamento">
+      <PaymentConditionsPageContent />
+    </RequirePermission>
   );
 }

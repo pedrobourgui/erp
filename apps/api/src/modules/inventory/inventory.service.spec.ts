@@ -2,11 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../../database/prisma/prisma.service';
-import { CreateMovementDto, TransferStockDto } from './dto/inventory.dto';
+import {
+  CreateMovementDto,
+  TransferStockDto,
+  AdjustStockDto,
+  UpdateWarehouseDto,
+} from './dto/inventory.dto';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -58,7 +64,16 @@ function makeMovement(overrides: Record<string, unknown> = {}) {
 function createMockPrisma() {
   const mockTx = {
     product: {
-      findUnique: jest.fn().mockResolvedValue({ defaultMinStock: 0 }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ defaultMinStock: 0, name: 'Widget A', sku: 'SKU-001' }),
+    },
+    // AE-12a: as mensagens de estoque dizem o depósito, então precisam lê-lo.
+    warehouse: {
+      findUnique: jest.fn().mockResolvedValue({ name: 'Depósito Principal' }),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
     },
     inventoryItem: {
       findFirst: jest.fn(),
@@ -67,11 +82,15 @@ function createMockPrisma() {
       create: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
+      deleteMany: jest.fn(),
     },
     inventoryMovement: {
       create: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+    },
+    stockAlert: {
+      deleteMany: jest.fn(),
     },
   };
 
@@ -86,11 +105,24 @@ function createMockPrisma() {
       create: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
+      aggregate: jest.fn(),
+      deleteMany: jest.fn(),
     },
     inventoryMovement: {
       findMany: jest.fn(),
       create: jest.fn(),
       count: jest.fn(),
+    },
+    warehouse: {
+      findFirst: jest.fn().mockResolvedValue({ name: 'Depósito Principal' }),
+      findUnique: jest.fn().mockResolvedValue({ name: 'Depósito Principal' }),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn(),
     },
     stockAlert: {
       findFirst: jest.fn(),
@@ -249,6 +281,144 @@ describe('InventoryService', () => {
       const updateArgs = tx().inventoryItem.update.mock.calls[0][0];
       expect(updateArgs.data.quantity).toBe(120); // 100 + 20
       expect(updateArgs.data.available).toBe(110); // 90 + 20
+    });
+
+    // ─── Custo médio ────────────────────────────────────────────────────
+    //
+    // `costAverage` existia no schema e era exibido na tela do produto, mas
+    // nenhum caminho de escrita o atualizava: a coluna "Custo Médio" mostrava
+    // R$ 0,00 para todo produto, sempre.
+
+    it('ENTRY: should compute the weighted average cost with the entry unit cost', async () => {
+      // 100 un. a R$ 10,00 + 20 un. a R$ 16,00 = R$ 11,00 por unidade
+      const existingItem = makeInventoryItem({
+        quantity: 100,
+        available: 90,
+        costAverage: 10,
+      });
+      tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
+      tx().inventoryItem.update.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'PURCHASE',
+        quantity: 20,
+        unitCost: 16,
+        toWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      const updateArgs = tx().inventoryItem.update.mock.calls[0][0];
+      expect(Number(updateArgs.data.costAverage)).toBe(11);
+    });
+
+    it('ENTRY: should fall back to the product cost price when the entry has no unit cost', async () => {
+      tx().product.findUnique.mockResolvedValue({
+        defaultMinStock: 0,
+        name: 'Widget A',
+        sku: 'SKU-001',
+        costPrice: 25,
+      });
+      const existingItem = makeInventoryItem({
+        quantity: 0,
+        available: 0,
+        costAverage: 0,
+      });
+      tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
+      tx().inventoryItem.update.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'PURCHASE',
+        quantity: 10,
+        toWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      const updateArgs = tx().inventoryItem.update.mock.calls[0][0];
+      expect(Number(updateArgs.data.costAverage)).toBe(25);
+    });
+
+    it('ENTRY: should seed the average cost of an item created by the first entry', async () => {
+      tx().product.findUnique.mockResolvedValue({
+        defaultMinStock: 5,
+        name: 'Widget A',
+        sku: 'SKU-001',
+        costPrice: 0,
+      });
+      tx().inventoryItem.findFirst.mockResolvedValue(null);
+      tx().inventoryItem.create.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'PURCHASE',
+        quantity: 8,
+        unitCost: 12.5,
+        toWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      const createArgs = tx().inventoryItem.create.mock.calls[0][0];
+      expect(Number(createArgs.data.costAverage)).toBe(12.5);
+    });
+
+    it('EXIT: should keep the average cost untouched — a sale does not reprice the stock', async () => {
+      const existingItem = makeInventoryItem({
+        quantity: 100,
+        available: 90,
+        costAverage: 10,
+      });
+      tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
+      tx().inventoryItem.update.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement({ type: 'EXIT' }));
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'EXIT',
+        reason: 'SALE',
+        quantity: 10,
+        fromWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      const updateArgs = tx().inventoryItem.update.mock.calls[0][0];
+      expect(updateArgs.data.costAverage).toBeUndefined();
+    });
+
+    it('ENTRY: should not divide by zero when the entry costs nothing and the item is empty', async () => {
+      tx().product.findUnique.mockResolvedValue({
+        defaultMinStock: 0,
+        name: 'Widget A',
+        sku: 'SKU-001',
+        costPrice: 0,
+      });
+      const existingItem = makeInventoryItem({
+        quantity: 0,
+        available: 0,
+        costAverage: 0,
+      });
+      tx().inventoryItem.findFirst.mockResolvedValue(existingItem);
+      tx().inventoryItem.update.mockResolvedValue({});
+      tx().inventoryMovement.create.mockResolvedValue(makeMovement());
+
+      const dto: CreateMovementDto = {
+        productId: PRODUCT_ID,
+        type: 'ENTRY',
+        reason: 'PURCHASE',
+        quantity: 5,
+        unitCost: 0,
+        toWarehouseId: WAREHOUSE_A,
+      };
+      await service.createMovement(TENANT_A, USER_ID, dto);
+
+      const updateArgs = tx().inventoryItem.update.mock.calls[0][0];
+      expect(Number(updateArgs.data.costAverage)).toBe(0);
     });
 
     it('EXIT: should decrease quantity and available', async () => {
@@ -664,9 +834,28 @@ describe('InventoryService', () => {
         dateTo: '2026-03-31',
       });
 
+      // Whole civil days in the tenant timezone: `new Date('2026-03-31')` is
+      // midnight *starting* the last day, which dropped it from the range.
       const whereArg = prisma.inventoryMovement.findMany.mock.calls[0][0].where;
-      expect(whereArg.createdAt.gte).toEqual(new Date('2026-01-01'));
-      expect(whereArg.createdAt.lte).toEqual(new Date('2026-03-31'));
+      expect(whereArg.createdAt.gte).toEqual(new Date('2026-01-01T03:00:00.000Z'));
+      expect(whereArg.createdAt.lte).toEqual(new Date('2026-04-01T02:59:59.999Z'));
+    });
+
+    it('should include a movement made late in the evening of the last day', async () => {
+      prisma.inventoryMovement.findMany.mockResolvedValue([]);
+      prisma.inventoryMovement.count.mockResolvedValue(0);
+
+      await service.findMovements(TENANT_A, {
+        page: 1,
+        limit: 20,
+        dateFrom: '2026-07-31',
+        dateTo: '2026-07-31',
+      });
+
+      const { gte, lte } = prisma.inventoryMovement.findMany.mock.calls[0][0].where.createdAt;
+      const lateMovement = new Date('2026-08-01T02:50:00.000Z'); // 23:50 of 31/07 in -03
+
+      expect(lateMovement >= gte && lateMovement <= lte).toBe(true);
     });
   });
 
@@ -862,6 +1051,63 @@ describe('InventoryService', () => {
   });
 
   // ─── transferStock ──────────────────────────────────────────────────────
+
+  describe('stock messages (AE-12a)', () => {
+    // O usuário via "Insufficient stock. Current: 19, Change: -999" — em
+    // inglês e sem dizer de qual depósito é esse 19.
+    it('says the product, the warehouse and both numbers, in Portuguese', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID, type: 'SIMPLE' });
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'ii-1',
+        quantity: 19,
+        available: 19,
+      });
+      prisma._tx.warehouse.findUnique.mockResolvedValue({ name: 'Makeimports' });
+      prisma._tx.product.findUnique.mockResolvedValue({
+        name: 'Widget A',
+        sku: 'SKU-001',
+      });
+
+      await expect(
+        service.createMovement(TENANT_A, USER_ID, {
+          productId: PRODUCT_ID,
+          type: 'EXIT',
+          quantity: 999,
+          fromWarehouseId: WAREHOUSE_A,
+        } as never),
+      ).rejects.toThrow(/Estoque insuficiente.*Makeimports.*19.*999/s);
+    });
+
+    it('explains an exit from a product with no stock at all', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID, type: 'SIMPLE' });
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue(null);
+      prisma._tx.warehouse.findUnique.mockResolvedValue({ name: 'Makeimports' });
+
+      await expect(
+        service.createMovement(TENANT_A, USER_ID, {
+          productId: PRODUCT_ID,
+          type: 'EXIT',
+          quantity: 5,
+          fromWarehouseId: WAREHOUSE_A,
+        } as never),
+      ).rejects.toThrow(/ainda não tem estoque.*Makeimports/s);
+    });
+
+    it('names the source warehouse when a transfer does not fit', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID, type: 'SIMPLE' });
+      prisma.inventoryItem.findFirst.mockResolvedValue({ id: 'ii-1', available: 3 });
+      prisma.warehouse.findFirst.mockResolvedValue({ name: 'Makeimports' });
+
+      await expect(
+        service.transferStock(TENANT_A, USER_ID, {
+          productId: PRODUCT_ID,
+          fromWarehouseId: WAREHOUSE_A,
+          toWarehouseId: WAREHOUSE_B,
+          quantity: 10,
+        } as never),
+      ).rejects.toThrow(/Estoque insuficiente.*Makeimports.*3.*10/s);
+    });
+  });
 
   describe('transferStock', () => {
     const baseTransferDto: TransferStockDto = {
@@ -1291,7 +1537,128 @@ describe('InventoryService', () => {
         findMany: jest.fn(),
         count: jest.fn(),
         create: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       };
+      // AE-12c: marcar um padrão rebaixa os outros na mesma transação.
+      (prisma as any).$transaction = jest.fn(async (cb: unknown) =>
+        typeof cb === 'function'
+          ? (cb as (tx: unknown) => unknown)((prisma as any))
+          : cb,
+      );
+    });
+
+    // ─── AE-12a: mensagem de estoque em pt-BR e acionável ──────────────
+
+    it('returns productCount, the field the card reads (AE-12b)', async () => {
+      (prisma as any).warehouse.findMany.mockResolvedValue([
+        {
+          id: 'wh-1',
+          name: 'Depósito SP',
+          city: 'São Paulo',
+          state: 'SP',
+          _count: { inventoryItems: 12 },
+        },
+      ]);
+      (prisma as any).warehouse.count.mockResolvedValue(1);
+
+      const result = await service.getWarehouses(TENANT_A, {} as never);
+
+      expect(result.data[0]).toMatchObject({
+        city: 'São Paulo',
+        state: 'SP',
+        productCount: 12,
+      });
+      expect((result.data[0] as Record<string, unknown>)._count).toBeUndefined();
+    });
+
+    // ─── AE-12b: o card lia campos que a API não devolvia ───────────
+
+    it('stores city, state and zip as their own fields (AE-12b)', async () => {
+      // O serviço concatenava tudo em `address` e o card exibia ", -", porque
+      // lia `city` e `state` — que nunca existiram na resposta.
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Depósito SP',
+        address: 'Rua A, 100',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01000-000',
+      } as never);
+
+      const data = (prisma as any).warehouse.create.mock.calls[0][0].data;
+      expect(data).toMatchObject({
+        address: 'Rua A, 100',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01000-000',
+      });
+    });
+
+    it('does not smash the parts into the address string', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Depósito SP',
+        address: 'Rua A, 100',
+        city: 'São Paulo',
+        state: 'SP',
+      } as never);
+
+      const data = (prisma as any).warehouse.create.mock.calls[0][0].data;
+      expect(data.address).toBe('Rua A, 100');
+    });
+
+  // ─── AE-12c: só pode existir um depósito padrão ────────────────────
+
+    it('demotes the previous default when a new one is marked', async () => {
+      // A tela chegou a exibir **três** depósitos "Padrão", tornando ambíguo
+      // qual deles vendas e balcão usam.
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Novo Padrão',
+        isDefault: true,
+      } as never);
+
+      const args = (prisma as any).warehouse.updateMany.mock.calls[0][0];
+      expect(args.where).toMatchObject({ tenantId: TENANT_A, isDefault: true });
+      expect(args.data).toEqual({ isDefault: false });
+    });
+
+    it('does not touch the other warehouses when the new one is not default', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Secundário',
+        isDefault: false,
+      } as never);
+
+      expect((prisma as any).warehouse.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('demotes only inside the tenant', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Padrão',
+        isDefault: true,
+      } as never);
+
+      const args = (prisma as any).warehouse.updateMany.mock.calls[0][0];
+      expect(args.where.tenantId).toBe(TENANT_A);
+    });
+
+    it('demotes and creates in the same transaction', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Padrão',
+        isDefault: true,
+      } as never);
+
+      // Sem transação, uma falha no meio deixaria zero depósitos padrão.
+      expect((prisma as any).$transaction).toHaveBeenCalled();
     });
 
     it('should return paginated warehouses for tenant', async () => {
@@ -1304,7 +1671,8 @@ describe('InventoryService', () => {
       const result = await service.getWarehouses(TENANT_A, { page: 1, limit: 20 });
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(warehouses);
+      // `productCount` entra na resposta (AE-12b); o resto do depósito é o mesmo.
+      expect(result.data).toEqual([{ ...warehouses[0], productCount: 0 }]);
       expect(result.meta.total).toBe(1);
       expect(result.meta.page).toBe(1);
     });
@@ -1360,7 +1728,66 @@ describe('InventoryService', () => {
         findMany: jest.fn(),
         count: jest.fn(),
         create: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       };
+      // AE-12c: marcar um padrão rebaixa os outros na mesma transação.
+      (prisma as any).$transaction = jest.fn(async (cb: unknown) =>
+        typeof cb === 'function'
+          ? (cb as (tx: unknown) => unknown)((prisma as any))
+          : cb,
+      );
+    });
+
+    // ─── AE-12c: só pode existir um depósito padrão ────────────────────
+
+    it('demotes the previous default when a new one is marked', async () => {
+      // A tela chegou a exibir **três** depósitos "Padrão", tornando ambíguo
+      // qual deles vendas e balcão usam.
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Novo Padrão',
+        isDefault: true,
+      } as never);
+
+      const args = (prisma as any).warehouse.updateMany.mock.calls[0][0];
+      expect(args.where).toMatchObject({ tenantId: TENANT_A, isDefault: true });
+      expect(args.data).toEqual({ isDefault: false });
+    });
+
+    it('does not touch the other warehouses when the new one is not default', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Secundário',
+        isDefault: false,
+      } as never);
+
+      expect((prisma as any).warehouse.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('demotes only inside the tenant', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Padrão',
+        isDefault: true,
+      } as never);
+
+      const args = (prisma as any).warehouse.updateMany.mock.calls[0][0];
+      expect(args.where.tenantId).toBe(TENANT_A);
+    });
+
+    it('demotes and creates in the same transaction', async () => {
+      (prisma as any).warehouse.create.mockResolvedValue({ id: 'wh-new' });
+
+      await service.createWarehouse(TENANT_A, {
+        name: 'Padrão',
+        isDefault: true,
+      } as never);
+
+      // Sem transação, uma falha no meio deixaria zero depósitos padrão.
+      expect((prisma as any).$transaction).toHaveBeenCalled();
     });
 
     it('should create a warehouse with provided data', async () => {
@@ -1405,6 +1832,350 @@ describe('InventoryService', () => {
 
       const createArgs = (prisma as any).warehouse.create.mock.calls[0][0];
       expect(createArgs.data.isDefault).toBe(false);
+    });
+  });
+  // ─── adjustStock (AE-25) ──────────────────────────────────────────────────
+
+  describe('adjustStock', () => {
+    const dto: AdjustStockDto = {
+      productId: PRODUCT_ID,
+      warehouseId: WAREHOUSE_A,
+      countedQuantity: 47,
+      reason: 'COUNT',
+      notes: 'Contagem cíclica de agosto',
+    };
+
+    beforeEach(() => {
+      (prisma as any).product.findFirst.mockResolvedValue({
+        id: PRODUCT_ID,
+        sku: 'SKU-001',
+        name: 'Widget A',
+      });
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        name: 'Depósito Principal',
+      });
+      (prisma as any).stockAlert.findFirst.mockResolvedValue(null);
+      (prisma as any).stockAlert.updateMany.mockResolvedValue({ count: 0 });
+      (prisma as any).inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 47,
+        available: 47,
+        minStock: 0,
+      });
+      prisma._tx.inventoryMovement.create.mockResolvedValue({ id: 'mov-adj' });
+    });
+
+    it('should derive the delta from the balance read inside the transaction', async () => {
+      // 50 on the shelf, 47 counted -> the movement is 3 units out. The client
+      // never computes this: a sale between opening the screen and saving would
+      // make a client-side delta overwrite the newer balance.
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 50,
+        available: 50,
+        minStock: 0,
+      });
+
+      const result = await service.adjustStock(TENANT_A, USER_ID, dto);
+
+      expect(result.previousQuantity).toBe(50);
+      expect(result.newQuantity).toBe(47);
+      expect(result.delta).toBe(-3);
+
+      const movement = prisma._tx.inventoryMovement.create.mock.calls[0][0].data;
+      expect(movement.type).toBe('ADJUSTMENT');
+      expect(movement.quantity).toBe(3);
+      expect(movement.fromWarehouseId).toBe(WAREHOUSE_A);
+      expect(movement.toWarehouseId).toBeUndefined();
+    });
+
+    it('should register a positive adjustment as an entry into the warehouse', async () => {
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 40,
+        available: 40,
+        minStock: 0,
+      });
+
+      const result = await service.adjustStock(TENANT_A, USER_ID, dto);
+
+      expect(result.delta).toBe(7);
+      const movement = prisma._tx.inventoryMovement.create.mock.calls[0][0].data;
+      expect(movement.quantity).toBe(7);
+      expect(movement.toWarehouseId).toBe(WAREHOUSE_A);
+      expect(movement.fromWarehouseId).toBeUndefined();
+    });
+
+    it('should treat a missing inventory item as a zero balance', async () => {
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue(null);
+
+      const result = await service.adjustStock(TENANT_A, USER_ID, dto);
+
+      expect(result.previousQuantity).toBe(0);
+      expect(result.delta).toBe(47);
+    });
+
+    it('should refuse an adjustment that changes nothing', async () => {
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 47,
+        available: 47,
+        minStock: 0,
+      });
+
+      await expect(service.adjustStock(TENANT_A, USER_ID, dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma._tx.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('should record who made the adjustment and why', async () => {
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 50,
+        available: 50,
+        minStock: 0,
+      });
+
+      await service.adjustStock(TENANT_A, USER_ID, dto);
+
+      const movement = prisma._tx.inventoryMovement.create.mock.calls[0][0].data;
+      expect(movement.userId).toBe(USER_ID);
+      expect(movement.notes).toBe('Contagem cíclica de agosto');
+      expect(movement.reason).toBe('COUNT');
+    });
+
+    it('should scope the product and warehouse lookups by tenant', async () => {
+      prisma._tx.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        quantity: 50,
+        available: 50,
+        minStock: 0,
+      });
+
+      await service.adjustStock(TENANT_A, USER_ID, dto);
+
+      expect((prisma as any).product.findFirst.mock.calls[0][0].where.tenantId).toBe(TENANT_A);
+      expect((prisma as any).warehouse.findFirst.mock.calls[0][0].where.tenantId).toBe(TENANT_A);
+      expect(prisma._tx.inventoryItem.findFirst.mock.calls[0][0].where.tenantId).toBe(TENANT_A);
+    });
+
+    it('should reject a product from another tenant', async () => {
+      (prisma as any).product.findFirst.mockResolvedValue(null);
+
+      await expect(service.adjustStock(TENANT_B, USER_ID, dto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should reject an unknown warehouse', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue(null);
+
+      await expect(service.adjustStock(TENANT_A, USER_ID, dto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+  // ─── Warehouse update / remove (AE-12d) ───────────────────────────────────
+
+  describe('updateWarehouse', () => {
+    beforeEach(() => {
+      (prisma as any).warehouse.update.mockResolvedValue({ id: WAREHOUSE_A });
+      prisma._tx.warehouse.update.mockResolvedValue({ id: WAREHOUSE_A });
+      prisma._tx.warehouse.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('should scope the lookup by tenant', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        isDefault: false,
+      });
+
+      await service.updateWarehouse(TENANT_A, WAREHOUSE_A, { name: 'Novo nome' });
+
+      expect((prisma as any).warehouse.findFirst.mock.calls[0][0].where.tenantId).toBe(
+        TENANT_A,
+      );
+    });
+
+    it('should reject a warehouse from another tenant', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateWarehouse(TENANT_B, WAREHOUSE_A, { name: 'x' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should demote the previous default in the same transaction', async () => {
+      // AE-12c: the screen once showed three "Padrão" warehouses and the sale
+      // picked one of them without saying which.
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_B,
+        isDefault: false,
+      });
+
+      await service.updateWarehouse(TENANT_A, WAREHOUSE_B, { isDefault: true });
+
+      expect(prisma._tx.warehouse.updateMany).toHaveBeenCalledWith({
+        where: { tenantId: TENANT_A, isDefault: true },
+        data: { isDefault: false },
+      });
+    });
+
+    it('should refuse to un-tick the only default', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        isDefault: true,
+      });
+
+      await expect(
+        service.updateWarehouse(TENANT_A, WAREHOUSE_A, { isDefault: false }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should refuse to deactivate the default warehouse', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        isDefault: true,
+      });
+
+      await expect(
+        service.updateWarehouse(TENANT_A, WAREHOUSE_A, { isActive: false }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should uppercase the state', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        isDefault: false,
+      });
+
+      await service.updateWarehouse(TENANT_A, WAREHOUSE_A, {
+        state: 'sp',
+      } as UpdateWarehouseDto);
+
+      expect(prisma._tx.warehouse.update.mock.calls[0][0].data.state).toBe('SP');
+    });
+  });
+
+  describe('removeWarehouse', () => {
+    beforeEach(() => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_B,
+        name: 'Depósito Secundário',
+        isDefault: false,
+      });
+      (prisma as any).inventoryItem.aggregate.mockResolvedValue({
+        _sum: { quantity: 0 },
+      });
+      (prisma as any).inventoryMovement.count.mockResolvedValue(0);
+      (prisma as any).warehouse.update.mockResolvedValue({ id: WAREHOUSE_B });
+    });
+
+    it('should refuse to delete a warehouse that still holds stock', async () => {
+      // AE-02 shape: the balance goes in the message, so the operator is not
+      // left hunting for which warehouse still has something.
+      (prisma as any).inventoryItem.aggregate.mockResolvedValue({
+        _sum: { quantity: 592 },
+      });
+
+      await expect(
+        service.removeWarehouse(TENANT_A, WAREHOUSE_B),
+      ).rejects.toThrow(ConflictException);
+
+      await expect(
+        service.removeWarehouse(TENANT_A, WAREHOUSE_B),
+      ).rejects.toThrow(/592 un/);
+    });
+
+    it('should refuse to delete the default warehouse', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_A,
+        name: 'Principal',
+        isDefault: true,
+      });
+
+      await expect(
+        service.removeWarehouse(TENANT_A, WAREHOUSE_A),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should deactivate instead of deleting when there is movement history', async () => {
+      // The movements pointing at it are the audit trail of every entry and
+      // exit the warehouse ever saw — deleting the row orphans them.
+      (prisma as any).inventoryMovement.count.mockResolvedValue(12);
+
+      const result = await service.removeWarehouse(TENANT_A, WAREHOUSE_B);
+
+      expect(result.deactivated).toBe(true);
+      expect((prisma as any).warehouse.update).toHaveBeenCalledWith({
+        where: { id: WAREHOUSE_B },
+        data: { isActive: false },
+      });
+      expect(prisma._tx.warehouse.delete).not.toHaveBeenCalled();
+    });
+
+    it('should delete a warehouse with no stock and no history', async () => {
+      const result = await service.removeWarehouse(TENANT_A, WAREHOUSE_B);
+
+      expect(result.deactivated).toBe(false);
+      expect(prisma._tx.warehouse.delete).toHaveBeenCalledWith({
+        where: { id: WAREHOUSE_B },
+      });
+    });
+
+    it('should reject a warehouse from another tenant', async () => {
+      (prisma as any).warehouse.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.removeWarehouse(TENANT_B, WAREHOUSE_B),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+  // ─── FT-10: alertas por depósito ──────────────────────────────────────────
+
+  describe('getLowStockAlerts: filtros', () => {
+    beforeEach(() => {
+      (prisma as any).stockAlert.findMany.mockResolvedValue([]);
+      (prisma as any).stockAlert.count.mockResolvedValue(0);
+    });
+
+    it('should filter the alerts by warehouse', async () => {
+      // "O que está faltando no Depósito Central?" é a pergunta da tela, e ela
+      // já mostra a coluna Depósito — filtrar por ela respondia 400.
+      await service.getLowStockAlerts(TENANT_A, { warehouseId: WAREHOUSE_A } as never);
+
+      const where = (prisma as any).stockAlert.findMany.mock.calls[0][0].where;
+      expect(where.warehouseId).toBe(WAREHOUSE_A);
+      expect(where.tenantId).toBe(TENANT_A);
+    });
+
+    it('should filter the alerts by product', async () => {
+      await service.getLowStockAlerts(TENANT_A, { productId: PRODUCT_ID } as never);
+
+      expect(
+        (prisma as any).stockAlert.findMany.mock.calls[0][0].where.productId,
+      ).toBe(PRODUCT_ID);
+    });
+
+    it('should combine the warehouse with the status', async () => {
+      await service.getLowStockAlerts(TENANT_A, {
+        warehouseId: WAREHOUSE_A,
+        status: 'ACTIVE',
+      } as never);
+
+      const where = (prisma as any).stockAlert.findMany.mock.calls[0][0].where;
+      expect(where.warehouseId).toBe(WAREHOUSE_A);
+      expect(where.isResolved).toBe(false);
+    });
+
+    it('should not narrow by warehouse when none is given', async () => {
+      await service.getLowStockAlerts(TENANT_A, {} as never);
+
+      const where = (prisma as any).stockAlert.findMany.mock.calls[0][0].where;
+      expect(where).not.toHaveProperty('warehouseId');
+      expect(where).not.toHaveProperty('productId');
     });
   });
 });

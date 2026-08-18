@@ -1,10 +1,11 @@
+import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -42,6 +43,9 @@ export interface UpdatePaymentConditionPayload
 
 export interface PaymentConditionListParams {
   search?: string;
+  /** FT-05: aceitos pela API desde sempre e ausentes na tela. */
+  type?: PaymentConditionType;
+  isActive?: boolean;
   limit?: number;
 }
 
@@ -67,6 +71,8 @@ export function usePaymentConditions(
         {
           params: {
             search: params.search || undefined,
+            type: params.type || undefined,
+            isActive: params.isActive,
             limit: params.limit ?? 20,
           },
         }

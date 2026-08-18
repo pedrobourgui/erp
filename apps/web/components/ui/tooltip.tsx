@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import React from "react";
+
 import { cn } from "@/lib/utils";
 
 export function TooltipProvider({ children }: { children: React.ReactNode }) {
@@ -20,12 +21,65 @@ interface TooltipProps {
   className?: string;
 }
 
+/** Há texto visível em algum lugar desta árvore? */
+function hasVisibleText(node: React.ReactNode): boolean {
+  if (typeof node === "string") {
+    return node.trim().length > 0;
+  }
+  if (typeof node === "number") {
+    return true;
+  }
+  if (Array.isArray(node)) {
+    return node.some(hasVisibleText);
+  }
+  if (React.isValidElement(node)) {
+    return hasVisibleText((node.props as { children?: React.ReactNode }).children);
+  }
+  return false;
+}
+
+/**
+ * DS-01: o `content` só chegava ao `Content` do Radix, que o liga por
+ * `aria-describedby` — **descrição**, não **nome**. Um botão só-ícone ficava
+ * sem nome acessível nenhum: o QA mediu 60 de 60 botões de ação da tabela de
+ * produtos assim, e `getByRole("button", { name: "Editar" })` respondia zero
+ * nas cinco listagens. Eram 35 dos 45 controles só-ícone do repositório.
+ *
+ * O rótulo só é injetado quando o gatilho **não tem texto visível** e ainda não
+ * declara um nome próprio. Um botão que mostra "Salvar" precisa continuar se
+ * chamando "Salvar", mesmo que o tooltip explique mais — trocar o nome pelo
+ * texto do tooltip quebraria o WCAG 2.5.3 e o comando de voz junto.
+ */
+function withAccessibleName(children: React.ReactNode, content: string): React.ReactNode {
+  if (!React.isValidElement(children)) {
+    return children;
+  }
+
+  const props = children.props as {
+    "aria-label"?: string;
+    "aria-labelledby"?: string;
+    children?: React.ReactNode;
+  };
+
+  if (props["aria-label"] || props["aria-labelledby"] || hasVisibleText(props.children)) {
+    return children;
+  }
+
+  return React.cloneElement(children as React.ReactElement<{ "aria-label"?: string }>, {
+    "aria-label": content,
+  });
+}
+
 export function Tooltip({ content, children, side = "bottom", align = "center", className }: TooltipProps) {
-  if (!content) return <>{children}</>;
+  if (!content) {
+    return <>{children}</>;
+  }
 
   return (
     <TooltipPrimitive.Root>
-      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Trigger asChild>
+        {withAccessibleName(children, content)}
+      </TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content
           side={side}

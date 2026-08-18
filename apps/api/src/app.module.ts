@@ -8,6 +8,7 @@ import { RedisModule } from './database/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
+import { SearchModule } from './modules/search/search.module';
 import { ProductsModule } from './modules/products/products.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -85,6 +86,7 @@ import { appConfig } from './config/app.config';
     AuthModule,
     TenantsModule,
     UsersModule,
+    SearchModule,
     ProductsModule,
     InventoryModule,
     OrdersModule,

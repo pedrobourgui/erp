@@ -1,0 +1,72 @@
+{
+  "/estoque/marcas": {
+    "maxHeight": "none",
+    "overflowY": "visible",
+    "height": 384,
+    "viewport": 667,
+    "overflowsViewport": false,
+    "bottomOffscreen": -141.5,
+    "footerBottom": 500.5,
+    "radius": "0px"
+  },
+  "/estoque/categorias": {
+    "maxHeight": "none",
+    "overflowY": "visible",
+    "height": 466,
+    "viewport": 667,
+    "overflowsViewport": false,
+    "bottomOffscreen": -100.5,
+    "footerBottom": 541.5,
+    "radius": "0px"
+  },
+  "/estoque/depositos": {
+    "maxHeight": "566.95px",
+    "overflowY": "hidden",
+    "height": 566.9,
+    "viewport": 667,
+    "overflowsViewport": false,
+    "bottomOffscreen": -50,
+    "footerBottom": 307,
+    "radius": "0px"
+  },
+  "/financeiro/contas": {
+    "maxHeight": "none",
+    "overflowY": "visible",
+    "height": 746,
+    "viewport": 667,
+    "overflowsViewport": true,
+    "bottomOffscreen": 39.5,
+    "footerBottom": 213.5,
+    "radius": "0px"
+  },
+  "/financeiro/lancamentos": {
+    "maxHeight": "none",
+    "overflowY": "visible",
+    "height": 738,
+    "viewport": 667,
+    "overflowsViewport": true,
+    "bottomOffscreen": 35.5,
+    "footerBottom": 197.5,
+    "radius": "0px"
+  },
+  "/configuracoes/metodos-pagamento": {
+    "maxHeight": "none",
+    "overflowY": "visible",
+    "height": 762,
+    "viewport": 667,
+    "overflowsViewport": true,
+    "bottomOffscreen": 47.5,
+    "footerBottom": 205.5,
+    "radius": "0px"
+  },
+  "/configuracoes/condicoes-pagamento": {
+    "maxHeight": "566.95px",
+    "overflowY": "hidden",
+    "height": 561,
+    "viewport": 667,
+    "overflowsViewport": false,
+    "bottomOffscreen": -53,
+    "footerBottom": 310,
+    "radius": "0px"
+  }
+}

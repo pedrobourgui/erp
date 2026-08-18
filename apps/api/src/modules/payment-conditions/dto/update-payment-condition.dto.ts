@@ -1,7 +1,7 @@
 import {
   IsString,
   IsOptional,
-  IsEnum,
+  IsIn,
   IsNumber,
   IsBoolean,
   Min,
@@ -25,7 +25,7 @@ export class UpdatePaymentConditionDto {
 
   @ApiPropertyOptional({ enum: ['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'] })
   @IsOptional()
-  @IsEnum(['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'])
+  @IsIn(['CASH', 'INSTALLMENT', 'ENTRY_PLUS_INSTALLMENT'])
   type?: string;
 
   @ApiPropertyOptional()

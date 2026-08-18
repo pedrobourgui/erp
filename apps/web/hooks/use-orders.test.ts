@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -13,10 +13,13 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import api from '@/lib/api';
+
 import {
   useOrders,
   useOrder,
   useUpdateOrderStatus,
+  useCancelOrder,
+  useReverseSale,
   useRecentOrders,
   orderKeys,
 } from './use-orders';
@@ -205,6 +208,129 @@ describe('useUpdateOrderStatus', () => {
       status: 'CONFIRMED',
       notes: undefined,
     });
+  });
+});
+
+// VD-01: cancelling through PATCH /status only flipped the column — the stock
+// stayed reserved and the receivable stayed open.
+describe('useCancelOrder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should PATCH to /orders/:id/cancel with the reason', async () => {
+    mockedApi.patch.mockResolvedValueOnce({ data: { data: { id: 'o1' } } });
+
+    const { result } = renderHook(() => useCancelOrder(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({ id: 'o1', reason: 'Cliente desistiu' });
+
+    expect(mockedApi.patch).toHaveBeenCalledWith('/orders/o1/cancel', {
+      reason: 'Cliente desistiu',
+    });
+  });
+
+  it('should invalidate stock and financial caches, not only orders', async () => {
+    mockedApi.patch.mockResolvedValueOnce({ data: { data: { id: 'o1' } } });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useCancelOrder(), { wrapper });
+    await result.current.mutateAsync({ id: 'o1', reason: 'Cliente desistiu' });
+
+    const invalidatedKeys = invalidate.mock.calls.map(
+      ([arg]) => JSON.stringify((arg as { queryKey: unknown }).queryKey)
+    );
+    expect(invalidatedKeys).toEqual(
+      expect.arrayContaining([
+        JSON.stringify(['orders', 'list']),
+        JSON.stringify(['orders', 'detail', 'o1']),
+        JSON.stringify(['products']),
+        JSON.stringify(['inventory']),
+        JSON.stringify(['financial-entries']),
+      ])
+    );
+  });
+
+  it('should reject an empty reason without calling the API', async () => {
+    const { result } = renderHook(() => useCancelOrder(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      result.current.mutateAsync({ id: 'o1', reason: '   ' })
+    ).rejects.toThrow(/motivo/i);
+    expect(mockedApi.patch).not.toHaveBeenCalled();
+  });
+});
+
+// VD-14: undoing a finished sale is not a status change.
+describe('useReverseSale', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should POST to /orders/:id/reverse with the reason', async () => {
+    mockedApi.post.mockResolvedValueOnce({
+      data: { data: { orderId: 'o1', refundedAmount: 199.8 } },
+    });
+
+    const { result } = renderHook(() => useReverseSale(), {
+      wrapper: createWrapper(),
+    });
+
+    const response = await result.current.mutateAsync({
+      id: 'o1',
+      reason: 'Produto com defeito',
+    });
+
+    expect(mockedApi.post).toHaveBeenCalledWith('/orders/o1/reverse', {
+      reason: 'Produto com defeito',
+    });
+    expect(response.data.refundedAmount).toBe(199.8);
+  });
+
+  it('should reject an empty reason without calling the API', async () => {
+    const { result } = renderHook(() => useReverseSale(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      result.current.mutateAsync({ id: 'o1', reason: '  ' })
+    ).rejects.toThrow(/motivo/i);
+    expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+
+  it('should invalidate stock, financial and cash caches', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { data: { orderId: 'o1' } } });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useReverseSale(), { wrapper });
+    await result.current.mutateAsync({ id: 'o1', reason: 'Defeito' });
+
+    const invalidatedKeys = invalidate.mock.calls.map(
+      ([arg]) => JSON.stringify((arg as { queryKey: unknown }).queryKey)
+    );
+    expect(invalidatedKeys).toEqual(
+      expect.arrayContaining([
+        JSON.stringify(['inventory']),
+        JSON.stringify(['financial-entries']),
+        JSON.stringify(['cash-registers']),
+      ])
+    );
   });
 });
 

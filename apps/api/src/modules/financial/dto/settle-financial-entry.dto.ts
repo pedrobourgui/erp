@@ -1,5 +1,5 @@
 import {
-  IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   IsNumber,
@@ -18,7 +18,7 @@ export type SettleableKind = (typeof SETTLEABLE_KINDS)[number];
 
 export class SettleFinancialEntryDto {
   @ApiProperty({ enum: SETTLEABLE_KINDS, example: 'RECEIVABLE' })
-  @IsEnum(SETTLEABLE_KINDS)
+  @IsIn(SETTLEABLE_KINDS)
   kind: SettleableKind;
 
   @ApiPropertyOptional({

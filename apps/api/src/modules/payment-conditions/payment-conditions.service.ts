@@ -69,7 +69,7 @@ export class PaymentConditionsService {
 
     if (!condition) {
       throw new NotFoundException(
-        `Payment condition with id ${id} not found for tenant ${tenantId}`,
+        `Condição de pagamento não encontrada`,
       );
     }
 
@@ -84,7 +84,7 @@ export class PaymentConditionsService {
 
     if (existing) {
       throw new ConflictException(
-        `Payment condition with code "${dto.code}" already exists for this tenant`,
+        `Já existe uma condição de pagamento com o código "${dto.code}"`,
       );
     }
 
@@ -115,7 +115,7 @@ export class PaymentConditionsService {
 
     if (!existing) {
       throw new NotFoundException(
-        `Payment condition with id ${id} not found for tenant ${tenantId}`,
+        `Condição de pagamento não encontrada`,
       );
     }
 
@@ -127,7 +127,7 @@ export class PaymentConditionsService {
 
       if (duplicate) {
         throw new ConflictException(
-          `Payment condition with code "${dto.code}" already exists for this tenant`,
+          `Já existe uma condição de pagamento com o código "${dto.code}"`,
         );
       }
     }
@@ -159,7 +159,7 @@ export class PaymentConditionsService {
 
     if (!existing) {
       throw new NotFoundException(
-        `Payment condition with id ${id} not found for tenant ${tenantId}`,
+        `Condição de pagamento não encontrada`,
       );
     }
 

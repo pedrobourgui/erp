@@ -1,11 +1,12 @@
+import type { Customer, PaginatedResponse, ApiResponse } from "@erp/shared-types";
 import {
   useQuery,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
+
 import api from "@/lib/api";
-import type { Customer, PaginatedResponse, ApiResponse } from "@erp/shared-types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -49,6 +50,9 @@ export interface CustomerListParams {
   limit?: number;
   search?: string;
   segment?: CustomerSegment;
+  /** FT-07: aceito pela API desde sempre e ausente na tela. */
+  documentType?: CustomerDocumentType;
+  tag?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -84,6 +88,8 @@ export function useCustomers(params: CustomerListParams = {}) {
           limit: params.limit ?? 20,
           search: params.search || undefined,
           segment: params.segment || undefined,
+          documentType: params.documentType || undefined,
+          tag: params.tag || undefined,
           sortBy: params.sortBy || undefined,
           sortOrder: params.sortOrder || undefined,
         },
@@ -151,5 +157,85 @@ export function useDeleteCustomer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
     },
+  });
+}
+
+// ─── Addresses (AE-16) ──────────────────────────────────────────────────
+
+export interface CustomerAddressPayload {
+  label?: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  isDefault?: boolean;
+}
+
+export function useCustomerAddresses(customerId: string, enabled = true) {
+  return useQuery({
+    queryKey: [...customerKeys.detail(customerId), "addresses"] as const,
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<CustomerAddress[]>>(
+        `/customers/${customerId}/addresses`
+      );
+      return data.data;
+    },
+    enabled: enabled && !!customerId,
+  });
+}
+
+/** Both the address list and the customer detail embed the addresses. */
+function invalidateCustomer(
+  queryClient: ReturnType<typeof useQueryClient>,
+  customerId: string
+) {
+  queryClient.invalidateQueries({ queryKey: customerKeys.detail(customerId) });
+  queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+}
+
+export function useCreateCustomerAddress(customerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CustomerAddressPayload) => {
+      const { data } = await api.post<ApiResponse<CustomerAddress>>(
+        `/customers/${customerId}/addresses`,
+        payload
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateCustomer(queryClient, customerId),
+  });
+}
+
+export function useUpdateCustomerAddress(customerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      addressId,
+      ...payload
+    }: Partial<CustomerAddressPayload> & { addressId: string }) => {
+      const { data } = await api.patch<ApiResponse<CustomerAddress>>(
+        `/customers/${customerId}/addresses/${addressId}`,
+        payload
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateCustomer(queryClient, customerId),
+  });
+}
+
+export function useDeleteCustomerAddress(customerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (addressId: string) => {
+      await api.delete(`/customers/${customerId}/addresses/${addressId}`);
+    },
+    onSuccess: () => invalidateCustomer(queryClient, customerId),
   });
 }

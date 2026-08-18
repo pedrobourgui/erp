@@ -4,7 +4,7 @@ import {
   IsOptional,
   IsNumber,
   IsBoolean,
-  IsEnum,
+  IsIn,
   Min,
   MaxLength,
 } from 'class-validator';
@@ -129,7 +129,7 @@ export class SessionQueryDto {
 
   @ApiPropertyOptional({ enum: ['OPEN', 'CLOSED'] })
   @IsOptional()
-  @IsEnum(['OPEN', 'CLOSED'])
+  @IsIn(['OPEN', 'CLOSED'])
   status?: string;
 
   @ApiPropertyOptional()
@@ -139,6 +139,6 @@ export class SessionQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 }

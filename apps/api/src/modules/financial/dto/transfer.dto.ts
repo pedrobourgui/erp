@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsPositive,
   IsDateString,
+  IsBoolean,
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -42,4 +43,12 @@ export class TransferBetweenAccountsDto {
   @IsString()
   @MaxLength(255)
   description?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Confirma explicitamente uma transferência que deixa a conta de origem negativa (FN-17). Conta do tipo Caixa nunca aceita.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowNegativeBalance?: boolean;
 }

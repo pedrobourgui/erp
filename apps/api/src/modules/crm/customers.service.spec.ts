@@ -37,6 +37,16 @@ function makeCustomer(overrides: Record<string, unknown> = {}) {
 // ─── Mock Factory ─────────────────────────────────────────────────────────────
 
 function createMockPrisma() {
+  const mockTx = {
+    customerAddress: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+    },
+  };
+
   return {
     customer: {
       findFirst: jest.fn(),
@@ -45,6 +55,13 @@ function createMockPrisma() {
       create: jest.fn(),
       update: jest.fn(),
     },
+    customerAddress: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    $transaction: jest.fn((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx)),
+    _tx: mockTx,
   };
 }
 
@@ -95,6 +112,44 @@ describe('CustomersService', () => {
       const createArgs = prisma.customer.create.mock.calls[0][0];
       expect(createArgs.data.tenantId).toBe(TENANT_A);
       expect(createArgs.data.name).toBe('Jane Doe');
+    });
+
+    // ─── AE-15: o documento é guardado só com dígitos ────────────────────
+
+    it('stores the document with digits only', async () => {
+      prisma.customer.findFirst.mockResolvedValue(null);
+      prisma.customer.create.mockResolvedValue(makeCustomer({}));
+
+      await service.create(TENANT_A, {
+        ...baseDto,
+        document: '987.654.321-00',
+      });
+
+      const data = prisma.customer.create.mock.calls[0][0].data;
+      expect(data.document).toBe('98765432100');
+    });
+
+    it('finds the duplicate even when the mask differs', async () => {
+      // `12345678909` e `123.456.789-09` conviviam como clientes diferentes
+      // porque a checagem comparava a string com a máscara.
+      prisma.customer.findFirst.mockResolvedValue(null);
+      prisma.customer.create.mockResolvedValue(makeCustomer({}));
+
+      await service.create(TENANT_A, { ...baseDto, document: '987.654.321-00' });
+
+      const where = prisma.customer.findFirst.mock.calls[0][0].where;
+      expect(where.document).toBe('98765432100');
+    });
+
+    it('leaves a customer without document alone', async () => {
+      prisma.customer.create.mockResolvedValue(makeCustomer({}));
+
+      await service.create(TENANT_A, {
+        name: 'Sem documento',
+      } as CreateCustomerDto);
+
+      const data = prisma.customer.create.mock.calls[0][0].data;
+      expect(data.document).toBeUndefined();
     });
 
     it('should throw ConflictException when duplicate document exists for tenant', async () => {
@@ -152,6 +207,79 @@ describe('CustomersService', () => {
   });
 
   // ─── findAll ──────────────────────────────────────────────────────────────
+
+  // ─── AE-13: as colunas "Pedidos" e "Total Gasto" vinham sempre vazias ──
+
+  describe('order totals in the list (AE-13)', () => {
+    // A tabela lia `totalOrders` e `totalSpent`; a API devolvia `_count.orders`
+    // e mais nada. `undefined` renderiza como vazio e como R$ 0,00 — ninguém
+    // percebe que a coluna está quebrada, só que o cliente "não comprou nada".
+    beforeEach(() => {
+      prisma.customer.count.mockResolvedValue(1);
+      prisma.customer.findMany.mockResolvedValue([
+        {
+          id: 'cust-001',
+          name: 'Maria',
+          _count: { orders: 3 },
+          orders: [
+            { totalAmount: 100.5 },
+            { totalAmount: 200.25 },
+            { totalAmount: 50 },
+          ],
+        },
+      ]);
+    });
+
+    it('returns totalOrders and totalSpent, the fields the table reads', async () => {
+      const result = await service.findAll(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({
+        totalOrders: 3,
+        totalSpent: 350.75,
+      });
+    });
+
+    it('does not leak the raw relation into the response', async () => {
+      const result = await service.findAll(TENANT_A, { page: 1, limit: 20 });
+
+      expect((result.data[0] as Record<string, unknown>).orders).toBeUndefined();
+      expect((result.data[0] as Record<string, unknown>)._count).toBeUndefined();
+    });
+
+    it('is zero for a customer that never ordered', async () => {
+      prisma.customer.findMany.mockResolvedValue([
+        { id: 'cust-002', name: 'Sem pedidos', _count: { orders: 0 }, orders: [] },
+      ]);
+
+      const result = await service.findAll(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({ totalOrders: 0, totalSpent: 0 });
+    });
+
+    it('sums in cents — three orders must not drift', async () => {
+      prisma.customer.findMany.mockResolvedValue([
+        {
+          id: 'cust-003',
+          name: 'Centavos',
+          _count: { orders: 2 },
+          orders: [{ totalAmount: 299.8 }, { totalAmount: 409.1 }],
+        },
+      ]);
+
+      const result = await service.findAll(TENANT_A, { page: 1, limit: 20 });
+
+      expect(result.data[0]).toMatchObject({ totalSpent: 708.9 });
+    });
+
+    it('counts only orders that were not cancelled', async () => {
+      await service.findAll(TENANT_A, { page: 1, limit: 20 });
+
+      const args = prisma.customer.findMany.mock.calls[0][0];
+      expect(args.select.orders.where.status).toEqual({
+        notIn: ['CANCELLED', 'RETURNED', 'DRAFT'],
+      });
+    });
+  });
 
   describe('findAll', () => {
     const defaultQuery: CustomerQueryDto = { page: 1, limit: 20, sortOrder: 'desc' };
@@ -290,12 +418,29 @@ describe('CustomersService', () => {
 
     it('should throw ConflictException when updated document collides', async () => {
       prisma.customer.findFirst
-        .mockResolvedValueOnce(makeCustomer({ document: 'OLD-DOC' })) // existing customer
-        .mockResolvedValueOnce(makeCustomer({ id: 'other-cust', document: 'TAKEN-DOC' })); // collision
+        .mockResolvedValueOnce(makeCustomer({ document: '52998224725' })) // existing customer
+        .mockResolvedValueOnce(
+          makeCustomer({ id: 'other-cust', document: '98765432100' }),
+        ); // collision
 
       await expect(
-        service.update(TENANT_A, 'cust-001', { document: 'TAKEN-DOC' }),
+        service.update(TENANT_A, 'cust-001', { document: '987.654.321-00' }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('sees through the mask when checking the collision (AE-15)', async () => {
+      prisma.customer.findFirst
+        .mockResolvedValueOnce(makeCustomer({ document: '52998224725' }))
+        .mockResolvedValueOnce(
+          makeCustomer({ id: 'other-cust', document: '98765432100' }),
+        );
+
+      await expect(
+        service.update(TENANT_A, 'cust-001', { document: '987.654.321-00' }),
+      ).rejects.toThrow(ConflictException);
+
+      const where = prisma.customer.findFirst.mock.calls[1][0].where;
+      expect(where.document).toBe('98765432100');
     });
 
     it('should verify tenant isolation on update', async () => {
@@ -343,6 +488,133 @@ describe('CustomersService', () => {
 
       const findArgs = prisma.customer.findFirst.mock.calls[0][0];
       expect(findArgs.where.tenantId).toBe(TENANT_A);
+    });
+  });
+  // ─── Addresses (AE-16) ────────────────────────────────────────────────────
+
+  describe('customer addresses', () => {
+    const CUSTOMER_ID = 'cust-001';
+    const dto = {
+      label: 'Entrega',
+      street: 'Avenida Paulista',
+      number: '1500',
+      neighborhood: 'Bela Vista',
+      city: 'São Paulo',
+      state: 'sp',
+      zipCode: '01310-100',
+    };
+
+    beforeEach(() => {
+      prisma.customer.findFirst.mockResolvedValue({ id: CUSTOMER_ID });
+      prisma.customerAddress.count.mockResolvedValue(1);
+      prisma._tx.customerAddress.create.mockImplementation(
+        async ({ data }: { data: Record<string, unknown> }) => ({ id: 'addr-1', ...data }),
+      );
+      prisma._tx.customerAddress.update.mockResolvedValue({ id: 'addr-1' });
+      prisma._tx.customerAddress.updateMany.mockResolvedValue({ count: 0 });
+    });
+
+    it('should scope the customer lookup by tenant before touching addresses', async () => {
+      // CustomerAddress has no tenantId of its own — it is reachable only
+      // through the customer, so this check is the whole isolation.
+      await service.findAddresses(TENANT_A, CUSTOMER_ID);
+
+      expect(prisma.customer.findFirst.mock.calls[0][0].where.tenantId).toBe(TENANT_A);
+    });
+
+    it('should refuse an address of a customer from another tenant', async () => {
+      prisma.customer.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.createAddress(TENANT_B, CUSTOMER_ID, dto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should store the CEP with digits only and the UF uppercased', async () => {
+      const address = await service.createAddress(TENANT_A, CUSTOMER_ID, dto);
+
+      expect(address.zipCode).toBe('01310100');
+      expect(address.state).toBe('SP');
+    });
+
+    it('should make the first address the default even without the flag', async () => {
+      prisma.customerAddress.count.mockResolvedValue(0);
+
+      const address = await service.createAddress(TENANT_A, CUSTOMER_ID, dto);
+
+      expect(address.isDefault).toBe(true);
+    });
+
+    it('should not promote a later address unless asked', async () => {
+      const address = await service.createAddress(TENANT_A, CUSTOMER_ID, dto);
+
+      expect(address.isDefault).toBe(false);
+    });
+
+    it('should demote the previous default in the same transaction', async () => {
+      // AE-12c on the customer side: two addresses marked as the main one is
+      // the same failure as three "Padrão" warehouses.
+      await service.createAddress(TENANT_A, CUSTOMER_ID, { ...dto, isDefault: true });
+
+      expect(prisma._tx.customerAddress.updateMany).toHaveBeenCalledWith({
+        where: { customerId: CUSTOMER_ID, isDefault: true },
+        data: { isDefault: false },
+      });
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should refuse to update an address of another customer', async () => {
+      prisma.customerAddress.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateAddress(TENANT_A, CUSTOMER_ID, 'addr-x', { city: 'Campinas' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not let the default be un-ticked into nothing', async () => {
+      prisma.customerAddress.findFirst.mockResolvedValue({
+        id: 'addr-1',
+        customerId: CUSTOMER_ID,
+        isDefault: true,
+      });
+
+      await service.updateAddress(TENANT_A, CUSTOMER_ID, 'addr-1', {
+        isDefault: false,
+      });
+
+      const data = prisma._tx.customerAddress.update.mock.calls[0][0].data;
+      expect(data).not.toHaveProperty('isDefault');
+    });
+
+    it('should promote the oldest survivor when the default is deleted', async () => {
+      prisma.customerAddress.findFirst.mockResolvedValue({
+        id: 'addr-1',
+        customerId: CUSTOMER_ID,
+        isDefault: true,
+      });
+      prisma._tx.customerAddress.findFirst.mockResolvedValue({ id: 'addr-2' });
+
+      await service.removeAddress(TENANT_A, CUSTOMER_ID, 'addr-1');
+
+      expect(prisma._tx.customerAddress.delete).toHaveBeenCalledWith({
+        where: { id: 'addr-1' },
+      });
+      expect(prisma._tx.customerAddress.update).toHaveBeenCalledWith({
+        where: { id: 'addr-2' },
+        data: { isDefault: true },
+      });
+    });
+
+    it('should not promote anything when a non-default address is deleted', async () => {
+      prisma.customerAddress.findFirst.mockResolvedValue({
+        id: 'addr-2',
+        customerId: CUSTOMER_ID,
+        isDefault: false,
+      });
+
+      await service.removeAddress(TENANT_A, CUSTOMER_ID, 'addr-2');
+
+      expect(prisma._tx.customerAddress.update).not.toHaveBeenCalled();
     });
   });
 });
